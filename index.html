@@ -36,6 +36,20 @@
             color: white;
             border-radius: 5px;
         }
+        #activateButton {
+            position: absolute;
+            bottom: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #activateButton:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -43,9 +57,12 @@
     <video id="videoFeed" autoplay></video>
     <div id="direction">Direction: 0°</div>
 
+    <button id="activateButton">Activate Features</button>
+
     <script>
         const videoElement = document.getElementById('videoFeed');
         const directionElement = document.getElementById('direction');
+        const activateButton = document.getElementById('activateButton');
 
         // Start the camera feed
         async function startCamera() {
@@ -92,18 +109,44 @@
             }
         }
 
-        // Initialize the app
-        window.onload = () => {
+        // Request location permission
+        async function requestLocationPermission() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    console.log("Location access granted.");
+                    console.log("Latitude:", position.coords.latitude);
+                    console.log("Longitude:", position.coords.longitude);
+                }, (error) => {
+                    console.error("Error accessing location:", error);
+                    alert("Unable to access location. Please check permissions.");
+                });
+            } else {
+                alert("Geolocation is not supported on this device.");
+            }
+        }
+
+        // Activate all features
+        function activateFeatures() {
+            // Request camera access
             startCamera();
 
+            // Request motion and orientation permissions
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // Show a prompt for iOS (but it won't require pressing now)
                 requestMotionPermission();
             } else {
-                // Directly add event listener for non-iOS
                 window.addEventListener('deviceorientation', handleOrientation, false);
             }
-        };
+
+            // Request location access
+            requestLocationPermission();
+
+            // Disable the activate button after activation
+            activateButton.disabled = true;
+            activateButton.innerText = "Features Activated";
+        }
+
+        // Add event listener to the button
+        activateButton.onclick = activateFeatures;
     </script>
 </body>
 </html>
