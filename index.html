@@ -15,6 +15,7 @@
             justify-content: center;
             height: 100vh;
             background-color: #f4f4f4;
+            position: relative; /* Ensure positioning works relative to the body */
         }
         h1 {
             margin-bottom: 20px;
@@ -26,23 +27,23 @@
             max-width: 480px; /* Limit the width */
             height: auto;
             object-fit: cover;
+            position: absolute; /* Position independently */
+            top: 20px; /* Adjust this to move the video */
         }
         #direction {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 10px;  /* Adjust top position */
+            right: 10px; /* Adjust right position */
             font-size: 16px;
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.5);
             color: white;
             border-radius: 5px;
         }
-        #coordinatesContainer {
-            position: relative; /* Keeps it in the normal document flow */
-            transform: translate(10px, 450px); /* Moves it to (10px, 450px) */
-            z-index: 1; /* Ensure it appears above other elements if necessary */
-        }
         #coordinates {
+            position: absolute;
+            bottom: 50px; /* Adjust this to move the coordinates up/down */
+            left: 10px;  /* Adjust this to move the coordinates left/right */
             font-size: 16px;
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.5);
@@ -51,7 +52,7 @@
         }
         #activateButton {
             position: absolute;
-            bottom: 20px;
+            bottom: 20px; /* Adjust this to move the button up/down */
             padding: 10px 20px;
             font-size: 18px;
             background-color: #4CAF50;
@@ -69,9 +70,7 @@
     <h1>Føtex Navigator</h1>
     <video id="videoFeed" autoplay playsinline></video>
     <div id="direction">Direction: 0°</div>
-    <div id="coordinatesContainer">
-        <div id="coordinates">Coordinates: Not Available</div>
-    </div>
+    <div id="coordinates">Coordinates: Not Available</div>
     <button id="activateButton">Activate Features</button>
 
     <script>
