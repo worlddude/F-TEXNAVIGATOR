@@ -37,10 +37,12 @@
             color: white;
             border-radius: 5px;
         }
+        #coordinatesContainer {
+            position: relative; /* Keeps it in the normal document flow */
+            transform: translate(10px, 450px); /* Moves it to (10px, 450px) */
+            z-index: 1; /* Ensure it appears above other elements if necessary */
+        }
         #coordinates {
-            position: absolute;
-            bottom: -100px;
-            left: 10px;
             font-size: 16px;
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.5);
@@ -67,7 +69,9 @@
     <h1>Føtex Navigator</h1>
     <video id="videoFeed" autoplay playsinline></video>
     <div id="direction">Direction: 0°</div>
-    <div id="coordinates">Coordinates: Not Available</div>
+    <div id="coordinatesContainer">
+        <div id="coordinates">Coordinates: Not Available</div>
+    </div>
     <button id="activateButton">Activate Features</button>
 
     <script>
