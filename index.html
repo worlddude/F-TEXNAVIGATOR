@@ -82,9 +82,8 @@
             let alpha = event.alpha; // Compass direction (0 to 360 degrees)
 
             if (alpha !== null) {
-                // Normalize the angle to match compass directions
-                let normalizedAngle = (alpha + 90) % 360;  // Adjust so that 0° is North
-                directionElement.innerText = getDirection(normalizedAngle);
+                // Display the correct direction from 0° (North) clockwise
+                directionElement.innerText = getDirection(alpha);
             } else {
                 directionElement.innerText = 'Direction: Not Available';
             }
