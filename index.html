@@ -15,7 +15,6 @@
             justify-content: center;
             height: 100vh;
             background-color: #f4f4f4;
-            position: relative; /* To position the timestamp absolutely */
         }
         h1 {
             margin-bottom: 20px;
@@ -51,16 +50,6 @@
         #activateButton:hover {
             background-color: #45a049;
         }
-        #lastUpdated {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            font-size: 14px;
-            color: #333;
-            background-color: #f4f4f4;
-            padding: 5px;
-            border-radius: 5px;
-        }
     </style>
 </head>
 <body>
@@ -69,13 +58,11 @@
     <div id="direction">Direction: 0°</div>
 
     <button id="activateButton">Activate Features</button>
-    <div id="lastUpdated">Last Updated: Never</div>
 
     <script>
         const videoElement = document.getElementById('videoFeed');
         const directionElement = document.getElementById('direction');
         const activateButton = document.getElementById('activateButton');
-        const lastUpdatedElement = document.getElementById('lastUpdated');
 
         // Start the camera feed
         async function startCamera() {
@@ -100,10 +87,6 @@
             } else {
                 directionElement.innerText = 'Direction: Not Available';
             }
-
-            // Update last updated time
-            const currentTime = new Date();
-            lastUpdatedElement.innerText = 'Last Updated: ' + currentTime.toLocaleTimeString();
         }
 
         // Request motion permissions for iOS
@@ -166,3 +149,4 @@
     </script>
 </body>
 </html>
+
