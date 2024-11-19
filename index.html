@@ -3,174 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Føtex Navigator</title>
+    <title>Move Text</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        video {
-            border: 2px solid #333;
-            border-radius: 8px;
-            width: 60%; /* Smaller default size */
-            max-width: 480px; /* Limit the width */
-            height: auto;
-            object-fit: cover;
-            position: fixed; /* Fix the position to the viewport */
-            top: 20px; /* Adjust this to move the video */
-            left: 50%; /* Center horizontally */
-            transform: translateX(-50%); /* Center video perfectly */
-        }
-        #direction {
-            position: fixed;
-            top: 10px;  /* Adjust top position */
-            right: 10px; /* Adjust right position */
-            font-size: 16px;
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
-            border-radius: 5px;
-        }
-        #coordinates {
-            position: fixed;
-            bottom: 50px; /* Adjust this to move the coordinates up/down */
-            left: 10px;  /* Adjust this to move the coordinates left/right */
-            font-size: 16px;
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
-            border-radius: 5px;
-        }
-        #activateButton {
-            position: fixed;
-            bottom: 20px; /* Adjust this to move the button up/down */
-            padding: 10px 20px;
-            font-size: 18px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
+        #hello {
+            position: absolute;
+            font-size: 30px;
             cursor: pointer;
-            left: 50%; /* Center the button */
-            transform: translateX(-50%);
-        }
-        #activateButton:hover {
-            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <h1>Føtex Navigator</h1>
-    <video id="videoFeed" autoplay playsinline></video>
-    <div id="direction">Direction: 0°</div>
-    <div id="coordinates">Coordinates: Not Available</div>
-    <button id="activateButton">Activate Features</button>
+    <div id="hello" onclick="moveText(event)">Hello</div>
 
     <script>
-        const videoElement = document.getElementById('videoFeed');
-        const directionElement = document.getElementById('direction');
-        const coordinatesElement = document.getElementById('coordinates');
-        const activateButton = document.getElementById('activateButton');
-
-        // Start the camera feed
-        async function startCamera() {
-            console.log('Requesting camera access...');
-            try {
-                const constraints = {
-                    video: {
-                        facingMode: 'environment',  // Prefer the back camera
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                console.log('Camera access granted.');
-                videoElement.srcObject = stream;
-                videoElement.onloadedmetadata = () => {
-                    videoElement.play(); // Ensure the video plays once metadata is loaded
-                };
-            } catch (error) {
-                console.error('Error accessing webcam:', error);
-                alert('Unable to access the camera. Please check permissions. Error: ' + error.message);
-            }
+        function moveText(event) {
+            var hello = document.getElementById('hello');
+            var x = event.clientX - hello.offsetWidth / 2;
+            var y = event.clientY - hello.offsetHeight / 2;
+            hello.style.left = x + 'px';
+            hello.style.top = y + 'px';
         }
-
-        // Handle device orientation (compass)
-        function handleOrientation(event) {
-            let alpha = event.alpha; // Compass direction (0 to 360 degrees)
-
-            if (alpha !== null) {
-                directionElement.innerText = 'Direction: ' + Math.round(alpha) + '°';
-            } else {
-                directionElement.innerText = 'Direction: Not Available';
-            }
-        }
-
-        // Request motion permissions for iOS
-        async function requestMotionPermission() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const response = await DeviceOrientationEvent.requestPermission();
-                    if (response === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation, false);
-                    } else {
-                        alert('Motion permission denied.');
-                    }
-                } catch (error) {
-                    console.error('Error requesting motion permission:', error);
-                }
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation, false);
-            }
-        }
-
-        // Request location permission and update coordinates
-        async function requestLocationPermission() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (position) => {
-                        console.log("Location access granted.");
-                        const latitude = position.coords.latitude.toFixed(6);
-                        const longitude = position.coords.longitude.toFixed(6);
-                        coordinatesElement.innerText = `Coordinates: ${latitude}, ${longitude}`;
-                    },
-                    (error) => {
-                        console.error("Error accessing location:", error);
-                        coordinatesElement.innerText = "Coordinates: Not Available";
-                        alert("Unable to access location. Please check permissions.");
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } else {
-                coordinatesElement.innerText = "Coordinates: Not Supported";
-                alert("Geolocation is not supported on this device.");
-            }
-        }
-
-        // Activate all features
-        function activateFeatures() {
-            startCamera();
-
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                requestMotionPermission();
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation, false);
-            }
-
-            requestLocationPermission();
-
-            activateButton.disabled = true;
-            activateButton.innerText = "Features Activated";
-        }
-
-        // Add event listener to the button
-        activateButton.onclick = activateFeatures;
     </script>
 </body>
 </html>
