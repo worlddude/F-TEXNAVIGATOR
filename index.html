@@ -22,15 +22,25 @@
         video {
             border: 2px solid #333;
             border-radius: 8px;
-            width: 100%; /* Ensure it's 100% of the screen width on mobile */
-            max-width: 640px;
+            width: 60%; /* Smaller default size */
+            max-width: 480px; /* Limit the width */
             height: auto;
-            object-fit: cover; /* Ensure the video fits within the container */
+            object-fit: cover;
         }
         #direction {
             position: absolute;
             top: 10px;
             right: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 5px;
+        }
+        #coordinates {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
             font-size: 16px;
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.5);
@@ -55,14 +65,15 @@
 </head>
 <body>
     <h1>Føtex Navigator</h1>
-    <video id="videoFeed" autoplay playsinline></video> <!-- Added playsinline for mobile -->
+    <video id="videoFeed" autoplay playsinline></video>
     <div id="direction">Direction: 0°</div>
-
+    <div id="coordinates">Coordinates: Not Available</div>
     <button id="activateButton">Activate Features</button>
 
     <script>
         const videoElement = document.getElementById('videoFeed');
         const directionElement = document.getElementById('direction');
+        const coordinatesElement = document.getElementById('coordinates');
         const activateButton = document.getElementById('activateButton');
 
         // Start the camera feed
@@ -117,18 +128,25 @@
             }
         }
 
-        // Request location permission
+        // Request location permission and update coordinates
         async function requestLocationPermission() {
             if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    console.log("Location access granted.");
-                    console.log("Latitude:", position.coords.latitude);
-                    console.log("Longitude:", position.coords.longitude);
-                }, (error) => {
-                    console.error("Error accessing location:", error);
-                    alert("Unable to access location. Please check permissions.");
-                });
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        console.log("Location access granted.");
+                        const latitude = position.coords.latitude.toFixed(6);
+                        const longitude = position.coords.longitude.toFixed(6);
+                        coordinatesElement.innerText = `Coordinates: ${latitude}, ${longitude}`;
+                    },
+                    (error) => {
+                        console.error("Error accessing location:", error);
+                        coordinatesElement.innerText = "Coordinates: Not Available";
+                        alert("Unable to access location. Please check permissions.");
+                    },
+                    { enableHighAccuracy: true }
+                );
             } else {
+                coordinatesElement.innerText = "Coordinates: Not Supported";
                 alert("Geolocation is not supported on this device.");
             }
         }
