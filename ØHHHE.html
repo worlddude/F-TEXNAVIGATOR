@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Føtex Navigator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        video {
+            border: 2px solid #333;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 640px;
+            height: auto;
+        }
+        #direction {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Føtex Navigator</h1>
+    <video id="videoFeed" autoplay></video>
+    <div id="direction">Direction: 0°</div>
+
+    <script>
+        const videoElement = document.getElementById('videoFeed');
+        const directionElement = document.getElementById('direction');
+
+        // Start the camera feed
+        async function startCamera() {
+            console.log('Requesting camera access...');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                console.log('Camera access granted.');
+                videoElement.srcObject = stream;
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                alert('Unable to access the camera. Please check permissions. Error: ' + error.message);
+            }
+        }
+
+        // Request motion permissions for iOS
+        async function requestMotionPermission() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation, false);
+                    } else {
+                        alert('Motion permission denied.');
+                    }
+                } catch (error) {
+                    console.error('Error requesting motion permission:', error);
+                }
+            } else {
+                // For Android or browsers without explicit permission requests
+                window.addEventListener('deviceorientation', handleOrientation, false);
+            }
+        }
+
+        // Handle device orientation (compass)
+        function handleOrientation(event) {
+            const alpha = event.alpha; // Compass direction (0 to 360 degrees)
+            if (alpha !== null) {
+                directionElement.innerText = 'Direction: ' + Math.round(alpha) + '°';
+            } else {
+                directionElement.innerText = 'Direction: Not Available';
+            }
+        }
+
+        // Initialize the app
+        window.onload = () => {
+            startCamera();
+
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // Show a prompt for iOS
+                const permissionButton = document.createElement('button');
+                permissionButton.innerText = 'Enable Compass';
+                permissionButton.style.padding = '10px 20px';
+                permissionButton.style.fontSize = '16px';
+                permissionButton.style.marginTop = '20px';
+                permissionButton.onclick = () => {
+                    requestMotionPermission();
+                    permissionButton.remove();
+                };
+                document.body.appendChild(permissionButton);
+            } else {
+                // Add event listener directly for non-iOS
+                window.addEventListener('deviceorientation', handleOrientation, false);
+            }
+        };
+    </script>
+</body>
+</html>
