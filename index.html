@@ -82,25 +82,10 @@
             let alpha = event.alpha; // Compass direction (0 to 360 degrees)
 
             if (alpha !== null) {
-                // Display the correct direction from 0° (North) clockwise
-                directionElement.innerText = getDirection(alpha);
+                // Display the raw alpha angle from the device (0° to 360°)
+                directionElement.innerText = 'Direction: ' + Math.round(alpha) + '°';
             } else {
                 directionElement.innerText = 'Direction: Not Available';
-            }
-        }
-
-        // Convert angle to compass direction
-        function getDirection(angle) {
-            if (angle >= 0 && angle < 45) {
-                return 'Direction: North (0°)';
-            } else if (angle >= 45 && angle < 135) {
-                return 'Direction: East (90°)';
-            } else if (angle >= 135 && angle < 225) {
-                return 'Direction: South (180°)';
-            } else if (angle >= 225 && angle < 315) {
-                return 'Direction: West (270°)';
-            } else {
-                return 'Direction: North (0°)';
             }
         }
 
