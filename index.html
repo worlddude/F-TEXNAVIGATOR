@@ -22,7 +22,7 @@
         video {
             border: 2px solid #333;
             border-radius: 8px;
-            width: 80%;
+            width: 100%;  /* Ensure it's 100% of the screen width on mobile */
             max-width: 640px;
             height: auto;
         }
@@ -68,7 +68,15 @@
         async function startCamera() {
             console.log('Requesting camera access...');
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // Add constraints for mobile devices
+                const constraints = {
+                    video: {
+                        facingMode: 'environment',  // Use the back camera if available
+                        width: { ideal: 1280 },  // Ideal resolution for mobile
+                        height: { ideal: 720 }
+                    }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 console.log('Camera access granted.');
                 videoElement.srcObject = stream;
             } catch (error) {
@@ -82,7 +90,6 @@
             let alpha = event.alpha; // Compass direction (0 to 360 degrees)
 
             if (alpha !== null) {
-                // Display the raw alpha angle from the device (0° to 360°)
                 directionElement.innerText = 'Direction: ' + Math.round(alpha) + '°';
             } else {
                 directionElement.innerText = 'Direction: Not Available';
@@ -103,7 +110,6 @@
                     console.error('Error requesting motion permission:', error);
                 }
             } else {
-                // For Android or browsers without explicit permission requests
                 window.addEventListener('deviceorientation', handleOrientation, false);
             }
         }
@@ -126,20 +132,16 @@
 
         // Activate all features
         function activateFeatures() {
-            // Request camera access
             startCamera();
 
-            // Request motion and orientation permissions
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 requestMotionPermission();
             } else {
                 window.addEventListener('deviceorientation', handleOrientation, false);
             }
 
-            // Request location access
             requestLocationPermission();
 
-            // Disable the activate button after activation
             activateButton.disabled = true;
             activateButton.innerText = "Features Activated";
         }
