@@ -22,9 +22,10 @@
         video {
             border: 2px solid #333;
             border-radius: 8px;
-            width: 100%;  /* Ensure it's 100% of the screen width on mobile */
+            width: 100%; /* Ensure it's 100% of the screen width on mobile */
             max-width: 640px;
             height: auto;
+            object-fit: cover; /* Ensure the video fits within the container */
         }
         #direction {
             position: absolute;
@@ -54,7 +55,7 @@
 </head>
 <body>
     <h1>Føtex Navigator</h1>
-    <video id="videoFeed" autoplay></video>
+    <video id="videoFeed" autoplay playsinline></video> <!-- Added playsinline for mobile -->
     <div id="direction">Direction: 0°</div>
 
     <button id="activateButton">Activate Features</button>
@@ -68,17 +69,19 @@
         async function startCamera() {
             console.log('Requesting camera access...');
             try {
-                // Add constraints for mobile devices
                 const constraints = {
                     video: {
-                        facingMode: 'environment',  // Use the back camera if available
-                        width: { ideal: 1280 },  // Ideal resolution for mobile
+                        facingMode: 'environment',  // Prefer the back camera
+                        width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
                 };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 console.log('Camera access granted.');
                 videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play(); // Ensure the video plays once metadata is loaded
+                };
             } catch (error) {
                 console.error('Error accessing webcam:', error);
                 alert('Unable to access the camera. Please check permissions. Error: ' + error.message);
@@ -151,4 +154,3 @@
     </script>
 </body>
 </html>
-
