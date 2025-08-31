@@ -49,19 +49,19 @@
     }
     .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
   </style>
-  <!-- Use jsDelivr CDN instead of unpkg -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div class="card">
     <h1>📦 Barcode Scanner</h1>
     <p>Point your camera at a barcode (EAN-13 supported) and see the value below.</p>
 
-    <video id="video" playsinline muted></video>
+    <video id="video" playsinline muted autoplay></video>
 
     <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
       <button id="start" class="primary">▶️ Start camera</button>
       <button id="stop" class="danger" disabled>⏹️ Stop</button>
+      <button id="snap">📸 Scan Number</button>
       <button id="copy" disabled>📋 Copy</button>
     </div>
 
@@ -70,62 +70,88 @@
   </div>
 
   <script>
-    (function(){
-      const el = id => document.getElementById(id);
-      const $video = el('video');
-      const $start = el('start');
-      const $stop = el('stop');
-      const $copy = el('copy');
-      const $result = el('result');
+    const video = document.getElementById('video');
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const snapBtn = document.getElementById('snap');
+    const copyBtn = document.getElementById('copy');
+    const resultDiv = document.getElementById('result');
 
-      let zxingReader = null;
+    let stream = null;
 
-      async function startCamera(){
-        if (!window.ZXing || !ZXing.BrowserMultiFormatReader){
-          alert('ZXing not loaded. Please refresh.');
-          return;
-        }
-        zxingReader = new ZXing.BrowserMultiFormatReader();
-        try {
-          $start.disabled = true;
-          $stop.disabled = false;
-          $copy.disabled = true;
-          $result.textContent = 'Scanning...';
-
-          await zxingReader.decodeFromVideoDevice(undefined, $video, (result, err) => {
-            if (result) {
-              $result.textContent = `Value: ${result.text} (Format: ${result.barcodeFormat})`;
-              $copy.disabled = false;
-            }
-          });
-        } catch (err){
-          console.error(err);
-          alert('Could not start camera: ' + err.message);
-        }
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = stream;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } catch (err) {
+        alert('Error accessing camera: ' + err.message);
       }
+    }
 
-      function stopCamera(){
-        if (zxingReader){
-          zxingReader.reset();
-        }
-        $start.disabled = false;
-        $stop.disabled = true;
-        $result.textContent = 'No code yet';
-        $copy.disabled = true;
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
+      video.srcObject = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      resultDiv.textContent = 'No code yet';
+      copyBtn.disabled = true;
+    }
 
-      $start.addEventListener('click', startCamera);
-      $stop.addEventListener('click', stopCamera);
-      $copy.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText($result.textContent);
-          $copy.textContent = '✅ Copied';
-          setTimeout(() => $copy.textContent = '📋 Copy', 1200);
-        } catch{}
-      });
+    // EAN-13 checksum validator
+    function validateEAN13(code) {
+      if (!/^\d{13}$/.test(code)) return false;
+      const digits = code.split('').map(Number);
+      const sumOdd = digits.slice(0,12).filter((_,i)=>i%2===0).reduce((a,b)=>a+b,0);
+      const sumEven = digits.slice(0,12).filter((_,i)=>i%2===1).reduce((a,b)=>a+b,0);
+      const checksum = (10 - ((sumOdd + sumEven*3) % 10)) % 10;
+      return checksum === digits[12];
+    }
 
-      document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
-    })();
+    async function scanNumber() {
+      if (!stream) return alert('Start the camera first!');
+      resultDiv.textContent = 'Scanning...';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      try {
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng', { 
+          tessedit_char_whitelist: '0123456789'
+        });
+        const cleaned = text.replace(/\D/g, '').slice(0,13); // Take only first 13 digits
+        if (cleaned.length < 13) {
+          resultDiv.textContent = `Detected: ${cleaned} ❌ Too short`;
+          copyBtn.disabled = true;
+        } else {
+          const valid = validateEAN13(cleaned);
+          resultDiv.textContent = `Value: ${cleaned} ${valid ? '✅ Valid' : '❌ Invalid'}`;
+          copyBtn.disabled = !valid;
+        }
+      } catch (err) {
+        console.error(err);
+        resultDiv.textContent = 'OCR failed';
+      }
+    }
+
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    snapBtn.addEventListener('click', scanNumber);
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(resultDiv.textContent);
+        copyBtn.textContent = '✅ Copied';
+        setTimeout(() => copyBtn.textContent = '📋 Copy', 1200);
+      } catch {}
+    });
+
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
   </script>
 </body>
 </html>
