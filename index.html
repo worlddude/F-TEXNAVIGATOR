@@ -52,6 +52,12 @@ video { width: 100%; border-radius: 12px; background: #000; }
 const video = document.getElementById('video');
 const numbersDiv = document.getElementById('numbers');
 
+// For smoothing barcode readings
+let detectedCodes = {};
+const stableThreshold = 3; // number of consistent detections
+const displayDuration = 2000; // 2 seconds
+let lastDisplayTime = 0;
+
 // Start camera automatically on page load
 async function startCamera() {
   try {
@@ -76,13 +82,19 @@ function startScanner() {
         facingMode: 'environment'
       }
     },
+    locator: {
+      patchSize: 'medium',   // improves rotated/small barcode detection
+      halfSample: true
+    },
     decoder: {
       readers: [
         'code_128_reader', 'ean_reader', 'ean_8_reader', 
         'code_39_reader', 'code_39_vin_reader', 'codabar_reader', 
         'upc_reader', 'upc_e_reader', 'i2of5_reader'
       ]
-    }
+    },
+    locate: true,
+    numOfWorkers: 0 // simplifies rotation detection
   }, function(err) {
     if (err) {
       console.error('Error initializing Quagga:', err);
@@ -91,10 +103,26 @@ function startScanner() {
     Quagga.start();
   });
 
-  // Event listener for detected barcodes
   Quagga.onDetected(function(result) {
     const code = result.codeResult.code;
-    numbersDiv.textContent = `Detected Barcode: ${code}`;
+    const now = Date.now();
+
+    // Count occurrences in buffer
+    detectedCodes[code] = (detectedCodes[code] || 0) + 1;
+
+    // Remove old codes (older than displayDuration)
+    for (let c in detectedCodes) {
+      if (c !== code && now - lastDisplayTime > displayDuration) {
+        delete detectedCodes[c];
+      }
+    }
+
+    // Only display if code appears >= stableThreshold times
+    if (detectedCodes[code] >= stableThreshold) {
+      numbersDiv.textContent = `Detected Barcode: ${code}`;
+      lastDisplayTime = now;
+      detectedCodes = {}; // reset buffer after stable display
+    }
   });
 }
 
