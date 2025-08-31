@@ -30,14 +30,39 @@ video { width: 100%; border-radius: 12px; background: #000; }
   margin-top: 10px;
   font-size: 18px;
   color: #22c55e;
+  white-space: pre-line;
   word-break: break-all;
+}
+button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+button:hover {
+  background: #1e40af;
+}
+#addForm {
+  margin-top: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+#addForm input {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: white;
 }
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 
-<!-- QuaggaJS library for barcode scanning -->
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
-
 </head>
 <body>
 <div class="card">
@@ -45,20 +70,107 @@ video { width: 100%; border-radius: 12px; background: #000; }
   <p>The camera feed will start automatically. Barcode numbers will appear below when detected.</p>
   <video id="video" playsinline autoplay muted></video>
   <div id="numbers">Detected barcode numbers will appear here...</div>
+  <button id="addBtn" style="display:none;">➕ Add Item</button>
+
+  <!-- Add new product form -->
+  <div id="addForm">
+    <input type="text" id="itemName" placeholder="Item name" />
+    <input type="number" step="0.01" id="itemPrice" placeholder="Price" />
+    <button id="saveBtn">💾 Save Item</button>
+  </div>
+
   <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
 </div>
 
 <script>
 const video = document.getElementById('video');
 const numbersDiv = document.getElementById('numbers');
+const addBtn = document.getElementById('addBtn');
+const addForm = document.getElementById('addForm');
+const saveBtn = document.getElementById('saveBtn');
+const itemNameInput = document.getElementById('itemName');
+const itemPriceInput = document.getElementById('itemPrice');
 
 // For smoothing barcode readings
 let detectedCodes = {};
-const stableThreshold = 3; // number of consistent detections
-const displayDuration = 2000; // 2 seconds
+const stableThreshold = 3; 
+const displayDuration = 2000; 
 let lastDisplayTime = 0;
 
-// Start camera automatically on page load
+let barcodeDB = {};
+let currentCode = null;
+
+// ==========================
+// 🔧 CONFIG (for your repo)
+// ==========================
+const GITHUB_USERNAME = "worlddude";
+const GITHUB_REPO = "F-TEXNAVIGATOR";
+const FILE_PATH = "barcodes.json";
+const BRANCH = "main";
+const TOKEN = "ghp_xxxxxxxxxxxxxxxxx"; // ⚠️ your GitHub token goes here
+
+const API_URL = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+
+// Load DB from GitHub
+async function loadDatabase() {
+  try {
+    const res = await fetch(`https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${FILE_PATH}`);
+    barcodeDB = await res.json();
+  } catch (err) {
+    console.error("Error loading database:", err);
+  }
+}
+
+// Save new barcode entry to GitHub
+async function saveToGitHub(newCode, newItem) {
+  try {
+    // Step 1: get latest file + SHA
+    const res = await fetch(API_URL, {
+      headers: { Authorization: `token ${TOKEN}` }
+    });
+    const fileData = await res.json();
+    const sha = fileData.sha;
+
+    // Step 2: parse current JSON
+    let db = {};
+    try {
+      db = JSON.parse(atob(fileData.content));
+    } catch (err) {
+      console.error("Error parsing existing JSON:", err);
+    }
+
+    // Step 3: add new entry
+    db[newCode] = newItem;
+
+    // Step 4: commit update back to GitHub
+    const updateRes = await fetch(API_URL, {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Add barcode ${newCode}`,
+        content: btoa(JSON.stringify(db, null, 2)),
+        sha: sha,
+        branch: BRANCH
+      })
+    });
+
+    if (updateRes.ok) {
+      alert("✅ Saved to GitHub!");
+    } else {
+      const errText = await updateRes.text();
+      console.error("GitHub error:", errText);
+      alert("❌ Failed to save to GitHub. Check console.");
+    }
+  } catch (err) {
+    console.error("Error saving to GitHub:", err);
+    alert("❌ Error saving to GitHub.");
+  }
+}
+
+// Start camera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -69,71 +181,88 @@ async function startCamera() {
   }
 }
 
-// Initialize QuaggaJS for barcode scanning
+// Quagga init
 function startScanner() {
   Quagga.init({
     inputStream: {
       name: 'Live',
       type: 'LiveStream',
       target: video,
-      constraints: {
-        width: 640,
-        height: 480,
-        facingMode: 'environment'
-      }
+      constraints: { width: 640, height: 480, facingMode: 'environment' }
     },
-    locator: {
-      patchSize: 'medium',   // improves rotated/small barcode detection
-      halfSample: true
-    },
-    decoder: {
-      readers: [
-        'code_128_reader', 'ean_reader', 'ean_8_reader', 
-        'code_39_reader', 'code_39_vin_reader', 'codabar_reader', 
-        'upc_reader', 'upc_e_reader', 'i2of5_reader'
-      ]
-    },
+    locator: { patchSize: 'medium', halfSample: true },
+    decoder: { readers: ['code_128_reader','ean_reader','ean_8_reader','code_39_reader','code_39_vin_reader','codabar_reader','upc_reader','upc_e_reader','i2of5_reader'] },
     locate: true,
-    numOfWorkers: 0 // simplifies rotation detection
-  }, function(err) {
-    if (err) {
-      console.error('Error initializing Quagga:', err);
-      return;
-    }
+    numOfWorkers: 0
+  }, err => {
+    if (err) { console.error('Error initializing Quagga:', err); return; }
     Quagga.start();
   });
 
-  Quagga.onDetected(function(result) {
+  Quagga.onDetected(result => {
     const code = result.codeResult.code;
     const now = Date.now();
 
-    // Count occurrences in buffer
     detectedCodes[code] = (detectedCodes[code] || 0) + 1;
-
-    // Remove old codes (older than displayDuration)
     for (let c in detectedCodes) {
-      if (c !== code && now - lastDisplayTime > displayDuration) {
-        delete detectedCodes[c];
-      }
+      if (c !== code && now - lastDisplayTime > displayDuration) delete detectedCodes[c];
     }
 
-    // Only display if code appears >= stableThreshold times
     if (detectedCodes[code] >= stableThreshold) {
-      numbersDiv.textContent = `Detected Barcode: ${code}`;
+      currentCode = code;
+      let message = `Detected Barcode: ${code}`;
+      if (barcodeDB[code]) {
+        const item = barcodeDB[code];
+        message += `\nItem: ${item.name}\nPrice: $${item.price}`;
+        addBtn.style.display = "none";
+        addForm.style.display = "none";
+      } else {
+        message += "\n❌ Not found in database.";
+        addBtn.style.display = "block";
+      }
+      numbersDiv.textContent = message;
       lastDisplayTime = now;
-      detectedCodes = {}; // reset buffer after stable display
+      detectedCodes = {};
     }
   });
 }
 
-// Stop camera when tab is hidden
+// Add item flow
+addBtn.addEventListener("click", () => {
+  addForm.style.display = "flex";
+  itemNameInput.value = "";
+  itemPriceInput.value = "";
+});
+
+saveBtn.addEventListener("click", async () => {
+  const name = itemNameInput.value.trim();
+  const price = parseFloat(itemPriceInput.value);
+  if (!name || isNaN(price)) {
+    alert("Please enter valid name and price.");
+    return;
+  }
+
+  const newItem = { name, price };
+  await saveToGitHub(currentCode, newItem);
+
+  barcodeDB[currentCode] = newItem;
+  numbersDiv.textContent = `✅ Added to GitHub!\nDetected Barcode: ${currentCode}\nItem: ${name}\nPrice: $${price}`;
+
+  addForm.style.display = "none";
+  addBtn.style.display = "none";
+});
+
+// Stop camera when tab hidden
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && video.srcObject) {
     video.srcObject.getTracks().forEach(track => track.stop());
   }
 });
 
-window.addEventListener('load', startCamera);
+window.addEventListener('load', async () => {
+  await loadDatabase();
+  startCamera();
+});
 </script>
 </body>
 </html>
