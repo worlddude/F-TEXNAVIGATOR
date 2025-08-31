@@ -26,64 +26,37 @@ body {
 h1 { font-size: 1.25rem; margin: 0 0 8px; }
 p { color: #9ca3af; margin: 8px 0 16px; }
 video { width: 100%; border-radius: 12px; background: #000; }
-button {
-  appearance: none;
-  border: 1px solid #334155;
-  background: #0b1220;
-  color: #e5e7eb;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 14px;
-  cursor: pointer;
-}
-button.primary { background: #064e3b; border-color: #065f46; }
-button.danger { background: #3f0b0b; border-color: #7f1d1d; }
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>📷 Camera Preview</h1>
-  <p>Camera feed appears below. Works best over HTTPS.</p>
+  <p>The camera feed will start automatically. Please allow camera access.</p>
   <video id="video" playsinline autoplay muted></video>
-  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
-    <button id="start" class="primary">▶️ Start Camera</button>
-    <button id="stop" class="danger" disabled>⏹️ Stop Camera</button>
-  </div>
-  <div class="footer">Your camera feed runs in the browser.</div>
+  <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
 </div>
 
 <script>
 const video = document.getElementById('video');
-const startBtn = document.getElementById('start');
-const stopBtn = document.getElementById('stop');
-let stream = null;
 
 async function startCamera() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = stream;
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
 }
 
-function stopCamera() {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
-  video.srcObject = null;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-}
+// Start camera automatically on page load
+window.addEventListener('load', startCamera);
 
-startBtn.addEventListener('click', startCamera);
-stopBtn.addEventListener('click', stopCamera);
-
+// Stop camera when user switches tab (optional)
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) stopCamera();
+  if (document.hidden && video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
 });
 </script>
 </body>
