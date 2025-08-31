@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera Preview with Number Detection</title>
+<title>Camera Preview with Barcode Scanning</title>
 <style>
 body {
   margin: 0;
@@ -26,16 +26,6 @@ body {
 h1 { font-size: 1.25rem; margin: 0 0 8px; }
 p { color: #9ca3af; margin: 8px 0 16px; }
 video { width: 100%; border-radius: 12px; background: #000; }
-button {
-  margin-top: 10px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
 #numbers {
   margin-top: 10px;
   font-size: 18px;
@@ -44,82 +34,78 @@ button {
 }
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
+
+<!-- QuaggaJS library for barcode scanning -->
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+
 </head>
 <body>
 <div class="card">
   <h1>📷 Camera Preview</h1>
-  <p>The camera feed will start automatically. Click "Capture Numbers" to detect numbers in the frame.</p>
+  <p>The camera feed will start automatically. Barcode numbers will appear below when detected.</p>
   <video id="video" playsinline autoplay muted></video>
-  <button id="captureBtn">Capture Numbers</button>
-  <div id="numbers">Numbers will appear here...</div>
+  <div id="numbers">Detected barcode numbers will appear here...</div>
   <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
 </div>
 
-<!-- Tesseract.js for OCR -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-
 <script>
 const video = document.getElementById('video');
-const captureBtn = document.getElementById('captureBtn');
 const numbersDiv = document.getElementById('numbers');
 
-// Hidden canvas for capturing frames
-const canvas = document.createElement('canvas');
-const ctx = canvas.getContext('2d');
-
+// Start camera automatically on page load
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = stream;
+    startScanner();
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
 }
 
-window.addEventListener('load', startCamera);
+// Initialize QuaggaJS for barcode scanning
+function startScanner() {
+  Quagga.init({
+    inputStream: {
+      name: 'Live',
+      type: 'LiveStream',
+      target: video,
+      constraints: {
+        width: 640,
+        height: 480,
+        facingMode: 'environment'
+      }
+    },
+    decoder: {
+      readers: [
+        'code_128_reader', 'ean_reader', 'ean_8_reader', 
+        'code_39_reader', 'code_39_vin_reader', 'codabar_reader', 
+        'upc_reader', 'upc_e_reader', 'i2of5_reader'
+      ]
+    }
+  }, function(err) {
+    if (err) {
+      console.error('Error initializing Quagga:', err);
+      return;
+    }
+    Quagga.start();
+  });
 
+  // Event listener for detected barcodes
+  Quagga.onDetected(function(result) {
+    const code = result.codeResult.code;
+    numbersDiv.textContent = `Detected Barcode: ${code}`;
+  });
+}
+
+// Stop camera when tab is hidden
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && video.srcObject) {
     video.srcObject.getTracks().forEach(track => track.stop());
   }
 });
 
-// Preprocessing: grayscale + threshold
-function preprocessFrame() {
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imageData.data;
-
-  for (let i = 0; i < data.length; i += 4) {
-    // Convert to grayscale
-    const brightness = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-    // Apply threshold
-    const value = brightness < 128 ? 0 : 255;
-    data[i] = data[i+1] = data[i+2] = value;
-  }
-  ctx.putImageData(imageData, 0, 0);
-}
-
-// Capture frame and detect numbers
-captureBtn.addEventListener('click', async () => {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  preprocessFrame();
-
-  numbersDiv.textContent = "Processing...";
-  
-  try {
-    const result = await Tesseract.recognize(canvas.toDataURL(), 'eng', {
-      tessedit_char_whitelist: '0123456789'
-    });
-    const detectedNumbers = result.data.text.trim();
-    numbersDiv.textContent = detectedNumbers || "No numbers detected";
-  } catch (err) {
-    numbersDiv.textContent = "Error detecting numbers";
-    console.error(err);
-  }
-});
+window.addEventListener('load', startCamera);
 </script>
 </body>
 </html>
