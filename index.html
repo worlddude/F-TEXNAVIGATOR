@@ -5,56 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Auto Barcode Scanner</title>
 <style>
-  body {
-    margin: 0;
-    font-family: sans-serif;
-    background: #0f172a;
-    color: #e5e7eb;
-    display: flex;
-    justify-content: center;
-    align-items: start;
-    padding: 16px;
-  }
-  .card {
-    background: #111827;
-    border-radius: 16px;
-    padding: 16px;
-    max-width: 640px;
-    width: 100%;
-    box-shadow: 0 10px 25px rgba(0,0,0,.3);
-  }
-  h1 { font-size: 1.25rem; margin: 0 0 8px; }
-  p { color: #9ca3af; margin: 8px 0 16px; }
-  video { width: 100%; border-radius: 12px; background: #000; }
-  button {
-    appearance: none;
-    border: 1px solid #334155;
-    background: #0b1220;
-    color: #e5e7eb;
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  button.primary { background: #064e3b; border-color: #065f46; }
-  button.danger { background: #3f0b0b; border-color: #7f1d1d; }
-  .result {
-    margin-top: 12px;
-    background: #0b1220;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 12px;
-    font-family: monospace;
-    word-break: break-all;
-  }
-  .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  display: flex;
+  justify-content: center;
+  align-items: start;
+  padding: 16px;
+}
+.card {
+  background: #111827;
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 640px;
+  width: 100%;
+  box-shadow: 0 10px 25px rgba(0,0,0,.3);
+}
+h1 { font-size: 1.25rem; margin: 0 0 8px; }
+p { color: #9ca3af; margin: 8px 0 16px; }
+video { width: 100%; border-radius: 12px; background: #000; }
+button {
+  appearance: none;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #e5e7eb;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+button.primary { background: #064e3b; border-color: #065f46; }
+button.danger { background: #3f0b0b; border-color: #7f1d1d; }
+.result {
+  margin-top: 12px;
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px;
+  font-family: monospace;
+  word-break: break-all;
+}
+.footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="card">
   <h1>📦 Barcode Scanner</h1>
-  <p>Point your camera at a barcode. Numbers will be read automatically.</p>
+  <p>Automatically scans for barcodes. Freezes frame when numbers detected.</p>
   <video id="video" playsinline muted autoplay></video>
   <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
     <button id="start" class="primary">▶️ Start camera</button>
@@ -83,7 +83,7 @@ async function startCamera() {
     startBtn.disabled = true;
     stopBtn.disabled = false;
     scanning = true;
-    scanLoop();
+    autoScanLoop();
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
@@ -91,6 +91,7 @@ async function startCamera() {
 
 function stopCamera() {
   scanning = false;
+  freezeFrame = false;
   if (stream) stream.getTracks().forEach(track => track.stop());
   video.srcObject = null;
   startBtn.disabled = false;
@@ -109,32 +110,36 @@ function validateEAN13(code) {
   return checksum === digits[12];
 }
 
-async function scanLoop() {
+async function autoScanLoop() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  
+
   while (scanning) {
-    if (!freezeFrame) {
+    if (!freezeFrame && video.videoWidth > 0 && video.videoHeight > 0) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // quick number detection using regex on Tesseract OCR
+
+      // Crop bottom 20% of frame for numbers
+      const cropHeight = canvas.height * 0.2;
+      ctx.drawImage(video, 0, canvas.height - cropHeight, canvas.width, cropHeight, 0, 0, canvas.width, cropHeight);
+
       try {
         const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
           tessedit_char_whitelist: '0123456789'
         });
         const cleaned = text.replace(/\D/g, '');
-        
-        // Only consider 6-13 digit numbers
-        if (cleaned.length >= 6 && cleaned.length <= 13) {
+
+        // Consider numbers 6-13 digits
+        if (cleaned.length >=6 && cleaned.length <=13) {
           freezeFrame = true;
           resultDiv.textContent = `Detected: ${cleaned} ⏳ Processing...`;
-          processNumber(cleaned);
+          await processNumber(cleaned);
         }
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        console.error(e);
+      }
     }
-    await new Promise(r => setTimeout(r, 200)); // 5 FPS scanning
+    await new Promise(r => setTimeout(r, 300)); // check every 300ms
   }
 }
 
@@ -145,11 +150,11 @@ async function processNumber(number) {
     resultDiv.textContent = `Detected: ${finalNumber} ${valid ? '✅ Valid' : '❌ Invalid'}`;
     copyBtn.disabled = !valid;
   } catch {
-    // if OCR fails or number invalid, unfreeze and continue
-    freezeFrame = false;
+    resultDiv.textContent = `Detected: ${number} ❌ OCR failed`;
+    copyBtn.disabled = true;
   }
-  // unfreeze after a short delay if invalid
-  if (!validateEAN13(number)) setTimeout(()=>freezeFrame=false, 1000);
+  // Automatically unfreeze after 1.5s if invalid, so scanning continues
+  if (!validateEAN13(number)) setTimeout(()=>freezeFrame=false, 1500);
 }
 
 startBtn.addEventListener('click', startCamera);
