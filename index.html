@@ -54,12 +54,11 @@ button.danger { background: #3f0b0b; border-color: #7f1d1d; }
 <body>
 <div class="card">
   <h1>📦 Barcode Scanner</h1>
-  <p>Automatically scans for barcodes. Freezes frame when numbers detected.</p>
+  <p>Automatically scans for numbers. Frame freezes when numbers are detected.</p>
   <video id="video" playsinline muted autoplay></video>
   <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
     <button id="start" class="primary">▶️ Start camera</button>
     <button id="stop" class="danger" disabled>⏹️ Stop</button>
-    <button id="copy" disabled>📋 Copy</button>
   </div>
   <div class="result" id="result">No code yet</div>
   <div class="footer">Runs fully in your browser. Works best over HTTPS.</div>
@@ -69,7 +68,6 @@ button.danger { background: #3f0b0b; border-color: #7f1d1d; }
 const video = document.getElementById('video');
 const startBtn = document.getElementById('start');
 const stopBtn = document.getElementById('stop');
-const copyBtn = document.getElementById('copy');
 const resultDiv = document.getElementById('result');
 
 let stream = null;
@@ -83,7 +81,7 @@ async function startCamera() {
     startBtn.disabled = true;
     stopBtn.disabled = false;
     scanning = true;
-    autoScanLoop();
+    scanLoop();
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
@@ -97,20 +95,10 @@ function stopCamera() {
   startBtn.disabled = false;
   stopBtn.disabled = true;
   resultDiv.textContent = 'No code yet';
-  copyBtn.disabled = true;
 }
 
-// EAN-13 checksum validator
-function validateEAN13(code) {
-  if (!/^\d{13}$/.test(code)) return false;
-  const digits = code.split('').map(Number);
-  const sumOdd = digits.slice(0,12).filter((_,i)=>i%2===0).reduce((a,b)=>a+b,0);
-  const sumEven = digits.slice(0,12).filter((_,i)=>i%2===1).reduce((a,b)=>a+b,0);
-  const checksum = (10 - ((sumOdd + sumEven*3) % 10)) % 10;
-  return checksum === digits[12];
-}
-
-async function autoScanLoop() {
+// Main scanning loop
+async function scanLoop() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -118,54 +106,44 @@ async function autoScanLoop() {
     if (!freezeFrame && video.videoWidth > 0 && video.videoHeight > 0) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-
-      // Crop bottom 20% of frame for numbers
-      const cropHeight = canvas.height * 0.2;
-      ctx.drawImage(video, 0, canvas.height - cropHeight, canvas.width, cropHeight, 0, 0, canvas.width, cropHeight);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       try {
         const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
           tessedit_char_whitelist: '0123456789'
         });
-        const cleaned = text.replace(/\D/g, '');
 
-        // Consider numbers 6-13 digits
-        if (cleaned.length >=6 && cleaned.length <=13) {
+        const cleaned = text.replace(/\D/g, '');
+        if (cleaned.length >= 6 && cleaned.length <= 13) {
           freezeFrame = true;
           resultDiv.textContent = `Detected: ${cleaned} ⏳ Processing...`;
           await processNumber(cleaned);
         }
-      } catch(e) {
+
+      } catch (e) {
         console.error(e);
       }
     }
-    await new Promise(r => setTimeout(r, 300)); // check every 300ms
+
+    await new Promise(r => setTimeout(r, 200)); // check every 200ms
   }
 }
 
 async function processNumber(number) {
   try {
-    const finalNumber = number.padStart(13,'0').slice(0,13);
-    const valid = validateEAN13(finalNumber);
-    resultDiv.textContent = `Detected: ${finalNumber} ${valid ? '✅ Valid' : '❌ Invalid'}`;
-    copyBtn.disabled = !valid;
+    const finalNumber = number.slice(0, 13);
+    resultDiv.textContent = `Detected: ${finalNumber}`;
   } catch {
-    resultDiv.textContent = `Detected: ${number} ❌ OCR failed`;
-    copyBtn.disabled = true;
+    resultDiv.textContent = `Detected: ${number} ❌ Could not read`;
   }
-  // Automatically unfreeze after 1.5s if invalid, so scanning continues
-  if (!validateEAN13(number)) setTimeout(()=>freezeFrame=false, 1500);
+
+  // Unfreeze after 1 second if OCR fails or number is too short
+  if (number.length < 6 || number.length > 13) setTimeout(() => freezeFrame = false, 1000);
+  else freezeFrame = false; // always continue scanning after processing
 }
 
 startBtn.addEventListener('click', startCamera);
 stopBtn.addEventListener('click', stopCamera);
-copyBtn.addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(resultDiv.textContent);
-    copyBtn.textContent = '✅ Copied';
-    setTimeout(() => copyBtn.textContent = '📋 Copy', 1200);
-  } catch {}
-});
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
 </script>
