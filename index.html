@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Auto Barcode Scanner</title>
+<title>Camera Preview</title>
 <style>
 body {
   margin: 0;
@@ -38,41 +38,26 @@ button {
 }
 button.primary { background: #064e3b; border-color: #065f46; }
 button.danger { background: #3f0b0b; border-color: #7f1d1d; }
-.result {
-  margin-top: 12px;
-  background: #0b1220;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 12px;
-  font-family: monospace;
-  word-break: break-all;
-}
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="card">
-  <h1>📦 Barcode Scanner</h1>
-  <p>Automatically scans for numbers. Frame freezes when numbers are detected.</p>
-  <video id="video" playsinline muted autoplay></video>
+  <h1>📷 Camera Preview</h1>
+  <p>Camera feed appears below. Works best over HTTPS.</p>
+  <video id="video" playsinline autoplay muted></video>
   <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
-    <button id="start" class="primary">▶️ Start camera</button>
-    <button id="stop" class="danger" disabled>⏹️ Stop</button>
+    <button id="start" class="primary">▶️ Start Camera</button>
+    <button id="stop" class="danger" disabled>⏹️ Stop Camera</button>
   </div>
-  <div class="result" id="result">No code yet</div>
-  <div class="footer">Runs fully in your browser. Works best over HTTPS.</div>
+  <div class="footer">Your camera feed runs in the browser.</div>
 </div>
 
 <script>
 const video = document.getElementById('video');
 const startBtn = document.getElementById('start');
 const stopBtn = document.getElementById('stop');
-const resultDiv = document.getElementById('result');
-
 let stream = null;
-let scanning = false;
-let freezeFrame = false;
 
 async function startCamera() {
   try {
@@ -80,72 +65,26 @@ async function startCamera() {
     video.srcObject = stream;
     startBtn.disabled = true;
     stopBtn.disabled = false;
-    scanning = true;
-    scanLoop();
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
 }
 
 function stopCamera() {
-  scanning = false;
-  freezeFrame = false;
-  if (stream) stream.getTracks().forEach(track => track.stop());
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
   video.srcObject = null;
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  resultDiv.textContent = 'No code yet';
-}
-
-// Main scanning loop
-async function scanLoop() {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  while (scanning) {
-    if (!freezeFrame && video.videoWidth > 0 && video.videoHeight > 0) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      try {
-        const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
-          tessedit_char_whitelist: '0123456789'
-        });
-
-        const cleaned = text.replace(/\D/g, '');
-        if (cleaned.length >= 6 && cleaned.length <= 13) {
-          freezeFrame = true;
-          resultDiv.textContent = `Detected: ${cleaned} ⏳ Processing...`;
-          await processNumber(cleaned);
-        }
-
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 200)); // check every 200ms
-  }
-}
-
-async function processNumber(number) {
-  try {
-    const finalNumber = number.slice(0, 13);
-    resultDiv.textContent = `Detected: ${finalNumber}`;
-  } catch {
-    resultDiv.textContent = `Detected: ${number} ❌ Could not read`;
-  }
-
-  // Unfreeze after 1 second if OCR fails or number is too short
-  if (number.length < 6 || number.length > 13) setTimeout(() => freezeFrame = false, 1000);
-  else freezeFrame = false; // always continue scanning after processing
 }
 
 startBtn.addEventListener('click', startCamera);
 stopBtn.addEventListener('click', stopCamera);
 
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopCamera();
+});
 </script>
 </body>
 </html>
