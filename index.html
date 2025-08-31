@@ -5,296 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Barcode Scanner</title>
   <style>
-    :root {
-      --bg: #0f172a;          /* slate-900 */
-      --card: #111827;        /* gray-900 */
-      --text: #e5e7eb;        /* gray-200 */
-      --muted: #9ca3af;       /* gray-400 */
-      --accent: #22c55e;      /* green-500 */
-      --danger: #ef4444;      /* red-500 */
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
     body {
-      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: var(--bg); color: var(--text);
-      display: grid; place-items: start center; padding: 16px;
-    }
-    .app {
-      width: 100%; max-width: 640px;
+      margin: 0;
+      font-family: sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      padding: 16px;
     }
     .card {
-      background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,.3);
+      background: #111827;
+      border-radius: 16px;
+      padding: 16px;
+      max-width: 640px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,.3);
     }
     h1 { font-size: 1.25rem; margin: 0 0 8px; }
-    p { color: var(--muted); margin: 8px 0 16px; }
+    p { color: #9ca3af; margin: 8px 0 16px; }
     video { width: 100%; border-radius: 12px; background: #000; }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
     button, select, input[type="checkbox"] {
-      appearance: none; border: 1px solid #334155; background: #0b1220; color: var(--text);
-      padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1; cursor: pointer;
+      appearance: none;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e5e7eb;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
     }
     button.primary { background: #064e3b; border-color: #065f46; }
-    button.primary:disabled { opacity: .5; cursor: not-allowed; }
     button.danger { background: #3f0b0b; border-color: #7f1d1d; }
-    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .result {
-      display: grid; gap: 8px; background: #0b1220; border: 1px solid #334155; border-radius: 12px; padding: 12px;
+      margin-top: 12px;
+      background: #0b1220;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: monospace;
+      word-break: break-all;
     }
-    .result-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 1.1rem; word-break: break-all; }
-    .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: var(--muted); font-size: 12px; }
-    .stack { display:flex; flex-direction: column; gap: 8px; }
-    .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; }
-    .hidden { display: none !important; }
+    .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
   </style>
-  <!-- ZXing fallback (only used if BarcodeDetector is unavailable) -->
   <script defer src="https://unpkg.com/@zxing/browser@latest"></script>
 </head>
 <body>
-  <main class="app">
-    <div class="card">
-      <h1>📦 Barcode Scanner</h1>
-      <p>Tap <strong>Start camera</strong>, point at a code, and you'll see the decoded value below. Works best over HTTPS or localhost.
-      </p>
+  <div class="card">
+    <h1>📦 Barcode Scanner</h1>
+    <p>Point your camera at a barcode (EAN-13 supported) and see the value below.</p>
 
-      <div class="stack">
-        <video id="video" playsinline muted></video>
-        <div class="controls">
-          <button id="start" class="primary">▶️ Start camera</button>
-          <button id="stop" class="danger" disabled>⏹️ Stop</button>
-          <button id="torch" disabled>🔦 Torch</button>
-          <label style="display:flex;align-items:center;gap:6px">
-            <input id="continuous" type="checkbox" checked /> Continuous scan
-          </label>
-          <select id="format">
-            <option value="auto" selected>Any format</option>
-            <option value="ean_13">EAN-13</option>
-            <option value="ean_8">EAN-8</option>
-            <option value="code_128">Code 128</option>
-            <option value="code_39">Code 39</option>
-            <option value="qr_code">QR</option>
-            <option value="upc_a">UPC-A</option>
-            <option value="upc_e">UPC-E</option>
-            <option value="itf">ITF</option>
-            <option value="pdf417">PDF417</option>
-            <option value="aztec">Aztec</option>
-            <option value="data_matrix">Data Matrix</option>
-          </select>
-        </div>
+    <video id="video" playsinline muted></video>
 
-        <div class="result" id="result" aria-live="polite">
-          <div>
-            <span class="badge" id="engine">engine: —</span>
-            <span class="badge" id="fmt">format: —</span>
-          </div>
-          <div class="result-code" id="code">No code yet</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button id="copy" disabled>📋 Copy</button>
-            <button id="clear" disabled>🧹 Clear</button>
-          </div>
-        </div>
-
-        <details>
-          <summary>Tips</summary>
-          <ul>
-            <li>If the torch is disabled, your device/browser may not support it.</li>
-            <li>For camera access, open this page over <strong>https://</strong> or on <strong>http://localhost</strong>.</li>
-            <li>Use good lighting and fill the frame with the code.</li>
-          </ul>
-        </details>
-      </div>
-
-      <div class="footer">No data leaves your device. Everything runs in your browser.</div>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+      <button id="start" class="primary">▶️ Start camera</button>
+      <button id="stop" class="danger" disabled>⏹️ Stop</button>
+      <button id="copy" disabled>📋 Copy</button>
     </div>
-  </main>
+
+    <div class="result" id="result">No code yet</div>
+    <div class="footer">Runs fully in your browser. Works best over HTTPS (GitHub Pages).</div>
+  </div>
 
   <script>
-  (function(){
-    const el = id => document.getElementById(id);
-    const $video = el('video');
-    const $start = el('start');
-    const $stop = el('stop');
-    const $torch = el('torch');
-    const $result = el('result');
-    const $code = el('code');
-    const $fmt = el('fmt');
-    const $engine = el('engine');
-    const $copy = el('copy');
-    const $clear = el('clear');
-    const $format = el('format');
-    const $continuous = el('continuous');
+    (function(){
+      const el = id => document.getElementById(id);
+      const $video = el('video');
+      const $start = el('start');
+      const $stop = el('stop');
+      const $copy = el('copy');
+      const $result = el('result');
 
-    let stream = null;
-    let track = null;
-    let torchOn = false;
-    let rafId = null;
+      let zxingReader = null;
+      let active = false;
 
-    // ZXing fallback objects
-    let zxingReader = null;
-
-    const preferredConstraints = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        focusMode: 'continuous',
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    };
-
-    async function startCamera(){
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
-        $video.srcObject = stream;
-        await $video.play();
-        track = stream.getVideoTracks()[0];
-        $start.disabled = true; $stop.disabled = false; $torch.disabled = false;
-        $engine.textContent = 'engine: auto';
-        loop();
-      } catch (err){
-        console.error(err);
-        alert('Could not start camera: ' + err.message);
-      }
-    }
-
-    async function stopCamera(){
-      try {
-        cancelAnimationFrame(rafId);
-      } catch{}
-      if (track) track.stop();
-      if (stream){
-        stream.getTracks().forEach(t => t.stop());
-      }
-      stream = null; track = null; torchOn = false;
-      $start.disabled = false; $stop.disabled = true; $torch.disabled = true;
-    }
-
-    async function toggleTorch(){
-      if (!track) return;
-      const caps = track.getCapabilities?.();
-      if (!caps || !caps.torch){
-        alert('Torch not supported on this device/browser.');
-        return;
-      }
-      torchOn = !torchOn;
-      await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-      $torch.textContent = torchOn ? '🔦 Torch (on)' : '🔦 Torch';
-    }
-
-    function setResult(text, format, engine){
-      if (!text) return;
-      $code.textContent = text;
-      $fmt.textContent = 'format: ' + (format || 'unknown');
-      $engine.textContent = 'engine: ' + (engine || '—');
-      $copy.disabled = false; $clear.disabled = false;
-    }
-
-    async function loop(){
-      const useNative = 'BarcodeDetector' in window;
-      if (useNative){
-        await nativeScanLoop();
-      } else {
-        await zxingScanLoop();
-      }
-    }
-
-    async function nativeScanLoop(){
-      const supported = await (async () => {
-        try {
-          const formats = await window.BarcodeDetector.getSupportedFormats();
-          return formats && formats.length > 0;
-        } catch { return false; }
-      })();
-      if (!supported){ return zxingScanLoop(); }
-
-      const filter = $format.value;
-      const detector = new window.BarcodeDetector({ formats: filter === 'auto' ? undefined : [mapFormat(filter, 'native')] });
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-      const tick = async () => {
-        if (!$video.videoWidth){ rafId = requestAnimationFrame(tick); return; }
-        canvas.width = $video.videoWidth; canvas.height = $video.videoHeight;
-        ctx.drawImage($video, 0, 0, canvas.width, canvas.height);
-        try {
-          const barcodes = await detector.detect(canvas);
-          if (barcodes && barcodes.length){
-            const b = barcodes[0];
-            setResult(b.rawValue || b.rawValue === '' ? b.rawValue : String(b.rawValue), b.format || 'unknown', 'BarcodeDetector');
-            if (!$continuous.checked) return; // stop after first if not continuous
-          }
-        } catch(e){ /* ignore per-frame errors */ }
-        rafId = requestAnimationFrame(tick);
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
       };
-      tick();
-    }
 
-    async function zxingScanLoop(){
-      // Wait for ZXing script
-      if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader){
-        await new Promise(r => setTimeout(r, 200));
-        return zxingScanLoop();
-      }
-      if (!zxingReader){
-        zxingReader = new ZXing.BrowserMultiFormatReader();
-      }
-
-      const videoElem = $video;
-      const hints = new Map();
-      const formatVal = $format.value;
-      if (formatVal !== 'auto'){
-        const formatEnum = mapFormat(formatVal, 'zxing');
-        if (formatEnum) hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [formatEnum]);
-      }
-
-      const tick = async () => {
-        try {
-          const result = await zxingReader.decodeOnceFromVideoDevice(undefined, videoElem, hints);
-          if (result){
-            setResult(result.text, result.barcodeFormat && result.barcodeFormat.toString(), 'ZXing');
-            if ($continuous.checked){
-              // small delay to avoid rapid repeats
-              await new Promise(r => setTimeout(r, 500));
-              return tick();
-            }
-            return; // stop if not continuous
-          }
-        } catch(err){
-          // decodeOnce throws when stopped; ignore while active
+      async function startCamera(){
+        if (!window.ZXing || !ZXing.BrowserMultiFormatReader){
+          alert('ZXing not loaded. Check your connection.');
+          return;
         }
-        rafId = requestAnimationFrame(tick);
-      };
-      tick();
-    }
+        zxingReader = new ZXing.BrowserMultiFormatReader();
+        try {
+          active = true;
+          $start.disabled = true;
+          $stop.disabled = false;
+          $copy.disabled = true;
+          $result.textContent = 'Scanning...';
 
-    function mapFormat(key, engine){
-      const mapNative = {
-        'ean_13':'ean-13','ean_8':'ean-8','code_128':'code-128','code_39':'code-39','qr_code':'qr-code','upc_a':'upc-a','upc_e':'upc-e','itf':'itf','pdf417':'pdf417','aztec':'aztec','data_matrix':'data-matrix'
-      };
-      const mapZX = {
-        'ean_13':'EAN_13','ean_8':'EAN_8','code_128':'CODE_128','code_39':'CODE_39','qr_code':'QR_CODE','upc_a':'UPC_A','upc_e':'UPC_E','itf':'ITF','pdf417':'PDF_417','aztec':'AZTEC','data_matrix':'DATA_MATRIX'
-      };
-      if (engine === 'native') return mapNative[key];
-      if (engine === 'zxing') return ZXing.BarcodeFormat[mapZX[key]];
-      return undefined;
-    }
+          await zxingReader.decodeFromVideoDevice(undefined, $video, (result, err) => {
+            if (result) {
+              $result.textContent = `Value: ${result.text} (Format: ${result.barcodeFormat})`;
+              $copy.disabled = false;
+            }
+          });
+        } catch (err){
+          console.error(err);
+          alert('Could not start camera: ' + err.message);
+        }
+      }
 
-    $start.addEventListener('click', startCamera);
-    $stop.addEventListener('click', stopCamera);
-    $torch.addEventListener('click', toggleTorch);
-    $copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText($code.textContent); $copy.textContent = '✅ Copied'; setTimeout(() => $copy.textContent = '📋 Copy', 1200); } catch{}
-    });
-    $clear.addEventListener('click', () => { $code.textContent = 'No code yet'; $fmt.textContent = 'format: —'; $copy.disabled = true; $clear.disabled = true; });
+      function stopCamera(){
+        if (zxingReader){
+          zxingReader.reset();
+        }
+        active = false;
+        $start.disabled = false;
+        $stop.disabled = true;
+        $result.textContent = 'No code yet';
+        $copy.disabled = true;
+      }
 
-    // If user changes the format filter, nudge the engine label so they see it's applied next scan
-    $format.addEventListener('change', () => { $fmt.textContent = 'format: ' + $format.options[$format.selectedIndex].text; });
+      $start.addEventListener('click', startCamera);
+      $stop.addEventListener('click', stopCamera);
+      $copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText($result.textContent);
+          $copy.textContent = '✅ Copied';
+          setTimeout(() => $copy.textContent = '📋 Copy', 1200);
+        } catch{}
+      });
 
-    // Stop camera when page hidden to save battery
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
-
-  })();
+      document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
+    })();
   </script>
 </body>
 </html>
