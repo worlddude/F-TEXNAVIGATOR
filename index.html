@@ -126,17 +126,28 @@
           tessedit_char_whitelist: '0123456789'
         });
         const cleaned = text.replace(/\D/g, '').slice(0,13); // Take only first 13 digits
-        if (cleaned.length < 13) {
-          resultDiv.textContent = `Detected: ${cleaned} ❌ Too short`;
+        if (!cleaned) {
+          resultDiv.textContent = `No numbers detected`;
           copyBtn.disabled = true;
-        } else {
-          const valid = validateEAN13(cleaned);
-          resultDiv.textContent = `Value: ${cleaned} ${valid ? '✅ Valid' : '❌ Invalid'}`;
-          copyBtn.disabled = !valid;
+          return;
         }
+
+        let status = '';
+        if (cleaned.length === 13) {
+          const valid = validateEAN13(cleaned);
+          status = valid ? '✅ Valid' : '❌ Invalid';
+          copyBtn.disabled = !valid;
+        } else {
+          status = '❌ Too short';
+          copyBtn.disabled = true;
+        }
+
+        resultDiv.textContent = `Detected: ${cleaned} ${status}`;
+
       } catch (err) {
         console.error(err);
         resultDiv.textContent = 'OCR failed';
+        copyBtn.disabled = true;
       }
     }
 
