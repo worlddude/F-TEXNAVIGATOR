@@ -1,168 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Barcode Scanner</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      align-items: start;
-      padding: 16px;
-    }
-    .card {
-      background: #111827;
-      border-radius: 16px;
-      padding: 16px;
-      max-width: 640px;
-      width: 100%;
-      box-shadow: 0 10px 25px rgba(0,0,0,.3);
-    }
-    h1 { font-size: 1.25rem; margin: 0 0 8px; }
-    p { color: #9ca3af; margin: 8px 0 16px; }
-    video { width: 100%; border-radius: 12px; background: #000; }
-    button {
-      appearance: none;
-      border: 1px solid #334155;
-      background: #0b1220;
-      color: #e5e7eb;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    button.primary { background: #064e3b; border-color: #065f46; }
-    button.danger { background: #3f0b0b; border-color: #7f1d1d; }
-    .result {
-      margin-top: 12px;
-      background: #0b1220;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 12px;
-      font-family: monospace;
-      word-break: break-all;
-    }
-    .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auto Barcode Scanner</title>
+<style>
+  body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #0f172a;
+    color: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    padding: 16px;
+  }
+  .card {
+    background: #111827;
+    border-radius: 16px;
+    padding: 16px;
+    max-width: 640px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0,0,0,.3);
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 8px; }
+  p { color: #9ca3af; margin: 8px 0 16px; }
+  video { width: 100%; border-radius: 12px; background: #000; }
+  button {
+    appearance: none;
+    border: 1px solid #334155;
+    background: #0b1220;
+    color: #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button.primary { background: #064e3b; border-color: #065f46; }
+  button.danger { background: #3f0b0b; border-color: #7f1d1d; }
+  .result {
+    margin-top: 12px;
+    background: #0b1220;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px;
+    font-family: monospace;
+    word-break: break-all;
+  }
+  .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <div class="card">
-    <h1>📦 Barcode Scanner</h1>
-    <p>Point your camera at a barcode (EAN-13 supported) and see the value below.</p>
-
-    <video id="video" playsinline muted autoplay></video>
-
-    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
-      <button id="start" class="primary">▶️ Start camera</button>
-      <button id="stop" class="danger" disabled>⏹️ Stop</button>
-      <button id="snap">📸 Scan Number</button>
-      <button id="copy" disabled>📋 Copy</button>
-    </div>
-
-    <div class="result" id="result">No code yet</div>
-    <div class="footer">Runs fully in your browser. Works best over HTTPS (GitHub Pages).</div>
+<div class="card">
+  <h1>📦 Barcode Scanner</h1>
+  <p>Point your camera at a barcode. Numbers will be read automatically.</p>
+  <video id="video" playsinline muted autoplay></video>
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+    <button id="start" class="primary">▶️ Start camera</button>
+    <button id="stop" class="danger" disabled>⏹️ Stop</button>
+    <button id="copy" disabled>📋 Copy</button>
   </div>
+  <div class="result" id="result">No code yet</div>
+  <div class="footer">Runs fully in your browser. Works best over HTTPS.</div>
+</div>
 
-  <script>
-    const video = document.getElementById('video');
-    const startBtn = document.getElementById('start');
-    const stopBtn = document.getElementById('stop');
-    const snapBtn = document.getElementById('snap');
-    const copyBtn = document.getElementById('copy');
-    const resultDiv = document.getElementById('result');
+<script>
+const video = document.getElementById('video');
+const startBtn = document.getElementById('start');
+const stopBtn = document.getElementById('stop');
+const copyBtn = document.getElementById('copy');
+const resultDiv = document.getElementById('result');
 
-    let stream = null;
+let stream = null;
+let scanning = false;
+let freezeFrame = false;
 
-    async function startCamera() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        video.srcObject = stream;
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-      } catch (err) {
-        alert('Error accessing camera: ' + err.message);
-      }
-    }
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    scanning = true;
+    scanLoop();
+  } catch (err) {
+    alert('Error accessing camera: ' + err.message);
+  }
+}
 
-    function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      video.srcObject = null;
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      resultDiv.textContent = 'No code yet';
-      copyBtn.disabled = true;
-    }
+function stopCamera() {
+  scanning = false;
+  if (stream) stream.getTracks().forEach(track => track.stop());
+  video.srcObject = null;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  resultDiv.textContent = 'No code yet';
+  copyBtn.disabled = true;
+}
 
-    // EAN-13 checksum validator
-    function validateEAN13(code) {
-      if (!/^\d{13}$/.test(code)) return false;
-      const digits = code.split('').map(Number);
-      const sumOdd = digits.slice(0,12).filter((_,i)=>i%2===0).reduce((a,b)=>a+b,0);
-      const sumEven = digits.slice(0,12).filter((_,i)=>i%2===1).reduce((a,b)=>a+b,0);
-      const checksum = (10 - ((sumOdd + sumEven*3) % 10)) % 10;
-      return checksum === digits[12];
-    }
+// EAN-13 checksum validator
+function validateEAN13(code) {
+  if (!/^\d{13}$/.test(code)) return false;
+  const digits = code.split('').map(Number);
+  const sumOdd = digits.slice(0,12).filter((_,i)=>i%2===0).reduce((a,b)=>a+b,0);
+  const sumEven = digits.slice(0,12).filter((_,i)=>i%2===1).reduce((a,b)=>a+b,0);
+  const checksum = (10 - ((sumOdd + sumEven*3) % 10)) % 10;
+  return checksum === digits[12];
+}
 
-    async function scanNumber() {
-      if (!stream) return alert('Start the camera first!');
-      resultDiv.textContent = 'Scanning...';
-
-      const canvas = document.createElement('canvas');
+async function scanLoop() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  while (scanning) {
+    if (!freezeFrame) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
+      
+      // quick number detection using regex on Tesseract OCR
       try {
-        const { data: { text } } = await Tesseract.recognize(canvas, 'eng', { 
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
           tessedit_char_whitelist: '0123456789'
         });
-        const cleaned = text.replace(/\D/g, '').slice(0,13); // Take only first 13 digits
-        if (!cleaned) {
-          resultDiv.textContent = `No numbers detected`;
-          copyBtn.disabled = true;
-          return;
+        const cleaned = text.replace(/\D/g, '');
+        
+        // Only consider 6-13 digit numbers
+        if (cleaned.length >= 6 && cleaned.length <= 13) {
+          freezeFrame = true;
+          resultDiv.textContent = `Detected: ${cleaned} ⏳ Processing...`;
+          processNumber(cleaned);
         }
-
-        let status = '';
-        if (cleaned.length === 13) {
-          const valid = validateEAN13(cleaned);
-          status = valid ? '✅ Valid' : '❌ Invalid';
-          copyBtn.disabled = !valid;
-        } else {
-          status = '❌ Too short';
-          copyBtn.disabled = true;
-        }
-
-        resultDiv.textContent = `Detected: ${cleaned} ${status}`;
-
-      } catch (err) {
-        console.error(err);
-        resultDiv.textContent = 'OCR failed';
-        copyBtn.disabled = true;
-      }
+      } catch(e) { console.error(e); }
     }
+    await new Promise(r => setTimeout(r, 200)); // 5 FPS scanning
+  }
+}
 
-    startBtn.addEventListener('click', startCamera);
-    stopBtn.addEventListener('click', stopCamera);
-    snapBtn.addEventListener('click', scanNumber);
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(resultDiv.textContent);
-        copyBtn.textContent = '✅ Copied';
-        setTimeout(() => copyBtn.textContent = '📋 Copy', 1200);
-      } catch {}
-    });
+async function processNumber(number) {
+  try {
+    const finalNumber = number.padStart(13,'0').slice(0,13);
+    const valid = validateEAN13(finalNumber);
+    resultDiv.textContent = `Detected: ${finalNumber} ${valid ? '✅ Valid' : '❌ Invalid'}`;
+    copyBtn.disabled = !valid;
+  } catch {
+    // if OCR fails or number invalid, unfreeze and continue
+    freezeFrame = false;
+  }
+  // unfreeze after a short delay if invalid
+  if (!validateEAN13(number)) setTimeout(()=>freezeFrame=false, 1000);
+}
 
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
-  </script>
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click', stopCamera);
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(resultDiv.textContent);
+    copyBtn.textContent = '✅ Copied';
+    setTimeout(() => copyBtn.textContent = '📋 Copy', 1200);
+  } catch {}
+});
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
+</script>
 </body>
 </html>
