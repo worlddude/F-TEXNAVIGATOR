@@ -32,6 +32,23 @@ video { width: 100%; border-radius: 12px; background: #000; }
   color: #22c55e;
   word-break: break-all;
 }
+#itemForm {
+  margin-top: 10px;
+}
+#itemForm input {
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  margin-right: 6px;
+}
+#itemForm button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 
@@ -45,20 +62,30 @@ video { width: 100%; border-radius: 12px; background: #000; }
   <p>The camera feed will start automatically. Barcode numbers will appear below when detected.</p>
   <video id="video" playsinline autoplay muted></video>
   <div id="numbers">Detected barcode numbers will appear here...</div>
+
+  <div id="itemForm" style="display:none;">
+    <input type="text" id="itemName" placeholder="Enter item name" />
+    <button id="addBtn">Add</button>
+  </div>
+
   <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
 </div>
 
 <script>
 const video = document.getElementById('video');
 const numbersDiv = document.getElementById('numbers');
+const itemForm = document.getElementById('itemForm');
+const itemNameInput = document.getElementById('itemName');
+const addBtn = document.getElementById('addBtn');
 
-// For smoothing barcode readings
+// Stable barcode scanning variables
 let detectedCodes = {};
-const stableThreshold = 3; // number of consistent detections
+const stableThreshold = 3; // must appear 3 times
 const displayDuration = 2000; // 2 seconds
 let lastDisplayTime = 0;
+let lastScannedCode = null;
 
-// Start camera automatically on page load
+// Start camera automatically
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -69,21 +96,17 @@ async function startCamera() {
   }
 }
 
-// Initialize QuaggaJS for barcode scanning
+// Initialize QuaggaJS
 function startScanner() {
   Quagga.init({
     inputStream: {
       name: 'Live',
       type: 'LiveStream',
       target: video,
-      constraints: {
-        width: 640,
-        height: 480,
-        facingMode: 'environment'
-      }
+      constraints: { width: 640, height: 480, facingMode: 'environment' }
     },
     locator: {
-      patchSize: 'medium',   // improves rotated/small barcode detection
+      patchSize: 'medium',
       halfSample: true
     },
     decoder: {
@@ -94,12 +117,9 @@ function startScanner() {
       ]
     },
     locate: true,
-    numOfWorkers: 0 // simplifies rotation detection
+    numOfWorkers: 0
   }, function(err) {
-    if (err) {
-      console.error('Error initializing Quagga:', err);
-      return;
-    }
+    if (err) { console.error('Quagga init error:', err); return; }
     Quagga.start();
   });
 
@@ -107,30 +127,65 @@ function startScanner() {
     const code = result.codeResult.code;
     const now = Date.now();
 
-    // Count occurrences in buffer
+    // Count occurrences
     detectedCodes[code] = (detectedCodes[code] || 0) + 1;
 
-    // Remove old codes (older than displayDuration)
+    // Clean old codes
     for (let c in detectedCodes) {
-      if (c !== code && now - lastDisplayTime > displayDuration) {
-        delete detectedCodes[c];
-      }
+      if (c !== code && now - lastDisplayTime > displayDuration) delete detectedCodes[c];
     }
 
-    // Only display if code appears >= stableThreshold times
+    // Show stable code
     if (detectedCodes[code] >= stableThreshold) {
       numbersDiv.textContent = `Detected Barcode: ${code}`;
       lastDisplayTime = now;
-      detectedCodes = {}; // reset buffer after stable display
+      detectedCodes = {};
+      lastScannedCode = code;
+      itemForm.style.display = 'block';
     }
   });
 }
 
-// Stop camera when tab is hidden
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
+// Add button click
+addBtn.addEventListener('click', async () => {
+  const itemName = itemNameInput.value.trim();
+  if (!itemName || !lastScannedCode) return;
+
+  const date = new Date().toISOString();
+  const content = { barcode: lastScannedCode, name: itemName, date: date };
+  const jsonData = JSON.stringify(content, null, 2);
+
+  // GitHub API example — replace with your own info
+  const githubToken = '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';
+  const repoOwner = 'worlddude';
+  const repoName = 'barcode-inventory';
+  const path = `scanned_items/${lastScannedCode}.json`;
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${githubToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Add item ${lastScannedCode}`,
+        content: btoa(jsonData)
+      })
+    });
+    const result = await response.json();
+    alert('Item saved to GitHub!');
+    itemForm.style.display = 'none';
+    itemNameInput.value = '';
+  } catch (err) {
+    console.error(err);
+    alert('Failed to save item to GitHub.');
   }
+});
+
+// Stop camera when tab hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
 });
 
 window.addEventListener('load', startCamera);
