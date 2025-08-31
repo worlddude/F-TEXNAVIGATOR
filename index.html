@@ -26,7 +26,7 @@
     h1 { font-size: 1.25rem; margin: 0 0 8px; }
     p { color: #9ca3af; margin: 8px 0 16px; }
     video { width: 100%; border-radius: 12px; background: #000; }
-    button, select, input[type="checkbox"] {
+    button {
       appearance: none;
       border: 1px solid #334155;
       background: #0b1220;
@@ -49,7 +49,8 @@
     }
     .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
   </style>
-  <script defer src="https://unpkg.com/@zxing/browser@latest"></script>
+  <!-- Use jsDelivr CDN instead of unpkg -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
 </head>
 <body>
   <div class="card">
@@ -78,25 +79,14 @@
       const $result = el('result');
 
       let zxingReader = null;
-      let active = false;
-
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
-      };
 
       async function startCamera(){
         if (!window.ZXing || !ZXing.BrowserMultiFormatReader){
-          alert('ZXing not loaded. Check your connection.');
+          alert('ZXing not loaded. Please refresh.');
           return;
         }
         zxingReader = new ZXing.BrowserMultiFormatReader();
         try {
-          active = true;
           $start.disabled = true;
           $stop.disabled = false;
           $copy.disabled = true;
@@ -118,7 +108,6 @@
         if (zxingReader){
           zxingReader.reset();
         }
-        active = false;
         $start.disabled = false;
         $stop.disabled = true;
         $result.textContent = 'No code yet';
