@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera Preview</title>
+<title>Camera Preview with Number Detection</title>
 <style>
 body {
   margin: 0;
@@ -26,19 +26,46 @@ body {
 h1 { font-size: 1.25rem; margin: 0 0 8px; }
 p { color: #9ca3af; margin: 8px 0 16px; }
 video { width: 100%; border-radius: 12px; background: #000; }
+button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+#numbers {
+  margin-top: 10px;
+  font-size: 18px;
+  color: #22c55e;
+  word-break: break-all;
+}
 .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>📷 Camera Preview</h1>
-  <p>The camera feed will start automatically. Please allow camera access.</p>
+  <p>The camera feed will start automatically. Click "Capture Numbers" to detect numbers in the frame.</p>
   <video id="video" playsinline autoplay muted></video>
+  <button id="captureBtn">Capture Numbers</button>
+  <div id="numbers">Numbers will appear here...</div>
   <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
 </div>
 
+<!-- Tesseract.js for OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+
 <script>
 const video = document.getElementById('video');
+const captureBtn = document.getElementById('captureBtn');
+const numbersDiv = document.getElementById('numbers');
+
+// Hidden canvas for capturing frames
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
 
 async function startCamera() {
   try {
@@ -49,13 +76,31 @@ async function startCamera() {
   }
 }
 
-// Start camera automatically on page load
 window.addEventListener('load', startCamera);
 
-// Stop camera when user switches tab (optional)
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && video.srcObject) {
     video.srcObject.getTracks().forEach(track => track.stop());
+  }
+});
+
+// Capture frame and detect numbers
+captureBtn.addEventListener('click', async () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  numbersDiv.textContent = "Processing...";
+  
+  try {
+    const result = await Tesseract.recognize(canvas.toDataURL(), 'eng', {
+      tessedit_char_whitelist: '0123456789'
+    });
+    const detectedNumbers = result.data.text.trim();
+    numbersDiv.textContent = detectedNumbers || "No numbers detected";
+  } catch (err) {
+    numbersDiv.textContent = "Error detecting numbers";
+    console.error(err);
   }
 });
 </script>
