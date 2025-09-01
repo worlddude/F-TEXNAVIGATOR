@@ -13,6 +13,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
 /* 🔵 Top Navigation */
@@ -50,6 +51,7 @@ body {
   color: white;
   padding: 10px;
   font-size: 14px;
+  transition: background 0.2s;
 }
 .tabs button.active {
   background: white;
@@ -64,11 +66,12 @@ body {
   justify-content: center;
   align-items: center;
   position: relative;
+  overflow: hidden;
 }
 #map {
   width: 100%;
   height: 100%;
-  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Store_layout_example.svg/640px-Store_layout_example.svg.png') center/cover no-repeat;
+  object-fit: cover;
 }
 #video {
   width: 100%;
@@ -83,6 +86,8 @@ body {
   border-radius: 16px 16px 0 0;
   padding: 16px;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+  position: relative;
+  bottom: 0;
 }
 .item-card h2 {
   margin: 0 0 6px;
@@ -122,7 +127,7 @@ button.save {
 
   <!-- 🗺️ Map / Camera -->
   <div class="main">
-    <div id="map"></div>
+    <img id="map" />
     <video id="video" playsinline autoplay muted></video>
   </div>
 
@@ -143,8 +148,7 @@ button.save {
 
 <script>
 const video = document.getElementById('video');
-const mapDiv = document.getElementById('map');
-const itemCard = document.getElementById('itemCard');
+const mapImg = document.getElementById('map');
 const itemNameDisplay = document.getElementById('itemNameDisplay');
 const barcodeDisplay = document.getElementById('barcodeDisplay');
 const dateDisplay = document.getElementById('dateDisplay');
@@ -156,20 +160,31 @@ const itemNameInput = document.getElementById('itemName');
 const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
 
+const tabs = document.querySelectorAll(".tabs button");
+function setActiveTab(tabId) {
+  tabs.forEach(btn => btn.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+}
+
 // Tabs
 document.getElementById('tab-map').addEventListener('click', () => {
-  mapDiv.style.display = "block";
+  setActiveTab('tab-map');
+  mapImg.style.display = "block";
   video.style.display = "none";
+  stopCamera();
 });
 document.getElementById('tab-scan').addEventListener('click', () => {
-  mapDiv.style.display = "none";
+  setActiveTab('tab-scan');
+  mapImg.style.display = "none";
   video.style.display = "block";
   startCamera();
 });
 document.getElementById('tab-add').addEventListener('click', () => {
-  mapDiv.style.display = "block";
+  setActiveTab('tab-add');
+  mapImg.style.display = "block";
   video.style.display = "none";
   addForm.style.display = "flex";
+  stopCamera();
 });
 
 // DB
@@ -205,7 +220,14 @@ async function saveToDatabase(newCode, newItem) {
   });
 }
 
-// Start Camera + Scanner
+// Camera Control
+function stopCamera() {
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+}
+
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -242,6 +264,11 @@ function startScanner() {
       shelfDisplay.textContent = "Shelf / Section nr: -";
       addBtn.style.display = "block";
     }
+    // ✅ Switch back to Map and stop camera
+    setActiveTab('tab-map');
+    mapImg.style.display = "block";
+    video.style.display = "none";
+    stopCamera();
   });
 }
 
@@ -264,6 +291,14 @@ saveBtn.addEventListener("click", async () => {
   addForm.style.display = "none";
   addBtn.style.display = "none";
 });
+
+// Random Map Images
+const mapImages = [
+  "https://i.imgur.com/7bYwV7H.png",
+  "https://i.imgur.com/1D5Zb0j.png",
+  "https://i.imgur.com/Z0YyAvf.png"
+];
+mapImg.src = mapImages[Math.floor(Math.random() * mapImages.length)];
 
 window.addEventListener('load', async () => {
   await loadDatabase();
