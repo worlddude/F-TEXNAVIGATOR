@@ -101,22 +101,20 @@ let barcodeDB = {};
 let currentCode = null;
 
 // ==========================
-// 🔧 CONFIG (for your repo)
+// 🔧 CONFIG (JSONBin)
 // ==========================
-const GITHUB_USERNAME = "worlddude";
-const GITHUB_REPO = "F-TEXNAVIGATOR";
-const FILE_PATH = "barcodes.json"; 
-const BRANCH = "main";
-const TOKEN = "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"; // ⚠️ Replace with your GitHub token
+const BIN_ID = "68b57c0543b1c97be932f78d"; 
+const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
-const API_URL = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-
-// Load DB from GitHub Pages
+// Load DB from JSONBin
 async function loadDatabase() {
   try {
-    const res = await fetch(`https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${FILE_PATH}`);
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+      headers: { "X-Master-Key": API_KEY }
+    });
     if (!res.ok) throw new Error("barcodes.json not found, using empty DB");
-    barcodeDB = await res.json();
+    const data = await res.json();
+    barcodeDB = data.record;
     console.log("✅ Database loaded", barcodeDB);
   } catch (err) {
     console.warn("⚠️ Could not load database, starting empty:", err);
@@ -124,52 +122,32 @@ async function loadDatabase() {
   }
 }
 
-// Save new barcode entry to GitHub
-async function saveToGitHub(newCode, newItem) {
+// Save new barcode entry to JSONBin
+async function saveToDatabase(newCode, newItem) {
   try {
-    // Step 1: get latest file + SHA
-    const res = await fetch(API_URL, {
-      headers: { Authorization: `token ${TOKEN}` }
-    });
-    const fileData = await res.json();
-    const sha = fileData.sha;
+    // update local copy
+    barcodeDB[newCode] = newItem;
 
-    // Step 2: parse current JSON
-    let db = {};
-    try {
-      db = JSON.parse(atob(fileData.content));
-    } catch (err) {
-      console.error("Error parsing existing JSON:", err);
-    }
-
-    // Step 3: add new entry
-    db[newCode] = newItem;
-
-    // Step 4: commit update back to GitHub
-    const updateRes = await fetch(API_URL, {
+    // PUT full DB to JSONBin
+    const updateRes = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
       method: "PUT",
       headers: {
-        Authorization: `token ${TOKEN}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Master-Key": API_KEY
       },
-      body: JSON.stringify({
-        message: `Add barcode ${newCode}`,
-        content: btoa(JSON.stringify(db, null, 2)),
-        sha: sha,
-        branch: BRANCH
-      })
+      body: JSON.stringify(barcodeDB, null, 2)
     });
 
     if (updateRes.ok) {
-      alert("✅ Saved to GitHub!");
+      alert("✅ Saved to JSONBin!");
     } else {
       const errText = await updateRes.text();
-      console.error("GitHub error:", errText);
-      alert("❌ Failed to save to GitHub. Check console.");
+      console.error("JSONBin error:", errText);
+      alert("❌ Failed to save to JSONBin. Check console.");
     }
   } catch (err) {
-    console.error("Error saving to GitHub:", err);
-    alert("❌ Error saving to GitHub.");
+    console.error("Error saving to JSONBin:", err);
+    alert("❌ Error saving to JSONBin.");
   }
 }
 
@@ -221,7 +199,7 @@ function startScanner() {
         addForm.style.display = "none";
       } else {
         message += "\n❌ Not found in database.";
-        addBtn.style.display = "block"; // always show Add button if unknown
+        addBtn.style.display = "block"; 
       }
       numbersDiv.textContent = message;
       lastDisplayTime = now;
@@ -246,11 +224,11 @@ saveBtn.addEventListener("click", async () => {
   }
 
   const newItem = { name, price };
-  await saveToGitHub(currentCode, newItem);
+  await saveToDatabase(currentCode, newItem);
 
   // update in-memory DB immediately
   barcodeDB[currentCode] = newItem;
-  numbersDiv.textContent = `✅ Added to GitHub!\nDetected Barcode: ${currentCode}\nItem: ${name}\nPrice: $${price}`;
+  numbersDiv.textContent = `✅ Added to DB!\nDetected Barcode: ${currentCode}\nItem: ${name}\nPrice: $${price}`;
 
   addForm.style.display = "none";
   addBtn.style.display = "none";
@@ -270,4 +248,3 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
-
