@@ -3,38 +3,98 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera Preview with Barcode Scanning</title>
+<title>Store Item Locator</title>
 <style>
 body {
   margin: 0;
   font-family: sans-serif;
-  background: #0f172a;
-  color: #e5e7eb;
+  background: #f5f5f5;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* 🔵 Top Navigation */
+.header {
+  background: #2563eb;
+  color: white;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.search-bar {
+  background: white;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+.search-bar input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+}
+.tabs {
+  display: flex;
+  justify-content: space-around;
+  background: #1e40af;
+  border-radius: 6px;
+}
+.tabs button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: white;
+  padding: 10px;
+  font-size: 14px;
+}
+.tabs button.active {
+  background: white;
+  color: #2563eb;
+  border-radius: 6px;
+}
+
+/* 🗺️ Main Content (Map / Camera) */
+.main {
+  flex: 1;
   display: flex;
   justify-content: center;
-  align-items: start;
-  padding: 16px;
+  align-items: center;
+  position: relative;
 }
-.card {
-  background: #111827;
-  border-radius: 16px;
-  padding: 16px;
-  max-width: 640px;
+#map {
   width: 100%;
-  box-shadow: 0 10px 25px rgba(0,0,0,.3);
+  height: 100%;
+  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Store_layout_example.svg/640px-Store_layout_example.svg.png') center/cover no-repeat;
 }
-h1 { font-size: 1.25rem; margin: 0 0 8px; }
-p { color: #9ca3af; margin: 8px 0 16px; }
-video { width: 100%; border-radius: 12px; background: #000; }
-#numbers {
-  margin-top: 10px;
-  font-size: 18px;
-  color: #22c55e;
-  white-space: pre-line;
-  word-break: break-all;
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none; /* hidden until "Scan" tab */
 }
-button {
-  margin-top: 10px;
+
+/* 📋 Bottom Info Card */
+.item-card {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+}
+.item-card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.item-card p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #333;
+}
+button.save {
+  margin-top: 8px;
   padding: 8px 12px;
   border: none;
   border-radius: 8px;
@@ -43,49 +103,52 @@ button {
   font-size: 14px;
   cursor: pointer;
 }
-button:hover {
-  background: #1e40af;
-}
-#addForm {
-  margin-top: 12px;
-  display: none;
-  flex-direction: column;
-  gap: 6px;
-}
-#addForm input {
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid #374151;
-  background: #1f2937;
-  color: white;
-}
-.footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 10px; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 </head>
 <body>
-<div class="card">
-  <h1>📷 Scan a barcode</h1>
-  <p>The camera feed will start automatically. Barcode numbers will appear below when detected.</p>
-  <video id="video" playsinline autoplay muted></video>
-  <div id="numbers">Detected barcodes will appear here...</div>
-  <button id="addBtn" style="display:none;">➕ Add Item</button>
-
-  <!-- Add new product form -->
-  <div id="addForm">
-    <input type="text" id="itemName" placeholder="Item name" />
-    <input type="text" id="itemShelf" placeholder="Shelf number" />
-    <input type="text" id="itemSection" placeholder="Section number" />
-    <button id="saveBtn">💾 Save Item</button>
+  <!-- 🔵 Header -->
+  <div class="header">
+    <div class="search-bar">
+      <input type="text" placeholder="Search for an item or scan a barcode">
+    </div>
+    <div class="tabs">
+      <button id="tab-add">Add & renew Items</button>
+      <button id="tab-map" class="active">Map</button>
+      <button id="tab-scan">Scan</button>
+    </div>
   </div>
 
-  <div class="footer">Your camera feed runs in the browser. Works best over HTTPS.</div>
-</div>
+  <!-- 🗺️ Map / Camera -->
+  <div class="main">
+    <div id="map"></div>
+    <video id="video" playsinline autoplay muted></video>
+  </div>
+
+  <!-- 📋 Item Card -->
+  <div class="item-card" id="itemCard">
+    <h2 id="itemNameDisplay">No item selected</h2>
+    <p id="barcodeDisplay">Barcode: -</p>
+    <p id="dateDisplay">Date of location: -</p>
+    <p id="shelfDisplay">Shelf / Section nr: -</p>
+    <button class="save" id="addBtn" style="display:none;">➕ Add Item</button>
+    <div id="addForm" style="display:none; margin-top:10px;">
+      <input type="text" id="itemName" placeholder="Item name" />
+      <input type="text" id="itemShelf" placeholder="Shelf number" />
+      <input type="text" id="itemSection" placeholder="Section number" />
+      <button class="save" id="saveBtn">💾 Save Item</button>
+    </div>
+  </div>
 
 <script>
 const video = document.getElementById('video');
-const numbersDiv = document.getElementById('numbers');
+const mapDiv = document.getElementById('map');
+const itemCard = document.getElementById('itemCard');
+const itemNameDisplay = document.getElementById('itemNameDisplay');
+const barcodeDisplay = document.getElementById('barcodeDisplay');
+const dateDisplay = document.getElementById('dateDisplay');
+const shelfDisplay = document.getElementById('shelfDisplay');
 const addBtn = document.getElementById('addBtn');
 const addForm = document.getElementById('addForm');
 const saveBtn = document.getElementById('saveBtn');
@@ -93,67 +156,56 @@ const itemNameInput = document.getElementById('itemName');
 const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
 
-// For smoothing barcode readings
-let detectedCodes = {};
-const stableThreshold = 3; 
-const displayDuration = 2000; 
-let lastDisplayTime = 0;
+// Tabs
+document.getElementById('tab-map').addEventListener('click', () => {
+  mapDiv.style.display = "block";
+  video.style.display = "none";
+});
+document.getElementById('tab-scan').addEventListener('click', () => {
+  mapDiv.style.display = "none";
+  video.style.display = "block";
+  startCamera();
+});
+document.getElementById('tab-add').addEventListener('click', () => {
+  mapDiv.style.display = "block";
+  video.style.display = "none";
+  addForm.style.display = "flex";
+});
 
+// DB
 let barcodeDB = {};
 let currentCode = null;
 
-// ==========================
-// 🔧 CONFIG (JSONBin)
-// ==========================
+// CONFIG
 const BIN_ID = "68b57c0543b1c97be932f78d"; 
 const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
-// Load DB from JSONBin
+// Load DB
 async function loadDatabase() {
   try {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
       headers: { "X-Master-Key": API_KEY }
     });
-    if (!res.ok) throw new Error("barcodes.json not found, using empty DB");
+    if (!res.ok) throw new Error("DB not found");
     const data = await res.json();
     barcodeDB = data.record;
-    console.log("✅ Database loaded", barcodeDB);
   } catch (err) {
-    console.warn("⚠️ Could not load database, starting empty:", err);
+    console.warn("⚠️ Using empty DB:", err);
     barcodeDB = {};
   }
 }
 
-// Save new barcode entry to JSONBin
+// Save to DB
 async function saveToDatabase(newCode, newItem) {
-  try {
-    // update local copy
-    barcodeDB[newCode] = newItem;
-
-    // PUT full DB to JSONBin
-    const updateRes = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": API_KEY
-      },
-      body: JSON.stringify(barcodeDB, null, 2)
-    });
-
-    if (updateRes.ok) {
-      alert("✅ Saved to JSONBin!");
-    } else {
-      const errText = await updateRes.text();
-      console.error("JSONBin error:", errText);
-      alert("❌ Failed to save to JSONBin. Check console.");
-    }
-  } catch (err) {
-    console.error("Error saving to JSONBin:", err);
-    alert("❌ Error saving to JSONBin.");
-  }
+  barcodeDB[newCode] = newItem;
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY },
+    body: JSON.stringify(barcodeDB, null, 2)
+  });
 }
 
-// Start camera
+// Start Camera + Scanner
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -164,90 +216,57 @@ async function startCamera() {
   }
 }
 
-// Quagga init
 function startScanner() {
   Quagga.init({
-    inputStream: {
-      name: 'Live',
-      type: 'LiveStream',
-      target: video,
-      constraints: { width: 640, height: 480, facingMode: 'environment' }
-    },
-    locator: { patchSize: 'medium', halfSample: true },
-    decoder: { readers: ['code_128_reader','ean_reader','ean_8_reader','code_39_reader','code_39_vin_reader','codabar_reader','upc_reader','upc_e_reader','i2of5_reader'] },
-    locate: true,
-    numOfWorkers: 0
+    inputStream: { name: 'Live', type: 'LiveStream', target: video },
+    decoder: { readers: ['ean_reader','upc_reader','code_128_reader'] }
   }, err => {
-    if (err) { console.error('Error initializing Quagga:', err); return; }
+    if (err) { console.error('Quagga error:', err); return; }
     Quagga.start();
   });
 
   Quagga.onDetected(result => {
     const code = result.codeResult.code;
-    const now = Date.now();
-
-    detectedCodes[code] = (detectedCodes[code] || 0) + 1;
-    for (let c in detectedCodes) {
-      if (c !== code && now - lastDisplayTime > displayDuration) delete detectedCodes[c];
-    }
-
-    if (detectedCodes[code] >= stableThreshold) {
-      currentCode = code;
-      let message = `Detected Barcode: ${code}`;
-      if (barcodeDB[code]) {
-        const item = barcodeDB[code];
-        message += `\nItem: ${item.name}\nShelf: ${item.shelf}\nSection: ${item.section}`;
-        addBtn.style.display = "none";
-        addForm.style.display = "none";
-      } else {
-        message += "\n❌ Not found in database.";
-        addBtn.style.display = "block"; 
-      }
-      numbersDiv.textContent = message;
-      lastDisplayTime = now;
-      detectedCodes = {};
+    currentCode = code;
+    const item = barcodeDB[code];
+    if (item) {
+      itemNameDisplay.textContent = item.name;
+      barcodeDisplay.textContent = "Barcode: " + code;
+      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
+      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+      addBtn.style.display = "none";
+    } else {
+      itemNameDisplay.textContent = "❌ Not found in database";
+      barcodeDisplay.textContent = "Barcode: " + code;
+      dateDisplay.textContent = "Date of location: -";
+      shelfDisplay.textContent = "Shelf / Section nr: -";
+      addBtn.style.display = "block";
     }
   });
 }
 
-// Add item flow
+// Add item
 addBtn.addEventListener("click", () => {
   addForm.style.display = "flex";
-  itemNameInput.value = "";
-  itemShelfInput.value = "";
-  itemSectionInput.value = "";
 });
-
 saveBtn.addEventListener("click", async () => {
   const name = itemNameInput.value.trim();
   const shelf = itemShelfInput.value.trim();
   const section = itemSectionInput.value.trim();
   if (!name || !shelf || !section) {
-    alert("Please enter valid name, shelf, and section.");
+    alert("Please fill all fields");
     return;
   }
-
   const newItem = { name, shelf, section };
   await saveToDatabase(currentCode, newItem);
-
-  // update in-memory DB immediately
-  barcodeDB[currentCode] = newItem;
-  numbersDiv.textContent = `✅ Added to DB!\nDetected Barcode: ${currentCode}\nItem: ${name}\nShelf: ${shelf}\nSection: ${section}`;
-
+  itemNameDisplay.textContent = name;
+  shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
   addBtn.style.display = "none";
 });
 
-// Stop camera when tab hidden
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
-});
-
 window.addEventListener('load', async () => {
   await loadDatabase();
-  startCamera();
 });
 </script>
 </body>
