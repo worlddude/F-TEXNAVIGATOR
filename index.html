@@ -8,7 +8,7 @@
 body {
   margin: 0;
   font-family: sans-serif;
-  background: white; /* ✅ Main background white */
+  background: white;
   color: #111;
   display: flex;
   flex-direction: column;
@@ -68,17 +68,21 @@ body {
   position: relative;
   overflow: hidden;
 }
+.main.add-tab {
+  justify-content: center; /* vertically center for Add & Renew */
+  align-items: center;
+}
 #map {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: none; /* default hidden, only show in Map tab */
+  display: none;
 }
 #video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: none; /* hidden until "Scan" tab */
+  display: none;
 }
 
 /* 📋 Bottom Info Card */
@@ -110,11 +114,18 @@ button.save {
   cursor: pointer;
 }
 
-/* ✅ Add & Renew form tweaks */
+/* ✅ Add & Renew form */
 #addForm {
   display: flex;
-  flex-direction: column; /* stack inputs vertically */
+  flex-direction: column;
   gap: 8px;
+  max-width: 400px;
+  width: 90%;
+  margin: auto;
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 #addForm input {
   padding: 6px 10px;
@@ -155,6 +166,7 @@ button.save {
     <p id="shelfDisplay">Shelf / Section nr: -</p>
     <button class="save" id="addBtn" style="display:none;">➕ Add Item</button>
     <div id="addForm" style="display:none; margin-top:10px;">
+      <input type="text" id="itemBarcode" placeholder="Barcode" readonly />
       <input type="text" id="itemName" placeholder="Item name" />
       <input type="text" id="itemShelf" placeholder="Shelf number" />
       <input type="text" id="itemSection" placeholder="Section number" />
@@ -166,6 +178,7 @@ button.save {
 // DOM Elements
 const video = document.getElementById('video');
 const mapImg = document.getElementById('map');
+const mainDiv = document.querySelector('.main');
 const itemNameDisplay = document.getElementById('itemNameDisplay');
 const barcodeDisplay = document.getElementById('barcodeDisplay');
 const dateDisplay = document.getElementById('dateDisplay');
@@ -176,6 +189,7 @@ const saveBtn = document.getElementById('saveBtn');
 const itemNameInput = document.getElementById('itemName');
 const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
+const itemBarcodeInput = document.getElementById('itemBarcode');
 
 const tabs = document.querySelectorAll(".tabs button");
 function setActiveTab(tabId) {
@@ -188,21 +202,24 @@ document.getElementById('tab-map').addEventListener('click', () => {
   setActiveTab('tab-map');
   mapImg.style.display = "block";
   video.style.display = "none";
-  addForm.style.display = "none"; // hide add form
+  addForm.style.display = "none";
+  mainDiv.classList.remove("add-tab");
   stopCamera();
 });
 document.getElementById('tab-scan').addEventListener('click', () => {
   setActiveTab('tab-scan');
   mapImg.style.display = "none";
   video.style.display = "block";
-  addForm.style.display = "none"; // hide add form
+  addForm.style.display = "none";
+  mainDiv.classList.remove("add-tab");
   startCamera();
 });
 document.getElementById('tab-add').addEventListener('click', () => {
   setActiveTab('tab-add');
-  mapImg.style.display = "none"; // hide map for add tab
+  mapImg.style.display = "none";
   video.style.display = "none";
-  addForm.style.display = "flex"; // show form
+  addForm.style.display = "flex";
+  mainDiv.classList.add("add-tab");
   stopCamera();
 });
 
@@ -271,23 +288,33 @@ function startScanner() {
     currentCode = code;
     const item = barcodeDB[code];
     if (item) {
+      // Known item
       itemNameDisplay.textContent = item.name;
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
       shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
       addBtn.style.display = "none";
+
+      setActiveTab('tab-map');
+      mapImg.style.display = "block";
+      video.style.display = "none";
+      addForm.style.display = "none";
+      mainDiv.classList.remove("add-tab");
     } else {
+      // Unknown item: go to Add & Renew
+      setActiveTab('tab-add');
+      addForm.style.display = "flex";
+      addBtn.style.display = "none";
       itemNameDisplay.textContent = "❌ Not found in database";
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: -";
-      shelfDisplay.textContent = "Shelf / Section nr: -";
-      addBtn.style.display = "block";
+      shelfDisplay.textContent = "";
+      itemBarcodeInput.value = code; // prefill barcode
+      mapImg.style.display = "none";
+      video.style.display = "none";
+      mainDiv.classList.add("add-tab");
+      stopCamera();
     }
-    // ✅ Switch back to Map and stop camera
-    setActiveTab('tab-map');
-    mapImg.style.display = "block";
-    video.style.display = "none";
-    stopCamera();
   });
 }
 
@@ -299,12 +326,13 @@ saveBtn.addEventListener("click", async () => {
   const name = itemNameInput.value.trim();
   const shelf = itemShelfInput.value.trim();
   const section = itemSectionInput.value.trim();
-  if (!name || !shelf || !section) {
+  const barcode = itemBarcodeInput.value.trim();
+  if (!name || !shelf || !section || !barcode) {
     alert("Please fill all fields");
     return;
   }
   const newItem = { name, shelf, section };
-  await saveToDatabase(currentCode, newItem);
+  await saveToDatabase(barcode, newItem);
   itemNameDisplay.textContent = name;
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
@@ -318,7 +346,7 @@ const mapImages = [
   "https://i.imgur.com/Z0YyAvf.png"
 ];
 mapImg.src = mapImages[Math.floor(Math.random() * mapImages.length)];
-mapImg.style.display = "block"; // default show map on page load
+mapImg.style.display = "block";
 
 window.addEventListener('load', async () => {
   await loadDatabase();
