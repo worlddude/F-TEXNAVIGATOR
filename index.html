@@ -1,185 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta charset="UTF-8">
-  <title>Smart Store App</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-    header {
-      background: #2a6fdb;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
-    .tabs {
-      display: flex;
-      justify-content: space-around;
-      background: #fff;
-      border-bottom: 1px solid #ddd;
-    }
-    .tabs button {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      background: #fff;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .tabs button.active {
-      background: #2a6fdb;
-      color: white;
-    }
-    .content {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-    #mapImg, #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-    .info-card {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-      border-top: 1px solid #ccc;
-      padding: 10px;
-    }
-    .add-form {
-      display: none;
-      flex-direction: column;
-      padding: 10px;
-    }
-    .add-form input {
-      padding: 8px;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .add-form button {
-      padding: 10px;
-      background: #2a6fdb;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Store Item Locator</title>
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f5f5f5;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 🔵 Top Navigation */
+.header {
+  background: #2563eb;
+  color: white;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.search-bar {
+  background: white;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+.search-bar input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+}
+.tabs {
+  display: flex;
+  justify-content: space-around;
+  background: #1e40af;
+  border-radius: 6px;
+}
+.tabs button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: white;
+  padding: 10px;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.tabs button.active {
+  background: white;
+  color: #2563eb;
+  border-radius: 6px;
+}
+
+/* 🗺️ Main Content (Map / Camera) */
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+#map {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none; /* hidden until "Scan" tab */
+}
+
+/* 📋 Bottom Info Card */
+.item-card {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+  position: relative;
+  bottom: 0;
+}
+.item-card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.item-card p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #333;
+}
+button.save {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 </head>
 <body>
-  <header>
-    <h2>Smart Store App</h2>
-  </header>
-
-  <div class="tabs">
-    <button id="tab-map" class="active">Map</button>
-    <button id="tab-scan">Scan</button>
-    <button id="tab-add">Add & Renew</button>
-  </div>
-
-  <div class="content">
-    <img id="mapImg" src="https://picsum.photos/400/600?random=1" alt="Map">
-    <video id="video" autoplay></video>
-
-    <div class="add-form" id="addForm">
-      <input type="text" id="barcodeInput" placeholder="Barcode">
-      <input type="text" placeholder="Product Name">
-      <input type="text" placeholder="Shelf / Section">
-      <button>Save</button>
+  <!-- 🔵 Header -->
+  <div class="header">
+    <div class="search-bar">
+      <input type="text" placeholder="Search for an item or scan a barcode">
     </div>
-
-    <div class="info-card" id="infoCard">
-      <p><b>Product:</b> Harboe Cola</p>
-      <p><b>Barcode:</b> 472648194727</p>
-      <p><b>Date of location:</b> 31/08/25</p>
-      <p><b>Shelf / Section:</b> 32 / 3</p>
+    <div class="tabs">
+      <button id="tab-add">Add & renew Items</button>
+      <button id="tab-map" class="active">Map</button>
+      <button id="tab-scan">Scan</button>
     </div>
   </div>
 
-  <script>
-    const tabs = document.querySelectorAll(".tabs button");
-    const mapImg = document.getElementById("mapImg");
-    const video = document.getElementById("video");
-    const addForm = document.getElementById("addForm");
-    const infoCard = document.getElementById("infoCard");
-    const barcodeInput = document.getElementById("barcodeInput");
+  <!-- 🗺️ Map / Camera -->
+  <div class="main">
+    <img id="map" />
+    <video id="video" playsinline autoplay muted></video>
+  </div>
 
-    let currentStream;
+  <!-- 📋 Item Card -->
+  <div class="item-card" id="itemCard">
+    <h2 id="itemNameDisplay">No item selected</h2>
+    <p id="barcodeDisplay">Barcode: -</p>
+    <p id="dateDisplay">Date of location: -</p>
+    <p id="shelfDisplay">Shelf / Section nr: -</p>
+    <button class="save" id="addBtn" style="display:none;">➕ Add Item</button>
+    <div id="addForm" style="display:none; margin-top:10px;">
+      <input type="text" id="itemName" placeholder="Item name" />
+      <input type="text" id="itemShelf" placeholder="Shelf number" />
+      <input type="text" id="itemSection" placeholder="Section number" />
+      <button class="save" id="saveBtn">💾 Save Item</button>
+    </div>
+  </div>
 
-    // Switch Tabs
-    function setActiveTab(tabId) {
-      tabs.forEach(btn => btn.classList.remove("active"));
-      document.getElementById(tabId).classList.add("active");
+<script>
+const video = document.getElementById('video');
+const mapImg = document.getElementById('map');
+const itemNameDisplay = document.getElementById('itemNameDisplay');
+const barcodeDisplay = document.getElementById('barcodeDisplay');
+const dateDisplay = document.getElementById('dateDisplay');
+const shelfDisplay = document.getElementById('shelfDisplay');
+const addBtn = document.getElementById('addBtn');
+const addForm = document.getElementById('addForm');
+const saveBtn = document.getElementById('saveBtn');
+const itemNameInput = document.getElementById('itemName');
+const itemShelfInput = document.getElementById('itemShelf');
+const itemSectionInput = document.getElementById('itemSection');
 
-      // Reset all
-      mapImg.style.display = "none";
-      video.style.display = "none";
-      addForm.style.display = "none";
+const tabs = document.querySelectorAll(".tabs button");
+function setActiveTab(tabId) {
+  tabs.forEach(btn => btn.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+}
 
-      if (tabId === "tab-map") {
-        mapImg.style.display = "block";
-        stopCamera();
-      } else if (tabId === "tab-scan") {
-        video.style.display = "block";
-        startCamera();
-      } else if (tabId === "tab-add") {
-        addForm.style.display = "flex";
-        stopCamera();
-      }
-    }
+// Tabs
+document.getElementById('tab-map').addEventListener('click', () => {
+  setActiveTab('tab-map');
+  mapImg.style.display = "block";
+  video.style.display = "none";
+  stopCamera();
+});
+document.getElementById('tab-scan').addEventListener('click', () => {
+  setActiveTab('tab-scan');
+  mapImg.style.display = "none";
+  video.style.display = "block";
+  startCamera();
+});
+document.getElementById('tab-add').addEventListener('click', () => {
+  setActiveTab('tab-add');
+  mapImg.style.display = "block";
+  video.style.display = "none";
+  addForm.style.display = "flex";
+  stopCamera();
+});
 
-    tabs.forEach(tab => {
-      tab.addEventListener("click", () => setActiveTab(tab.id));
+// DB
+let barcodeDB = {};
+let currentCode = null;
+
+// CONFIG
+const BIN_ID = "68b57c0543b1c97be932f78d"; 
+const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
+
+// Load DB
+async function loadDatabase() {
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+      headers: { "X-Master-Key": API_KEY }
     });
+    if (!res.ok) throw new Error("DB not found");
+    const data = await res.json();
+    barcodeDB = data.record;
+  } catch (err) {
+    console.warn("⚠️ Using empty DB:", err);
+    barcodeDB = {};
+  }
+}
 
-    // Camera controls
-    async function startCamera() {
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = currentStream;
-      } catch (err) {
-        console.error("Camera error:", err);
-      }
-    }
-    function stopCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
-      }
-    }
+// Save to DB
+async function saveToDatabase(newCode, newItem) {
+  barcodeDB[newCode] = newItem;
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY },
+    body: JSON.stringify(barcodeDB, null, 2)
+  });
+}
 
-    // Fake scan simulation
-    function fakeScan(barcode) {
-      if (barcode === "unknown") {
-        // Unknown barcode → Add form
-        barcodeInput.value = "Unknown barcode";
-        setActiveTab("tab-add");
-      } else {
-        // Known barcode → show info
-        infoCard.innerHTML = `
-          <p><b>Product:</b> Harboe Cola</p>
-          <p><b>Barcode:</b> ${barcode}</p>
-          <p><b>Date of location:</b> 31/08/25</p>
-          <p><b>Shelf / Section:</b> 32 / 3</p>
-        `;
-        setActiveTab("tab-map");
-      }
-    }
+// Camera Control
+function stopCamera() {
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+}
 
-    // Demo scan trigger
-    setTimeout(() => fakeScan("unknown"), 5000);
-  </script>
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    startScanner();
+  } catch (err) {
+    alert('Error accessing camera: ' + err.message);
+  }
+}
+
+function startScanner() {
+  Quagga.init({
+    inputStream: { name: 'Live', type: 'LiveStream', target: video },
+    decoder: { readers: ['ean_reader','upc_reader','code_128_reader'] }
+  }, err => {
+    if (err) { console.error('Quagga error:', err); return; }
+    Quagga.start();
+  });
+
+  Quagga.onDetected(result => {
+    const code = result.codeResult.code;
+    currentCode = code;
+    const item = barcodeDB[code];
+    if (item) {
+      itemNameDisplay.textContent = item.name;
+      barcodeDisplay.textContent = "Barcode: " + code;
+      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
+      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+      addBtn.style.display = "none";
+    } else {
+      itemNameDisplay.textContent = "❌ Not found in database";
+      barcodeDisplay.textContent = "Barcode: " + code;
+      dateDisplay.textContent = "Date of location: -";
+      shelfDisplay.textContent = "Shelf / Section nr: -";
+      addBtn.style.display = "block";
+    }
+    // ✅ Switch back to Map and stop camera
+    setActiveTab('tab-map');
+    mapImg.style.display = "block";
+    video.style.display = "none";
+    stopCamera();
+  });
+}
+
+// Add item
+addBtn.addEventListener("click", () => {
+  addForm.style.display = "flex";
+});
+saveBtn.addEventListener("click", async () => {
+  const name = itemNameInput.value.trim();
+  const shelf = itemShelfInput.value.trim();
+  const section = itemSectionInput.value.trim();
+  if (!name || !shelf || !section) {
+    alert("Please fill all fields");
+    return;
+  }
+  const newItem = { name, shelf, section };
+  await saveToDatabase(currentCode, newItem);
+  itemNameDisplay.textContent = name;
+  shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
+  addForm.style.display = "none";
+  addBtn.style.display = "none";
+});
+
+// Random Map Images
+const mapImages = [
+  "https://i.imgur.com/7bYwV7H.png",
+  "https://i.imgur.com/1D5Zb0j.png",
+  "https://i.imgur.com/Z0YyAvf.png"
+];
+mapImg.src = mapImages[Math.floor(Math.random() * mapImages.length)];
+
+window.addEventListener('load', async () => {
+  await loadDatabase();
+});
+</script>
 </body>
 </html>
