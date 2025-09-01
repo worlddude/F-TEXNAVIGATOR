@@ -75,7 +75,8 @@ button:hover {
   <!-- Add new product form -->
   <div id="addForm">
     <input type="text" id="itemName" placeholder="Item name" />
-    <input type="number" step="0.01" id="itemPrice" placeholder="Price" />
+    <input type="text" id="itemShelf" placeholder="Shelf number" />
+    <input type="text" id="itemSection" placeholder="Section number" />
     <button id="saveBtn">💾 Save Item</button>
   </div>
 
@@ -89,7 +90,8 @@ const addBtn = document.getElementById('addBtn');
 const addForm = document.getElementById('addForm');
 const saveBtn = document.getElementById('saveBtn');
 const itemNameInput = document.getElementById('itemName');
-const itemPriceInput = document.getElementById('itemPrice');
+const itemShelfInput = document.getElementById('itemShelf');
+const itemSectionInput = document.getElementById('itemSection');
 
 // For smoothing barcode readings
 let detectedCodes = {};
@@ -194,7 +196,7 @@ function startScanner() {
       let message = `Detected Barcode: ${code}`;
       if (barcodeDB[code]) {
         const item = barcodeDB[code];
-        message += `\nItem: ${item.name}\nPrice: $${item.price}`;
+        message += `\nItem: ${item.name}\nShelf: ${item.shelf}\nSection: ${item.section}`;
         addBtn.style.display = "none";
         addForm.style.display = "none";
       } else {
@@ -212,23 +214,25 @@ function startScanner() {
 addBtn.addEventListener("click", () => {
   addForm.style.display = "flex";
   itemNameInput.value = "";
-  itemPriceInput.value = "";
+  itemShelfInput.value = "";
+  itemSectionInput.value = "";
 });
 
 saveBtn.addEventListener("click", async () => {
   const name = itemNameInput.value.trim();
-  const price = parseFloat(itemPriceInput.value);
-  if (!name || isNaN(price)) {
-    alert("Please enter valid name and price.");
+  const shelf = itemShelfInput.value.trim();
+  const section = itemSectionInput.value.trim();
+  if (!name || !shelf || !section) {
+    alert("Please enter valid name, shelf, and section.");
     return;
   }
 
-  const newItem = { name, price };
+  const newItem = { name, shelf, section };
   await saveToDatabase(currentCode, newItem);
 
   // update in-memory DB immediately
   barcodeDB[currentCode] = newItem;
-  numbersDiv.textContent = `✅ Added to DB!\nDetected Barcode: ${currentCode}\nItem: ${name}\nPrice: $${price}`;
+  numbersDiv.textContent = `✅ Added to DB!\nDetected Barcode: ${currentCode}\nItem: ${name}\nShelf: ${shelf}\nSection: ${section}`;
 
   addForm.style.display = "none";
   addBtn.style.display = "none";
