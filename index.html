@@ -108,6 +108,22 @@ button.save {
   font-size: 14px;
   cursor: pointer;
 }
+
+/* 📝 Input Form */
+#addForm {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+#addForm input {
+  font-size: 16px; /* prevents iOS zoom */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -138,7 +154,9 @@ button.save {
     <p id="dateDisplay">Date of location: -</p>
     <p id="shelfDisplay">Shelf / Section nr: -</p>
     <button class="save" id="addBtn" style="display:none;">➕ Add Item</button>
-    <div id="addForm" style="display:none; margin-top:10px;">
+
+    <!-- 📝 Form -->
+    <div id="addForm">
       <input type="text" id="itemName" placeholder="Item name" />
       <input type="text" id="itemShelf" placeholder="Shelf number" />
       <input type="text" id="itemSection" placeholder="Section number" />
@@ -164,28 +182,27 @@ const tabs = document.querySelectorAll(".tabs button");
 function setActiveTab(tabId) {
   tabs.forEach(btn => btn.classList.remove("active"));
   document.getElementById(tabId).classList.add("active");
-}
 
-// Tabs
-document.getElementById('tab-map').addEventListener('click', () => {
-  setActiveTab('tab-map');
-  mapImg.style.display = "block";
-  video.style.display = "none";
-  stopCamera();
-});
-document.getElementById('tab-scan').addEventListener('click', () => {
-  setActiveTab('tab-scan');
-  mapImg.style.display = "none";
-  video.style.display = "block";
-  startCamera();
-});
-document.getElementById('tab-add').addEventListener('click', () => {
-  setActiveTab('tab-add');
-  mapImg.style.display = "block";
-  video.style.display = "none";
-  addForm.style.display = "flex";
-  stopCamera();
-});
+  // Reset view for each tab
+  if (tabId === "tab-map") {
+    mapImg.style.display = "block";
+    video.style.display = "none";
+    addForm.style.display = "none";
+    addBtn.style.display = "none";
+    stopCamera();
+  } else if (tabId === "tab-scan") {
+    mapImg.style.display = "none";
+    video.style.display = "block";
+    addForm.style.display = "none";
+    addBtn.style.display = "none";
+    startCamera();
+  } else if (tabId === "tab-add") {
+    mapImg.style.display = "none"; // hide map in add mode
+    video.style.display = "none";
+    addForm.style.display = "flex";
+    stopCamera();
+  }
+}
 
 // DB
 let barcodeDB = {};
@@ -257,24 +274,22 @@ function startScanner() {
       dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
       shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
       addBtn.style.display = "none";
+      // ✅ Switch back to Map
+      setActiveTab('tab-map');
     } else {
       itemNameDisplay.textContent = "❌ Not found in database";
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: -";
       shelfDisplay.textContent = "Shelf / Section nr: -";
-      addBtn.style.display = "block";
+      // ✅ Go to Add tab automatically
+      setActiveTab('tab-add');
     }
-    // ✅ Switch back to Map and stop camera
-    setActiveTab('tab-map');
-    mapImg.style.display = "block";
-    video.style.display = "none";
-    stopCamera();
   });
 }
 
 // Add item
 addBtn.addEventListener("click", () => {
-  addForm.style.display = "flex";
+  setActiveTab("tab-add");
 });
 saveBtn.addEventListener("click", async () => {
   const name = itemNameInput.value.trim();
@@ -290,6 +305,8 @@ saveBtn.addEventListener("click", async () => {
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
   addBtn.style.display = "none";
+  // ✅ After saving → back to Map
+  setActiveTab('tab-map');
 });
 
 // Random Map Images
