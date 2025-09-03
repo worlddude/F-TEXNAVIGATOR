@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator — Updated</title>
+<title>Store Item Locator — Updated (fuzzy + click-to-map)</title>
 <style>
 body {
   margin: 0;
@@ -34,7 +34,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .item-card.hidden { display: none; }
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; }
 .list-item h3 { margin: 0 0 6px; font-size: 16px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #444; }
 .load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
@@ -165,6 +165,37 @@ function getAllItemsArray() {
   return Object.entries(barcodeDB).map(([barcode, item]) => ({ barcode, name: item.name || '', shelf: item.shelf || '', section: item.section || '' }));
 }
 
+// Levenshtein distance for fuzzy matching
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = [];
+  // increment along the first column of each row
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  // increment each column in the first row
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
 // Render list (with paging)
 function renderList(items, startIndex = 0) {
   lastRenderedItems = items;
@@ -183,9 +214,26 @@ function renderList(items, startIndex = 0) {
     const it = items[i];
     const div = document.createElement('div');
     div.className = 'list-item';
+    div.setAttribute('data-barcode', it.barcode);
     div.innerHTML = `<h3>${escapeHtml(it.name || '-')}</h3>
                      <p>Barcode: ${escapeHtml(it.barcode)}</p>
                      <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>`;
+    // click to view on map
+    div.addEventListener('click', ()=>{
+      const barcode = div.dataset.barcode;
+      const item = barcodeDB[barcode];
+      if(item){
+        itemNameDisplay.textContent = item.name || '-';
+        barcodeDisplay.textContent = 'Barcode: ' + barcode;
+        dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
+        shelfDisplay.textContent = 'Shelf / Section nr: ' + (item.shelf || '-') + ' / ' + (item.section || '-');
+        // switch to map tab
+        switchTab(document.getElementById('tab-map'));
+      } else {
+        alert('Item not found');
+      }
+    });
+
     listPage.appendChild(div);
   }
 
@@ -209,9 +257,10 @@ function escapeHtml(str){
   });
 }
 
-// Search logic — scores and sorts best matches first
+// Search logic — scores and sorts best matches first (now includes Levenshtein fuzzy matching)
 function performSearch() {
-  const q = searchInput.value.trim().toLowerCase();
+  const qRaw = searchInput.value.trim();
+  const q = qRaw.toLowerCase();
   const all = getAllItemsArray();
   if(q === ''){
     // show first page of all items
@@ -223,19 +272,35 @@ function performSearch() {
   for(const it of all){
     const name = (it.name || '').toLowerCase();
     const barcode = (it.barcode || '').toLowerCase();
-    let score = 1000;
-    if(name === q) score = -1000; // exact name match top
-    else if(name.startsWith(q)) score = -100;
-    else if(name.includes(q)) score = name.indexOf(q);
+    let score = 10000;
+
+    // high-priority exact matches
+    if(name === q) score = -1000;
     else if(barcode === q) score = -900;
-    else if(barcode.startsWith(q)) score = 50;
-    else if(barcode.includes(q)) score = 150;
-    // also match shelf/section lightly
+    // startsWith is good
+    else if(name.startsWith(q)) score = -100 + name.indexOf(q);
+    else if(barcode.startsWith(q)) score = -50 + barcode.indexOf(q);
+    // substring matches
+    else if(name.includes(q)) score = 10 + name.indexOf(q);
+    else if(barcode.includes(q)) score = 20 + barcode.indexOf(q);
+    // shelf/section match
     else if((it.shelf || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q)) score = 200;
-    if(score < 1000) results.push({it, score});
+    else {
+      // fuzzy via Levenshtein (allow small relative distance)
+      const levName = levenshtein(q, name);
+      const maxAllowed = Math.max(2, Math.floor(name.length * 0.25));
+      if(name && levName <= maxAllowed) score = 50 + levName; // smaller distance => better
+      else {
+        const levBarcode = levenshtein(q, barcode);
+        const maxAllowedBar = Math.max(1, Math.floor(barcode.length * 0.15));
+        if(barcode && levBarcode <= maxAllowedBar) score = 60 + levBarcode;
+      }
+    }
+
+    if(score < 10000) results.push({it, score});
   }
 
-  // If no direct results found by the filters above, try a relaxed includes search across all fields
+  // If no direct results found by the filters above, try a relaxed includes search across all fields (fallback)
   if(results.length === 0){
     for(const it of all){
       const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'')).toLowerCase();
