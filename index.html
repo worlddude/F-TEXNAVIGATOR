@@ -5,9 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Store Item Locator</title>
 <style>
-/* (same CSS as before, suggestions block removed visually since not needed) */
-.suggestions { display: none !important; }
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: white;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+.header { background: #2563eb; color: white; padding: 10px; display: flex; flex-direction: column; position: relative; }
+.search-bar { background: white; border-radius: 6px; padding: 6px 10px; margin-bottom: 0; display: flex; align-items: center; position: relative; }
+.search-bar input { border: none; outline: none; flex: 1; font-size: 14px; }
+.suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
+.suggestions li { padding: 6px 10px; cursor: pointer; font-size: 14px; }
+.suggestions li:hover { background: #f0f0f0; }
+.tabs { display: flex; justify-content: space-around; background: #1e40af; border-radius: 6px; margin-top: 8px; }
+.tabs button { flex: 1; background: none; border: none; color: white; padding: 10px; font-size: 14px; transition: background 0.2s; }
+.tabs button.active { background: white; color: #2563eb; border-radius: 6px; }
+.main { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+.main.add-tab { justify-content: center; align-items: flex-start; overflow-y: auto; padding: 10px; }
+#map { width: 100%; height: 100%; object-fit: cover; display: none; background: white; }
+#video { width: 100%; height: 100%; object-fit: cover; display: none; }
+.item-card { background: white; border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); position: relative; bottom: 0; }
+.item-card h2 { margin: 0 0 6px; font-size: 16px; }
+.item-card p { margin: 4px 0; font-size: 14px; color: #333; }
+button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8px; background: #2563eb; color: white; font-size: 14px; cursor: pointer; }
+#addForm { display: flex; flex-direction: column; gap: 8px; max-width: 400px; width: 90%; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+#addForm input { padding: 6px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; box-sizing: border-box; }
+.item-card.hidden { display: none; }
+/* List Page */
+#listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.list-item h3 { margin: 0 0 4px; font-size: 15px; }
+.list-item p { margin: 2px 0; font-size: 13px; color: #333; }
 </style>
+
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 </head>
 <body>
@@ -47,7 +81,7 @@
   </div>
 
 <script>
-// DOM Elements (same as before)
+// DOM Elements
 const video = document.getElementById('video');
 const mapImg = document.getElementById('map');
 const mainDiv = document.querySelector('.main');
@@ -64,6 +98,7 @@ const itemSectionInput = document.getElementById('itemSection');
 const itemBarcodeInput = document.getElementById('itemBarcode');
 const listPage = document.getElementById('listPage');
 const searchInput = document.getElementById('searchInput');
+const suggestions = document.getElementById('suggestions');
 
 const tabs = document.querySelectorAll(".tabs button");
 function switchTab(tab) {
@@ -93,6 +128,7 @@ function switchTab(tab) {
   }
 }
 
+// Tab click listeners
 document.getElementById('tab-map').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-scan').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-add').addEventListener('click', e => switchTab(e.target));
@@ -105,6 +141,7 @@ let currentCode = null;
 const BIN_ID = "68b57c0543b1c97be932f78d"; 
 const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
+// Load DB
 async function loadDatabase() {
   try {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
@@ -119,6 +156,7 @@ async function loadDatabase() {
   }
 }
 
+// Save to DB
 async function saveToDatabase(newCode, newItem) {
   barcodeDB[newCode] = newItem;
   await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
@@ -128,6 +166,7 @@ async function saveToDatabase(newCode, newItem) {
   });
 }
 
+// Camera Control
 function stopCamera() {
   if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
   video.srcObject = null;
@@ -144,10 +183,7 @@ async function startCamera() {
   }
 }
 
-// Barcode scanner with confirmation delay
-let lastDetected = null;
-let detectStartTime = null;
-
+// Barcode scanner
 function startScanner() {
   Quagga.init({
     inputStream: { name: 'Live', type: 'LiveStream', target: video },
@@ -156,27 +192,17 @@ function startScanner() {
 
   Quagga.onDetected(result => {
     const code = result.codeResult.code;
-
-    if (lastDetected !== code) {
-      lastDetected = code;
-      detectStartTime = Date.now();
-      return;
-    }
-
-    if (Date.now() - detectStartTime < 2000) {
-      return; // wait until stable for 2s
-    }
-
-    // Confirmed barcode
     currentCode = code;
     const item = barcodeDB[code];
     if(item){
+      // Known item → Map tab
       itemNameDisplay.textContent = item.name;
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
       shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
       switchTab(document.getElementById('tab-map'));
     } else {
+      // Unknown item → Stay in Scan tab with form
       itemNameDisplay.textContent = "❌ Not found in database";
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: -";
@@ -207,21 +233,10 @@ saveBtn.addEventListener("click", async () => {
   addForm.style.display = "none";
 });
 
-// Render list with optional sorting
-function renderList(query = "") {
+// Render list page
+function renderList() {
   listPage.innerHTML = "";
-  let items = Object.entries(barcodeDB);
-
-  if (query) {
-    items.sort((a, b) => {
-      const aName = a[1].name.toLowerCase();
-      const bName = b[1].name.toLowerCase();
-      const q = query.toLowerCase();
-      return aName.indexOf(q) - bName.indexOf(q);
-    });
-  }
-
-  for (const [code, item] of items) {
+  for (const [code, item] of Object.entries(barcodeDB)) {
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
@@ -234,11 +249,40 @@ function renderList(query = "") {
   }
 }
 
-// ✅ Search input → go to List page and sort
-searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim();
+// ✅ Search form submit → go to List page
+document.getElementById("searchForm").addEventListener("submit", e => {
+  e.preventDefault();
   switchTab(document.getElementById("tab-add"));
-  renderList(query);
+});
+
+// 🔎 Search suggestions
+searchInput.addEventListener("input", () => {
+  const query = searchInput.value.toLowerCase();
+  suggestions.innerHTML = "";
+  if (!query) { suggestions.style.display = "none"; return; }
+
+  const matches = Object.entries(barcodeDB)
+    .filter(([code, item]) => item.name.toLowerCase().includes(query))
+    .slice(0, 5);
+
+  if (matches.length === 0) { suggestions.style.display = "none"; return; }
+
+  matches.forEach(([code, item]) => {
+    const li = document.createElement("li");
+    li.textContent = item.name;
+    li.addEventListener("click", () => {
+      searchInput.value = item.name;
+      suggestions.style.display = "none";
+    });
+    suggestions.appendChild(li);
+  });
+  suggestions.style.display = "block";
+});
+
+window.addEventListener('click', e => {
+  if (!e.target.closest(".search-bar")) {
+    suggestions.style.display = "none";
+  }
 });
 
 // Init
