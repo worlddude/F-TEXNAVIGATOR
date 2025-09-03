@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator</title>
+<title>Store Item Locator — Updated</title>
 <style>
 body {
   margin: 0;
@@ -34,6 +34,11 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .item-card.hidden { display: none; }
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.list-item h3 { margin: 0 0 6px; font-size: 16px; }
+.list-item p { margin: 2px 0; font-size: 13px; color: #444; }
+.load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
+.empty { text-align: center; color: #666; padding: 20px; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -90,8 +95,19 @@ const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
 const itemBarcodeInput = document.getElementById('itemBarcode');
 const listPage = document.getElementById('listPage');
+const searchForm = document.getElementById('searchForm');
+const searchInput = document.getElementById('searchInput');
 
 const tabs = document.querySelectorAll(".tabs button");
+
+// DB
+let barcodeDB = {};
+let currentCode = null;
+
+// paging for list
+const PAGE_SIZE = 100; // max 100 at a time
+let lastRenderStart = 0;
+let lastRenderedItems = [];
 
 // Switch Tab Function
 function switchTab(tab) {
@@ -114,10 +130,14 @@ function switchTab(tab) {
     itemCard.classList.add("hidden");
     startCamera();
   } else if(tab.id === "tab-add"){
-    // List tab is empty now
+    // List tab
     listPage.style.display = "flex";
     mainDiv.classList.add("add-tab");
     stopCamera();
+    // Render first page of items if available
+    const all = getAllItemsArray();
+    lastRenderStart = 0;
+    renderList(all, lastRenderStart);
   }
 }
 
@@ -125,14 +145,6 @@ function switchTab(tab) {
 document.getElementById('tab-map').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-scan').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-add').addEventListener('click', e => switchTab(e.target));
-
-// DB
-let barcodeDB = {};
-let currentCode = null;
-
-// CONFIG
-const BIN_ID = "68b57c0543b1c97be932f78d"; 
-const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
 // Load DB
 async function loadDatabase() {
@@ -142,12 +154,132 @@ async function loadDatabase() {
     });
     if (!res.ok) throw new Error("DB not found");
     const data = await res.json();
-    barcodeDB = data.record;
+    barcodeDB = data.record || {};
   } catch (err) {
     console.warn("⚠️ Using empty DB:", err);
     barcodeDB = {};
   }
 }
+
+function getAllItemsArray() {
+  return Object.entries(barcodeDB).map(([barcode, item]) => ({ barcode, name: item.name || '', shelf: item.shelf || '', section: item.section || '' }));
+}
+
+// Render list (with paging)
+function renderList(items, startIndex = 0) {
+  lastRenderedItems = items;
+  lastRenderStart = startIndex;
+  listPage.innerHTML = '';
+  const end = Math.min(startIndex + PAGE_SIZE, items.length);
+  if(items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No items found.';
+    listPage.appendChild(empty);
+    return;
+  }
+
+  for(let i = startIndex; i < end; i++){
+    const it = items[i];
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `<h3>${escapeHtml(it.name || '-')}</h3>
+                     <p>Barcode: ${escapeHtml(it.barcode)}</p>
+                     <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>`;
+    listPage.appendChild(div);
+  }
+
+  // Load more button if there are more
+  if(end < items.length) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more';
+    btn.textContent = 'Load more';
+    btn.addEventListener('click', () => {
+      renderList(items, end);
+    });
+    listPage.appendChild(btn);
+  }
+}
+
+// Simple HTML escape
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>\"']/g, function(s){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s];
+  });
+}
+
+// Search logic — scores and sorts best matches first
+function performSearch() {
+  const q = searchInput.value.trim().toLowerCase();
+  const all = getAllItemsArray();
+  if(q === ''){
+    // show first page of all items
+    renderList(all, 0);
+    return;
+  }
+
+  const results = [];
+  for(const it of all){
+    const name = (it.name || '').toLowerCase();
+    const barcode = (it.barcode || '').toLowerCase();
+    let score = 1000;
+    if(name === q) score = -1000; // exact name match top
+    else if(name.startsWith(q)) score = -100;
+    else if(name.includes(q)) score = name.indexOf(q);
+    else if(barcode === q) score = -900;
+    else if(barcode.startsWith(q)) score = 50;
+    else if(barcode.includes(q)) score = 150;
+    // also match shelf/section lightly
+    else if((it.shelf || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q)) score = 200;
+    if(score < 1000) results.push({it, score});
+  }
+
+  // If no direct results found by the filters above, try a relaxed includes search across all fields
+  if(results.length === 0){
+    for(const it of all){
+      const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'')).toLowerCase();
+      if(hay.includes(q)) {
+        results.push({it, score: 500 + hay.indexOf(q)});
+      }
+    }
+  }
+
+  // sort by score (lower is better)
+  results.sort((a,b)=> a.score - b.score);
+  const items = results.map(r=>r.it);
+  renderList(items, 0);
+}
+
+// Prevent form from submitting / pressing Enter causing navigation or map-switch
+searchForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  // keep focus in the search field and show results
+  switchTab(document.getElementById('tab-add'));
+  performSearch();
+});
+
+// When typing: switch to list tab and show best matches (debounce lightly)
+let debounceTimer = null;
+searchInput.addEventListener('input', ()=>{
+  // immediately switch to list tab (user requested behavior)
+  switchTab(document.getElementById('tab-add'));
+  if(debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(()=>{
+    performSearch();
+    debounceTimer = null;
+  }, 150);
+});
+
+// Also make sure Enter key doesn't trigger unexpected behavior
+searchInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    // show results and keep user on list
+    switchTab(document.getElementById('tab-add'));
+    performSearch();
+  }
+});
 
 // Save to DB
 async function saveToDatabase(newCode, newItem) {
@@ -163,7 +295,7 @@ async function saveToDatabase(newCode, newItem) {
 function stopCamera() {
   if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
   video.srcObject = null;
-  if (Quagga) Quagga.stop();
+  if (Quagga) try{ Quagga.stop(); } catch(e){}
 }
 
 async function startCamera() {
@@ -226,6 +358,10 @@ saveBtn.addEventListener("click", async () => {
 
 // Init
 mapImg.style.display = "block";
+// Constants for DB access (preserve your existing values)
+const BIN_ID = "68b57c0543b1c97be932f78d"; 
+const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
+
 window.addEventListener('load', async ()=>{ await loadDatabase(); });
 </script>
 </body>
