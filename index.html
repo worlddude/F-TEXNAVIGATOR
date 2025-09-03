@@ -37,7 +37,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .item-card.hidden { display: none; }
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; }
 .list-item h3 { margin: 0 0 4px; font-size: 15px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #333; }
 </style>
@@ -45,7 +45,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 </head>
 <body>
-  <!-- 🔵 Header -->
+  <!-- Header -->
   <div class="header">
     <form class="search-bar" id="searchForm" autocomplete="off">
       <input type="text" id="searchInput" placeholder="Search for an item or scan a barcode">
@@ -58,14 +58,14 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     </div>
   </div>
 
-  <!-- 🗺️ Map / Camera / List -->
+  <!-- Map / Camera / List -->
   <div class="main">
     <img id="map" />
     <video id="video" playsinline autoplay muted></video>
     <div id="listPage" style="display:none;"></div>
   </div>
 
-  <!-- 📋 Item Card for Scan -->
+  <!-- Item Card for Scan -->
   <div class="item-card" id="itemCard">
     <h2 id="itemNameDisplay">No item selected</h2>
     <p id="barcodeDisplay">Barcode: -</p>
@@ -101,6 +101,8 @@ const searchInput = document.getElementById('searchInput');
 const suggestions = document.getElementById('suggestions');
 
 const tabs = document.querySelectorAll(".tabs button");
+
+// Switch Tab Function
 function switchTab(tab) {
   tabs.forEach(btn => btn.classList.remove("active"));
   tab.classList.add("active");
@@ -195,12 +197,7 @@ function startScanner() {
     currentCode = code;
     const item = barcodeDB[code];
     if(item){
-      // Known item → Map tab
-      itemNameDisplay.textContent = item.name;
-      barcodeDisplay.textContent = "Barcode: " + code;
-      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
-      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
-      switchTab(document.getElementById('tab-map'));
+      showItemOnMap(code,item);
     } else {
       // Unknown item → Stay in Scan tab with form
       itemNameDisplay.textContent = "❌ Not found in database";
@@ -233,26 +230,15 @@ saveBtn.addEventListener("click", async () => {
   addForm.style.display = "none";
 });
 
-
-
-
-
-
-
-
-
-
-
-// Render list page with optional filter
+// Render List Function
 function renderList(filterName = "") {
   listPage.innerHTML = "";
   const entries = Object.entries(barcodeDB);
-
   const filtered = filterName
-    ? entries.filter(([code, item]) => item.name.toLowerCase().includes(filterName.toLowerCase()))
+    ? entries.filter(([code,item]) => item.name.toLowerCase().includes(filterName.toLowerCase()))
     : entries;
 
-  filtered.forEach(([code, item]) => {
+  filtered.forEach(([code,item]) => {
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
@@ -261,18 +247,13 @@ function renderList(filterName = "") {
       <p>Shelf: ${item.shelf}</p>
       <p>Section: ${item.section}</p>
     `;
-
-    // Make list item clickable
-    div.addEventListener("click", () => {
-      showItemOnMap(code, item);
-    });
-
+    div.addEventListener("click", () => showItemOnMap(code,item));
     listPage.appendChild(div);
   });
 }
 
-// Function to show item on Map tab
-function showItemOnMap(code, item) {
+// Show item on Map tab
+function showItemOnMap(code,item){
   itemNameDisplay.textContent = item.name;
   barcodeDisplay.textContent = "Barcode: " + code;
   dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
@@ -280,56 +261,44 @@ function showItemOnMap(code, item) {
   switchTab(document.getElementById("tab-map"));
 }
 
-// 🔎 Search suggestions & live filtering
+// Search Input Handling
 searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim();
-
-  // Filter list and switch to List tab
-  renderList(query);
-  switchTab(document.getElementById("tab-add"));
-
-  // Suggestions for dropdown
-  suggestions.innerHTML = "";
-  if (!query) {
-    suggestions.style.display = "none";
-    return;
+  const query = searchInput.value.trim().toLowerCase();
+  // Always switch to List tab
+  if(!document.getElementById("tab-add").classList.contains("active")){
+    switchTab(document.getElementById("tab-add"));
   }
+  renderList(query);
+
+  // Suggestions
+  suggestions.innerHTML = "";
+  if(!query){ suggestions.style.display="none"; return; }
 
   const matches = Object.entries(barcodeDB)
-    .filter(([code, item]) => item.name.toLowerCase().includes(query.toLowerCase()))
-    .slice(0, 5);
+    .filter(([code,item]) => item.name.toLowerCase().includes(query))
+    .slice(0,5);
 
-  if (matches.length === 0) {
-    suggestions.style.display = "none";
-    return;
-  }
-
-  matches.forEach(([code, item]) => {
+  matches.forEach(([code,item])=>{
     const li = document.createElement("li");
     li.textContent = item.name;
-    li.addEventListener("click", () => {
+    li.addEventListener("click", ()=>{
       searchInput.value = item.name;
       suggestions.style.display = "none";
-      renderList(item.name); // optional: filter the list by this item
+      renderList(item.name.toLowerCase());
     });
     suggestions.appendChild(li);
   });
-  suggestions.style.display = "block";
+  suggestions.style.display = matches.length? "block":"none";
 });
 
-
-
-
-
+// Hide suggestions when clicking outside
 window.addEventListener('click', e => {
-  if (!e.target.closest(".search-bar")) {
-    suggestions.style.display = "none";
-  }
+  if (!e.target.closest(".search-bar")) suggestions.style.display = "none";
 });
 
 // Init
 mapImg.style.display = "block";
-window.addEventListener('load', async () => { await loadDatabase(); });
+window.addEventListener('load', async ()=>{ await loadDatabase(); });
 </script>
 </body>
 </html>
