@@ -18,9 +18,6 @@ body {
 .header { background: #2563eb; color: white; padding: 10px; display: flex; flex-direction: column; position: relative; }
 .search-bar { background: white; border-radius: 6px; padding: 6px 10px; margin-bottom: 0; display: flex; align-items: center; position: relative; }
 .search-bar input { border: none; outline: none; flex: 1; font-size: 14px; }
-.suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
-.suggestions li { padding: 6px 10px; cursor: pointer; font-size: 14px; }
-.suggestions li:hover { background: #f0f0f0; }
 .tabs { display: flex; justify-content: space-around; background: #1e40af; border-radius: 6px; margin-top: 8px; }
 .tabs button { flex: 1; background: none; border: none; color: white; padding: 10px; font-size: 14px; transition: background 0.2s; }
 .tabs button.active { background: white; color: #2563eb; border-radius: 6px; }
@@ -37,9 +34,6 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .item-card.hidden { display: none; }
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; }
-.list-item h3 { margin: 0 0 4px; font-size: 15px; }
-.list-item p { margin: 2px 0; font-size: 13px; color: #333; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -49,7 +43,6 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
   <div class="header">
     <form class="search-bar" id="searchForm" autocomplete="off">
       <input type="text" id="searchInput" placeholder="Search for an item or scan a barcode">
-      <ul class="suggestions" id="suggestions"></ul>
     </form>
     <div class="tabs">
       <button id="tab-add">List</button>
@@ -97,8 +90,6 @@ const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
 const itemBarcodeInput = document.getElementById('itemBarcode');
 const listPage = document.getElementById('listPage');
-const searchInput = document.getElementById('searchInput');
-const suggestions = document.getElementById('suggestions');
 
 const tabs = document.querySelectorAll(".tabs button");
 
@@ -123,9 +114,9 @@ function switchTab(tab) {
     itemCard.classList.add("hidden");
     startCamera();
   } else if(tab.id === "tab-add"){
+    // List tab is empty now
     listPage.style.display = "flex";
     mainDiv.classList.add("add-tab");
-    renderList();
     stopCamera();
   }
 }
@@ -197,9 +188,12 @@ function startScanner() {
     currentCode = code;
     const item = barcodeDB[code];
     if(item){
-      showItemOnMap(code,item);
+      itemNameDisplay.textContent = item.name;
+      barcodeDisplay.textContent = "Barcode: " + code;
+      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
+      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+      switchTab(document.getElementById('tab-map'));
     } else {
-      // Unknown item → Stay in Scan tab with form
       itemNameDisplay.textContent = "❌ Not found in database";
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: -";
@@ -228,72 +222,6 @@ saveBtn.addEventListener("click", async () => {
   itemNameDisplay.textContent = name;
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
-});
-
-// Render List Function
-function renderList(filterName = "") {
-  listPage.innerHTML = "";
-  const entries = Object.entries(barcodeDB);
-  const filtered = filterName
-    ? entries.filter(([code,item]) => item.name.toLowerCase().includes(filterName.toLowerCase()))
-    : entries;
-
-  filtered.forEach(([code,item]) => {
-    const div = document.createElement("div");
-    div.className = "list-item";
-    div.innerHTML = `
-      <h3>${item.name}</h3>
-      <p>Barcode: ${code}</p>
-      <p>Shelf: ${item.shelf}</p>
-      <p>Section: ${item.section}</p>
-    `;
-    div.addEventListener("click", () => showItemOnMap(code,item));
-    listPage.appendChild(div);
-  });
-}
-
-// Show item on Map tab
-function showItemOnMap(code,item){
-  itemNameDisplay.textContent = item.name;
-  barcodeDisplay.textContent = "Barcode: " + code;
-  dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
-  shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
-  switchTab(document.getElementById("tab-map"));
-}
-
-// Search Input Handling
-searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim().toLowerCase();
-  // Always switch to List tab
-  if(!document.getElementById("tab-add").classList.contains("active")){
-    switchTab(document.getElementById("tab-add"));
-  }
-  renderList(query);
-
-  // Suggestions
-  suggestions.innerHTML = "";
-  if(!query){ suggestions.style.display="none"; return; }
-
-  const matches = Object.entries(barcodeDB)
-    .filter(([code,item]) => item.name.toLowerCase().includes(query))
-    .slice(0,5);
-
-  matches.forEach(([code,item])=>{
-    const li = document.createElement("li");
-    li.textContent = item.name;
-    li.addEventListener("click", ()=>{
-      searchInput.value = item.name;
-      suggestions.style.display = "none";
-      renderList(item.name.toLowerCase());
-    });
-    suggestions.appendChild(li);
-  });
-  suggestions.style.display = matches.length? "block":"none";
-});
-
-// Hide suggestions when clicking outside
-window.addEventListener('click', e => {
-  if (!e.target.closest(".search-bar")) suggestions.style.display = "none";
 });
 
 // Init
