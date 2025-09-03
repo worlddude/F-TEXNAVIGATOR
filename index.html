@@ -233,10 +233,26 @@ saveBtn.addEventListener("click", async () => {
   addForm.style.display = "none";
 });
 
-// Render list page
-function renderList() {
+
+
+
+
+
+
+
+
+
+
+// Render list page with optional filter
+function renderList(filterName = "") {
   listPage.innerHTML = "";
-  for (const [code, item] of Object.entries(barcodeDB)) {
+  const entries = Object.entries(barcodeDB);
+
+  const filtered = filterName
+    ? entries.filter(([code, item]) => item.name.toLowerCase().includes(filterName.toLowerCase()))
+    : entries;
+
+  filtered.forEach(([code, item]) => {
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
@@ -245,27 +261,48 @@ function renderList() {
       <p>Shelf: ${item.shelf}</p>
       <p>Section: ${item.section}</p>
     `;
+
+    // Make list item clickable
+    div.addEventListener("click", () => {
+      showItemOnMap(code, item);
+    });
+
     listPage.appendChild(div);
-  }
+  });
 }
 
-// ✅ Search form submit → go to List page
-document.getElementById("searchForm").addEventListener("submit", e => {
-  e.preventDefault();
-  switchTab(document.getElementById("tab-add"));
-});
+// Function to show item on Map tab
+function showItemOnMap(code, item) {
+  itemNameDisplay.textContent = item.name;
+  barcodeDisplay.textContent = "Barcode: " + code;
+  dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
+  shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+  switchTab(document.getElementById("tab-map"));
+}
 
-// 🔎 Search suggestions
+// 🔎 Search suggestions & live filtering
 searchInput.addEventListener("input", () => {
-  const query = searchInput.value.toLowerCase();
+  const query = searchInput.value.trim();
+
+  // Filter list and switch to List tab
+  renderList(query);
+  switchTab(document.getElementById("tab-add"));
+
+  // Suggestions for dropdown
   suggestions.innerHTML = "";
-  if (!query) { suggestions.style.display = "none"; return; }
+  if (!query) {
+    suggestions.style.display = "none";
+    return;
+  }
 
   const matches = Object.entries(barcodeDB)
-    .filter(([code, item]) => item.name.toLowerCase().includes(query))
+    .filter(([code, item]) => item.name.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 5);
 
-  if (matches.length === 0) { suggestions.style.display = "none"; return; }
+  if (matches.length === 0) {
+    suggestions.style.display = "none";
+    return;
+  }
 
   matches.forEach(([code, item]) => {
     const li = document.createElement("li");
@@ -273,11 +310,16 @@ searchInput.addEventListener("input", () => {
     li.addEventListener("click", () => {
       searchInput.value = item.name;
       suggestions.style.display = "none";
+      renderList(item.name); // optional: filter the list by this item
     });
     suggestions.appendChild(li);
   });
   suggestions.style.display = "block";
 });
+
+
+
+
 
 window.addEventListener('click', e => {
   if (!e.target.closest(".search-bar")) {
