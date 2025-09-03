@@ -37,7 +37,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .item-card.hidden { display: none; }
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; }
+.list-item { border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fafafa; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 .list-item h3 { margin: 0 0 4px; font-size: 15px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #333; }
 </style>
@@ -175,7 +175,7 @@ function stopCamera() {
 
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUser Media({ video: { facingMode: 'environment' } });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = stream;
     startScanner();
   } catch (err) {
@@ -245,19 +245,6 @@ function renderList() {
       <p>Shelf: ${item.shelf}</p>
       <p>Section: ${item.section}</p>
     `;
-
-    // Add click listener to switch tab and show item info
-    div.addEventListener("click", () => {
-      // Update item card info
-      itemNameDisplay.textContent = item.name;
-      barcodeDisplay.textContent = "Barcode: " + code;
-      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
-      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
-
-      // Switch to Map tab
-      switchTab(document.getElementById("tab-map"));
-    });
-
     listPage.appendChild(div);
   }
 }
