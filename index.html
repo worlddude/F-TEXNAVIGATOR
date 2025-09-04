@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator — Updated (fuzzy + click-to-map + torch + multi-detect + photos)</title>
+<title>Store Item Locator — Client-side GitHub Upload</title>
 <style>
 body {
   margin: 0;
@@ -172,7 +172,21 @@ const PAGE_SIZE = 100;
 let lastRenderStart = 0;
 let lastRenderedItems = [];
 
-// Switch Tab Function
+// --- YOUR CONFIG ---
+// JSONBin constants (preserve your existing values)
+const BIN_ID = "68b57c0543b1c97be932f78d";
+const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
+
+// GITHUB client-side config (VERY SENSITIVE — do not publish the token)
+// Fill these with your values for client-side upload testing.
+const GITHUB_OWNER = "";     // e.g. "your-github-username"
+const GITHUB_REPO  = "";     // e.g. "your-repo-name"
+const GITHUB_BRANCH = "main"; // or your branch
+const GITHUB_TOKEN = "";     // your fine-grained PAT with "Contents: Read & write"
+const GITHUB_PHOTO_PATH = "assets/Item_photo"; // path in repo to store images
+
+// --------------------
+
 function switchTab(tab) {
   tabs.forEach(btn => btn.classList.remove("active"));
   tab.classList.add("active");
@@ -196,15 +210,12 @@ function switchTab(tab) {
     video.style.display = "block";
     itemCard.classList.add("hidden");
     startCamera();
-    // show torch button when scanning
     torchBtn.style.display = "block";
-    // detection counter UI hidden by CSS; detection still works
   } else if(tab.id === "tab-add"){
     // List tab
     listPage.style.display = "flex";
     mainDiv.classList.add("add-tab");
     stopCamera();
-    // Render first page of items if available
     const all = getAllItemsArray();
     lastRenderStart = 0;
     renderList(all, lastRenderStart);
@@ -237,12 +248,10 @@ function getAllItemsArray() {
     name: item.name || '',
     shelf: item.shelf || '',
     section: item.section || '',
-    // prefer inline photo data, then stored path
     photo: item.photo || item.photoPath || ''
   }));
 }
 
-// Levenshtein distance for fuzzy matching
 function levenshtein(a, b) {
   if (a === b) return 0;
   if (!a.length) return b.length;
@@ -266,7 +275,6 @@ function levenshtein(a, b) {
   return matrix[b.length][a.length];
 }
 
-// Render list (with paging)
 function renderList(items, startIndex = 0) {
   lastRenderedItems = items;
   lastRenderStart = startIndex;
@@ -301,7 +309,6 @@ function renderList(items, startIndex = 0) {
       const barcode = div.dataset.barcode;
       const item = barcodeDB[barcode];
       if(item){
-        // set photo display if exists
         if(item.photo){
           itemPhotoDisplay.src = item.photo;
           itemPhotoDisplay.style.display = 'block';
@@ -316,7 +323,6 @@ function renderList(items, startIndex = 0) {
         barcodeDisplay.textContent = 'Barcode: ' + barcode;
         dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
         shelfDisplay.textContent = 'Shelf / Section nr: ' + (item.shelf || '-') + ' / ' + (item.section || '-');
-        // switch to map tab
         switchTab(document.getElementById('tab-map'));
       } else {
         alert('Item not found');
@@ -326,7 +332,6 @@ function renderList(items, startIndex = 0) {
     listPage.appendChild(div);
   }
 
-  // Load more button if there are more
   if(end < items.length) {
     const btn = document.createElement('button');
     btn.className = 'load-more';
@@ -338,7 +343,6 @@ function renderList(items, startIndex = 0) {
   }
 }
 
-// Simple HTML escape
 function escapeHtml(str){
   if(!str) return '';
   return String(str).replace(/[&<>\"']/g, function(s){
@@ -346,13 +350,11 @@ function escapeHtml(str){
   });
 }
 
-// Search logic — scores and sorts best matches first (now includes Levenshtein fuzzy matching)
 function performSearch() {
   const qRaw = searchInput.value.trim();
   const q = qRaw.toLowerCase();
   const all = getAllItemsArray();
   if(q === ''){
-    // show first page of all items
     renderList(all, 0);
     return;
   }
@@ -398,15 +400,12 @@ function performSearch() {
   renderList(items, 0);
 }
 
-// Prevent form from submitting / pressing Enter causing navigation or map-switch
 searchForm.addEventListener('submit', (e)=>{
   e.preventDefault();
-  // keep focus in the search field and show results
   switchTab(document.getElementById('tab-add'));
   performSearch();
 });
 
-// When typing: switch to list tab and show best matches (debounce lightly)
 let debounceTimer = null;
 searchInput.addEventListener('input', ()=>{
   switchTab(document.getElementById('tab-add'));
@@ -425,97 +424,78 @@ searchInput.addEventListener('keydown', (e)=>{
   }
 });
 
-// Save to DB
+// ---------------------------
+// Client-side save/upload code
+// ---------------------------
+
+// Save to JSONBin and error-check
 async function saveToDatabase(newCode, newItem) {
   barcodeDB[newCode] = newItem;
-  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+  const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY },
     body: JSON.stringify(barcodeDB, null, 2)
   });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error('JSONBin save failed: ' + res.status + ' ' + txt);
+  }
+  try { return await res.json(); } catch(e) { return null; }
 }
 
-// Camera Control
-function stopCamera() {
-  acceptCooldown = false;
-  lastDetectedCode = null;
-  consecutiveDetectCount = 0;
-  detectBadge.style.display = "none";
-  torchBtn.style.display = "none";
-
-  // stop our stream if present
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
-    currentStream = null;
-  }
-  if (video.srcObject) {
-    try { video.srcObject.getTracks().forEach(t => t.stop()); } catch(e){}
-    video.srcObject = null;
-  }
-  // stop Quagga as well
-  if (window.Quagga) {
-    try { Quagga.stop(); } catch (e) {}
-  }
+// dataURL -> base64 portion
+function dataURLtoBase64(dataURL) {
+  const idx = dataURL.indexOf('base64,');
+  if (idx === -1) return null;
+  return dataURL.substring(idx + 7);
 }
 
-async function startCamera() {
-  // reset counters and UI
-  acceptCooldown = false;
-  lastDetectedCode = null;
-  consecutiveDetectCount = 0;
-  // detectBadge UI is hidden; still set text safely
-  detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+// Upload to GitHub (client-side). Returns raw.githubusercontent URL.
+async function uploadToGitHub(barcode, dataURL) {
+  if (!GITHUB_OWNER || !GITHUB_REPO || !GITHUB_TOKEN) {
+    throw new Error('GitHub config missing');
+  }
+  const path = `${GITHUB_PHOTO_PATH}/${barcode}.png`;
+  const apiUrl = `https://api.github.com/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${encodeURIComponent(path)}`;
+
+  const contentBase64 = dataURLtoBase64(dataURL);
+  if (!contentBase64) throw new Error('Invalid image data');
+
+  // Try GET to obtain sha if file exists (so we can update)
+  let sha = null;
   try {
-    // request environment camera
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    currentStream = stream;
-    video.srcObject = stream;
-    video.play().catch(()=>{});
-    torchOn = false; // default off
-    // initialize scanner AFTER we have a stream (Quagga might request another stream internally,
-    // but we at least have a track reference for torch control)
-    startScanner();
-  } catch (err) {
-    alert('Error accessing camera: ' + err.message);
-  }
-}
-
-// Torch (flash) control
-async function toggleTorch() {
-  if (!currentStream) {
-    alert('Camera not started');
-    return;
-  }
-  const track = currentStream.getVideoTracks()[0];
-  if (!track) {
-    alert('No video track available');
-    return;
-  }
-  const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-  if (!capabilities || !capabilities.torch) {
-    // Some browsers expose torch in capabilities; if absent, we try applyConstraints anyway but show a warning
-    try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
-      torchOn = !torchOn;
-      torchBtn.textContent = torchOn ? '🔦' : '🔦';
-    } catch (err) {
-      alert('Torch not supported on this device/browser.');
+    const getRes = await fetch(apiUrl + `?ref=${encodeURIComponent(GITHUB_BRANCH)}`, {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' }
+    });
+    if (getRes.ok) {
+      const json = await getRes.json();
+      if (json && json.sha) sha = json.sha;
     }
-    return;
-  }
-  try {
-    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
-    torchOn = !torchOn;
-    // update button style to indicate state
-    torchBtn.style.background = torchOn ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.45)';
-    torchBtn.style.color = torchOn ? '#111' : 'white';
   } catch (err) {
-    console.warn('Torch toggle failed:', err);
-    alert('Failed to toggle torch: ' + err.message);
+    console.warn('GitHub GET failed (maybe not exists):', err);
   }
-}
 
-torchBtn.addEventListener('click', toggleTorch);
+  const body = {
+    message: `Add/update photo for ${barcode}`,
+    content: contentBase64,
+    branch: GITHUB_BRANCH
+  };
+  if (sha) body.sha = sha;
+
+  const putRes = await fetch(apiUrl, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!putRes.ok) {
+    const txt = await putRes.text();
+    throw new Error('GitHub upload failed: ' + putRes.status + ' ' + txt);
+  }
+
+  // raw url
+  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`;
+}
 
 // helper: capture current video frame to data URL
 function captureFrameDataURL() {
@@ -548,13 +528,11 @@ itemPhotoInput.addEventListener('change', (e) => {
 
 // Barcode scanner with multi-detection confirmation
 function startScanner() {
-  // Reset detection state
   lastDetectedCode = null;
   consecutiveDetectCount = 0;
   acceptCooldown = false;
   detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
 
-  // Initialize Quagga
   Quagga.init({
     inputStream: { name: 'Live', type: 'LiveStream', target: video },
     decoder: { readers: ['ean_reader','upc_reader','code_128_reader'] },
@@ -570,31 +548,20 @@ function startScanner() {
   Quagga.onDetected(result => {
     if (!result || !result.codeResult) return;
     const code = result.codeResult.code;
-
-    // If we are already handling an accepted code, ignore until reset
     if (acceptCooldown) return;
 
-    if (lastDetectedCode === code) {
-      consecutiveDetectCount++;
-    } else {
-      lastDetectedCode = code;
-      consecutiveDetectCount = 1;
-    }
+    if (lastDetectedCode === code) consecutiveDetectCount++;
+    else { lastDetectedCode = code; consecutiveDetectCount = 1; }
 
-    // detection counter UI removed (hidden). we still use the internal counts.
-    // Only accept the code if we've seen it CONFIRMATION_THRESHOLD times in a row
     if (consecutiveDetectCount >= CONFIRMATION_THRESHOLD) {
-      acceptCooldown = true; // avoid double handling
-      // reset counters so the next scan starts fresh
+      acceptCooldown = true;
       lastDetectedCode = null;
       consecutiveDetectCount = 0;
       detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
 
-      // process confirmed code
       currentCode = code;
       const item = barcodeDB[code];
       if(item){
-        // set photo display if exists
         if(item.photo){
           itemPhotoDisplay.src = item.photo;
           itemPhotoDisplay.style.display = 'block';
@@ -609,17 +576,15 @@ function startScanner() {
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
         shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
-        // switch to map tab
         switchTab(document.getElementById('tab-map'));
       } else {
-        // not in DB => capture a photo from the live stream and show add form
         itemNameDisplay.textContent = "❌ Not found in database";
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: -";
         shelfDisplay.textContent = "";
         itemBarcodeInput.value = code;
 
-        // capture a frame for initial photo suggestion
+        // capture frame for preview
         const dataURL = captureFrameDataURL();
         if(dataURL){
           itemPhotoData.value = dataURL;
@@ -630,62 +595,158 @@ function startScanner() {
           photoPreview.style.display = 'none';
         }
 
-        // hide the live video and show add form
         video.style.display = "none";
         addForm.style.display = "flex";
         itemCard.classList.remove("hidden");
-
-        // stop camera to allow user to edit/save
         stopCamera();
       }
 
-      // small timeout to allow UI to settle; then unlock
-      setTimeout(()=> {
-        acceptCooldown = false;
-        // detectBadge is hidden; nothing else to hide
-      }, 700);
+      setTimeout(()=> { acceptCooldown = false; }, 700);
     }
   });
 }
 
-// Save new item
-saveBtn.addEventListener("click", async () => {
-  const name = itemNameInput.value.trim();
-  const shelf = itemShelfInput.value.trim();
-  const section = itemSectionInput.value.trim();
-  const barcode = itemBarcodeInput.value.trim();
-  if(!name || !shelf || !section || !barcode){
-    alert("Please fill all fields");
+function stopCamera() {
+  acceptCooldown = false;
+  lastDetectedCode = null;
+  consecutiveDetectCount = 0;
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = null;
+  }
+  if (video.srcObject) {
+    try { video.srcObject.getTracks().forEach(t => t.stop()); } catch(e){}
+    video.srcObject = null;
+  }
+  if (window.Quagga) {
+    try { Quagga.stop(); } catch (e) {}
+  }
+}
+
+async function startCamera() {
+  acceptCooldown = false;
+  lastDetectedCode = null;
+  consecutiveDetectCount = 0;
+  detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    currentStream = stream;
+    video.srcObject = stream;
+    video.play().catch(()=>{});
+    torchOn = false;
+    startScanner();
+  } catch (err) {
+    alert('Error accessing camera: ' + err.message);
+  }
+}
+
+// Torch control
+async function toggleTorch() {
+  if (!currentStream) {
+    alert('Camera not started');
     return;
   }
+  const track = currentStream.getVideoTracks()[0];
+  if (!track) {
+    alert('No video track available');
+    return;
+  }
+  const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+  if (!capabilities || !capabilities.torch) {
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+      torchOn = !torchOn;
+      torchBtn.textContent = torchOn ? '🔦' : '🔦';
+    } catch (err) {
+      alert('Torch not supported on this device/browser.');
+    }
+    return;
+  }
+  try {
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    torchBtn.style.background = torchOn ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.45)';
+    torchBtn.style.color = torchOn ? '#111' : 'white';
+  } catch (err) {
+    console.warn('Torch toggle failed:', err);
+    alert('Failed to toggle torch: ' + err.message);
+  }
+}
 
-  // photo handling: prefer uploaded/edited data, fallback to captured
-  const photoDataVal = itemPhotoData.value || null;
-  const photoPath = `/assets/Item_photo/${barcode}.png`;
+torchBtn.addEventListener('click', toggleTorch);
 
-  const newItem = { name, shelf, section, photo: photoDataVal, photoPath };
-  await saveToDatabase(barcode,newItem);
+// ---------------------------
+// Save button handler (client-side flow)
+// ---------------------------
+saveBtn.addEventListener("click", async () => {
+  try {
+    const name = itemNameInput.value.trim();
+    const shelf = itemShelfInput.value.trim();
+    const section = itemSectionInput.value.trim();
+    const barcode = itemBarcodeInput.value.trim();
+    if(!name || !shelf || !section || !barcode){
+      alert("Please fill all fields");
+      return;
+    }
 
-  // update UI
-  itemNameDisplay.textContent = name;
-  shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
-  addForm.style.display = "none";
+    const inlinePhoto = itemPhotoData.value || null;
+    const initialPhotoPath = `/assets/Item_photo/${barcode}.png`;
 
-  // show saved photo in item card if available
-  if(newItem.photo){
-    itemPhotoDisplay.src = newItem.photo;
-    itemPhotoDisplay.style.display = 'block';
-  } else {
-    itemPhotoDisplay.style.display = 'none';
+    // First: save to JSONBin (inline photo included so DB persists even if GitHub upload fails)
+    const itemObj = { name, shelf, section, photo: inlinePhoto, photoPath: initialPhotoPath };
+    await saveToDatabase(barcode, itemObj);
+
+    // Try uploading to GitHub if we have inline photo data and GH config present
+    if (inlinePhoto && GITHUB_TOKEN && GITHUB_OWNER && GITHUB_REPO) {
+      try {
+        const rawUrl = await uploadToGitHub(barcode, inlinePhoto);
+        // update our DB entry to point to raw URL (optionally remove big inline image)
+        const updatedItem = { ...itemObj, photoPath: rawUrl };
+        // optionally remove inline photo to keep DB small:
+        // delete updatedItem.photo;
+        await saveToDatabase(barcode, updatedItem);
+        barcodeDB[barcode] = updatedItem;
+      } catch (ghErr) {
+        console.warn('GitHub upload failed:', ghErr);
+        alert('Image upload to GitHub failed: ' + ghErr.message + '\nImage still saved inline in JSONBin.');
+      }
+    }
+
+    // Reload DB so the app state is current (ensures scanning will find the new item)
+    await loadDatabase();
+
+    // Show the saved item in the Map tab
+    const saved = barcodeDB[barcode];
+    if (saved) {
+      if (saved.photoPath) {
+        itemPhotoDisplay.src = saved.photoPath;
+        itemPhotoDisplay.style.display = 'block';
+      } else if (saved.photo) {
+        itemPhotoDisplay.src = saved.photo;
+        itemPhotoDisplay.style.display = 'block';
+      } else {
+        itemPhotoDisplay.style.display = 'none';
+      }
+      itemNameDisplay.textContent = saved.name || name;
+      shelfDisplay.textContent = "Shelf / Section nr: " + (saved.shelf || shelf) + " / " + (saved.section || section);
+    }
+
+    addForm.style.display = "none";
+    switchTab(document.getElementById('tab-map'));
+
+    alert('Item saved successfully.');
+
+  } catch (err) {
+    console.error('Save error:', err);
+    alert('Save failed: ' + err.message);
   }
 });
 
 // Init
 mapImg.style.display = "block";
-// Constants for DB access (preserve your existing values)
-const BIN_ID = "68b57c0543b1c97be932f78d";
-const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
-
 window.addEventListener('load', async ()=>{ await loadDatabase(); });
 </script>
 </body>
