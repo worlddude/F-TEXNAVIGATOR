@@ -38,6 +38,9 @@ body {
   display: none;
 }
 .map-marker .pin {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 28px;
   height: 28px;
   border-radius: 50% 50% 50% 50%;
@@ -173,14 +176,11 @@ let lastRenderStart = 0;
 let lastRenderedItems = [];
 
 /* ---------- MAP URL ----------
-   Update this if your image is hosted elsewhere.
-   Examples:
-   - If using GitHub Pages (username.github.io/repo): "/repo/Assets/Map.png"
-   - If using raw GitHub content: "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/Assets/Map.png"
+   Using option 1: relative path to Assets/Map.png
 */
-const MAP_URL = './Assets/Map.png'; // <-- change this path if needed
+const MAP_URL = './Assets/Map.png'; // <-- relative path (option 1)
 
-// Switch Tab Function
+/* Switch Tab Function */
 function switchTab(tab) {
   tabs.forEach(btn => btn.classList.remove("active"));
   tab.classList.add("active");
@@ -242,24 +242,21 @@ function levenshtein(a, b) {
   if (!a.length) return b.length;
   if (!b.length) return a.length;
   const matrix = [];
-  // increment along the first column of each row
   for (let i = 0; i <= b.length; i++) {
     matrix[i] = [i];
   }
-  // increment each column in the first row
   for (let j = 0; j <= a.length; j++) {
     matrix[0][j] = j;
   }
-  // Fill in the rest of the matrix
   for (let i = 1; i <= b.length; i++) {
     for (let j = 1; j <= a.length; j++) {
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
         );
       }
     }
@@ -299,13 +296,11 @@ function renderList(items, startIndex = 0) {
         barcodeDisplay.textContent = 'Barcode: ' + barcode;
         dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
         shelfDisplay.textContent = 'Shelf / Section nr: ' + (item.shelf || '-') + ' / ' + (item.section || '-');
-        // show marker for item if coordinates exist
         if(item.map && typeof item.map.x === 'number' && typeof item.map.y === 'number'){
           placeMarker(item.map.x, item.map.y);
         } else {
           hideMarker();
         }
-        // switch to map tab
         switchTab(document.getElementById('tab-map'));
       } else {
         alert('Item not found');
@@ -352,22 +347,17 @@ function performSearch() {
     const barcode = (it.barcode || '').toLowerCase();
     let score = 10000;
 
-    // high-priority exact matches
     if(name === q) score = -1000;
     else if(barcode === q) score = -900;
-    // startsWith is good
     else if(name.startsWith(q)) score = -100 + name.indexOf(q);
     else if(barcode.startsWith(q)) score = -50 + barcode.indexOf(q);
-    // substring matches
     else if(name.includes(q)) score = 10 + name.indexOf(q);
     else if(barcode.includes(q)) score = 20 + barcode.indexOf(q);
-    // shelf/section match
     else if((it.shelf || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q)) score = 200;
     else {
-      // fuzzy via Levenshtein (allow small relative distance)
       const levName = levenshtein(q, name);
       const maxAllowed = Math.max(2, Math.floor(name.length * 0.25));
-      if(name && levName <= maxAllowed) score = 50 + levName; // smaller distance => better
+      if(name && levName <= maxAllowed) score = 50 + levName;
       else {
         const levBarcode = levenshtein(q, barcode);
         const maxAllowedBar = Math.max(1, Math.floor(barcode.length * 0.15));
@@ -378,7 +368,6 @@ function performSearch() {
     if(score < 10000) results.push({it, score});
   }
 
-  // If no direct results found by the filters above, try a relaxed includes search across all fields (fallback)
   if(results.length === 0){
     for(const it of all){
       const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'')).toLowerCase();
@@ -388,7 +377,6 @@ function performSearch() {
     }
   }
 
-  // sort by score (lower is better)
   results.sort((a,b)=> a.score - b.score);
   const items = results.map(r=>r.it);
   renderList(items, 0);
@@ -438,28 +426,20 @@ async function saveToDatabase(newCode, newItem) {
 function placeMarker(xPct, yPct) {
   // xPct and yPct are numbers [0..1]
   if(typeof xPct !== 'number' || typeof yPct !== 'number') return;
-  // convert to pixels relative to mapWrap
   const rect = mapImg.getBoundingClientRect();
-  // if image hasn't been laid out yet, do a retry shortly
   if(rect.width === 0 || rect.height === 0) {
     setTimeout(()=>placeMarker(xPct, yPct), 60);
     return;
   }
-  // compute absolute position based on image visible area inside mapWrap
-  // We assume the img covers the whole mapWrap area (object-fit: contain) so we must account for letterboxing
   const wrapRect = mapWrap.getBoundingClientRect();
-  const imgAspect = mapImg.naturalWidth && mapImg.naturalHeight ? mapImg.naturalWidth / mapImg.naturalHeight : rect.width / rect.height;
-  const wrapAspect = wrapRect.width / wrapRect.height;
-  let imgLeft = rect.left;
-  let imgTop = rect.top;
-  let imgWidth = rect.width;
-  let imgHeight = rect.height;
+  const imgLeft = rect.left;
+  const imgTop = rect.top;
+  const imgWidth = rect.width;
+  const imgHeight = rect.height;
 
-  // absolute coordinates (client)
   const clientX = imgLeft + xPct * imgWidth;
   const clientY = imgTop + yPct * imgHeight;
 
-  // position marker relative to mapWrap (use percent)
   const leftPercent = ((clientX - wrapRect.left) / wrapRect.width) * 100;
   const topPercent = ((clientY - wrapRect.top) / wrapRect.height) * 100;
 
@@ -480,18 +460,14 @@ mapImg.addEventListener('click', async (e) => {
   if(rect.width === 0 || rect.height === 0) return;
   const x = (e.clientX - rect.left) / rect.width;
   const y = (e.clientY - rect.top) / rect.height;
-  // clamp
   const xPct = Math.max(0, Math.min(1, x));
   const yPct = Math.max(0, Math.min(1, y));
   placeMarker(xPct, yPct);
 
-  // if a current item is selected (existing in DB), save coordinates
   if(currentCode && barcodeDB[currentCode]) {
     barcodeDB[currentCode].map = { x: xPct, y: yPct };
-    // persist immediately
     try {
       await saveToDatabase(currentCode, barcodeDB[currentCode]);
-      // update display
       shelfDisplay.textContent = 'Shelf / Section nr: ' + (barcodeDB[currentCode].shelf || '-') + ' / ' + (barcodeDB[currentCode].section || '-')
         + `  (map: ${Math.round(xPct*100)}%, ${Math.round(yPct*100)}%)`;
     } catch (err) {
@@ -501,11 +477,9 @@ mapImg.addEventListener('click', async (e) => {
     return;
   }
 
-  // if user is in "add form" mode (adding new item), fill shelf/section with coordinates as helper
   if(addForm.style.display !== 'none') {
-    itemShelfInput.value = Math.round(xPct * 100); // e.g., percent as shelf placeholder
+    itemShelfInput.value = Math.round(xPct * 100);
     itemSectionInput.value = Math.round(yPct * 100);
-    // keep add form visible — user still needs to press Save
   }
 });
 
@@ -551,7 +525,6 @@ function startScanner() {
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
       shelfDisplay.textContent = "Shelf / Section nr: " + (item.shelf || '-') + " / " + (item.section || '-');
-      // show marker if item has coordinates
       showMarkerForItem(item);
       switchTab(document.getElementById('tab-map'));
     } else {
@@ -589,30 +562,28 @@ saveBtn.addEventListener("click", async () => {
   itemNameDisplay.textContent = name;
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
-  // show marker if present
   showMarkerForItem(newItem);
 });
 
-// Init - load map image
+/* Init - load map image */
 mapImg.style.display = "block";
 mapImg.src = MAP_URL;
 mapImg.addEventListener('load', ()=> {
-  // nothing special needed, marker placement will calculate using sizes later
+  // nothing special needed; marker placement will calculate using sizes later
 });
 mapImg.addEventListener('error', ()=>{
   console.warn('Failed to load map image at', MAP_URL);
-  // If you see this, set MAP_URL to the correct path (GitHub raw or GitHub Pages path)
-  // Example raw GitHub URL:
-  // const MAP_URL = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/Assets/Map.png";
 });
 
-// Constants for DB access (preserve your existing values)
+/* Constants for DB access (preserve your existing values) */
 const BIN_ID = "68b57c0543b1c97be932f78d"; 
 const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
+/* Show map tab by default because tab-map is active in markup */
+mapWrap.style.display = 'block';
+
 window.addEventListener('load', async ()=>{
   await loadDatabase();
-  // if you have a currently-selected code (e.g., persisted elsewhere), show it; otherwise hide marker
   hideMarker();
 });
 </script>
