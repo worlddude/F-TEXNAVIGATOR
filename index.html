@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator — Updated (fuzzy + click-to-map)</title>
+<title>Store Item Locator — Updated (fuzzy + click-to-map + torch + multi-detect)</title>
 <style>
 body {
   margin: 0;
@@ -32,6 +32,35 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 #addForm { display: flex; flex-direction: column; gap: 8px; max-width: 400px; width: 90%; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 #addForm input { padding: 6px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; box-sizing: border-box; }
 .item-card.hidden { display: none; }
+/* Torch button overlay */
+#torchBtn {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 20;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+/* small detection counter badge (over video) */
+#detectBadge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 20;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: none;
+}
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 .list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; }
@@ -61,6 +90,10 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     <img id="map" />
     <video id="video" playsinline autoplay muted></video>
     <div id="listPage" style="display:none;"></div>
+
+    <!-- torch toggle button (shown only on scan tab) -->
+    <button id="torchBtn" title="Toggle flash">🔦</button>
+    <div id="detectBadge">0/3</div>
   </div>
 
   <!-- Item Card for Scan -->
@@ -98,11 +131,25 @@ const listPage = document.getElementById('listPage');
 const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
 
+const torchBtn = document.getElementById('torchBtn');
+const detectBadge = document.getElementById('detectBadge');
+
 const tabs = document.querySelectorAll(".tabs button");
 
 // DB
 let barcodeDB = {};
 let currentCode = null;
+
+// Camera / Torch
+let currentStream = null;
+let torchOn = false;
+
+// Detection confirmation
+// You can set CONFIRMATION_THRESHOLD to 3, 4, or 5 depending on how strict you want it.
+const CONFIRMATION_THRESHOLD = 3;
+let lastDetectedCode = null;
+let consecutiveDetectCount = 0;
+let acceptCooldown = false; // prevents double-accepts while handling
 
 // paging for list
 const PAGE_SIZE = 100; // max 100 at a time
@@ -121,6 +168,10 @@ function switchTab(tab) {
   itemCard.classList.add("hidden");
   mainDiv.classList.remove("add-tab");
 
+  // hide detect badge and torch by default
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+
   if(tab.id === "tab-map"){
     mapImg.style.display = "block";
     itemCard.classList.remove("hidden");
@@ -129,6 +180,9 @@ function switchTab(tab) {
     video.style.display = "block";
     itemCard.classList.add("hidden");
     startCamera();
+    // show torch button and detection badge when scanning
+    torchBtn.style.display = "block";
+    detectBadge.style.display = "block";
   } else if(tab.id === "tab-add"){
     // List tab
     listPage.style.display = "flex";
@@ -171,24 +225,17 @@ function levenshtein(a, b) {
   if (!a.length) return b.length;
   if (!b.length) return a.length;
   const matrix = [];
-  // increment along the first column of each row
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  // increment each column in the first row
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  // Fill in the rest of the matrix
+  for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+  for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
   for (let i = 1; i <= b.length; i++) {
     for (let j = 1; j <= a.length; j++) {
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
         );
       }
     }
@@ -274,22 +321,17 @@ function performSearch() {
     const barcode = (it.barcode || '').toLowerCase();
     let score = 10000;
 
-    // high-priority exact matches
     if(name === q) score = -1000;
     else if(barcode === q) score = -900;
-    // startsWith is good
     else if(name.startsWith(q)) score = -100 + name.indexOf(q);
     else if(barcode.startsWith(q)) score = -50 + barcode.indexOf(q);
-    // substring matches
     else if(name.includes(q)) score = 10 + name.indexOf(q);
     else if(barcode.includes(q)) score = 20 + barcode.indexOf(q);
-    // shelf/section match
     else if((it.shelf || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q)) score = 200;
     else {
-      // fuzzy via Levenshtein (allow small relative distance)
       const levName = levenshtein(q, name);
       const maxAllowed = Math.max(2, Math.floor(name.length * 0.25));
-      if(name && levName <= maxAllowed) score = 50 + levName; // smaller distance => better
+      if(name && levName <= maxAllowed) score = 50 + levName;
       else {
         const levBarcode = levenshtein(q, barcode);
         const maxAllowedBar = Math.max(1, Math.floor(barcode.length * 0.15));
@@ -300,7 +342,6 @@ function performSearch() {
     if(score < 10000) results.push({it, score});
   }
 
-  // If no direct results found by the filters above, try a relaxed includes search across all fields (fallback)
   if(results.length === 0){
     for(const it of all){
       const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'')).toLowerCase();
@@ -310,7 +351,6 @@ function performSearch() {
     }
   }
 
-  // sort by score (lower is better)
   results.sort((a,b)=> a.score - b.score);
   const items = results.map(r=>r.it);
   renderList(items, 0);
@@ -327,7 +367,6 @@ searchForm.addEventListener('submit', (e)=>{
 // When typing: switch to list tab and show best matches (debounce lightly)
 let debounceTimer = null;
 searchInput.addEventListener('input', ()=>{
-  // immediately switch to list tab (user requested behavior)
   switchTab(document.getElementById('tab-add'));
   if(debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(()=>{
@@ -336,11 +375,9 @@ searchInput.addEventListener('input', ()=>{
   }, 150);
 });
 
-// Also make sure Enter key doesn't trigger unexpected behavior
 searchInput.addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){
     e.preventDefault();
-    // show results and keep user on list
     switchTab(document.getElementById('tab-add'));
     performSearch();
   }
@@ -358,48 +395,163 @@ async function saveToDatabase(newCode, newItem) {
 
 // Camera Control
 function stopCamera() {
-  if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
-  video.srcObject = null;
-  if (Quagga) try{ Quagga.stop(); } catch(e){}
+  acceptCooldown = false;
+  lastDetectedCode = null;
+  consecutiveDetectCount = 0;
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+
+  // stop our stream if present
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = null;
+  }
+  if (video.srcObject) {
+    try { video.srcObject.getTracks().forEach(t => t.stop()); } catch(e){}
+    video.srcObject = null;
+  }
+  // stop Quagga as well
+  if (window.Quagga) {
+    try { Quagga.stop(); } catch (e) {}
+  }
 }
 
 async function startCamera() {
+  // reset counters and UI
+  acceptCooldown = false;
+  lastDetectedCode = null;
+  consecutiveDetectCount = 0;
+  detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+  detectBadge.style.display = "block";
   try {
+    // request environment camera
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    currentStream = stream;
     video.srcObject = stream;
+    video.play().catch(()=>{});
+    torchOn = false; // default off
+    // initialize scanner AFTER we have a stream (Quagga might request another stream internally,
+    // but we at least have a track reference for torch control)
     startScanner();
   } catch (err) {
     alert('Error accessing camera: ' + err.message);
   }
 }
 
-// Barcode scanner
+// Torch (flash) control
+async function toggleTorch() {
+  if (!currentStream) {
+    alert('Camera not started');
+    return;
+  }
+  const track = currentStream.getVideoTracks()[0];
+  if (!track) {
+    alert('No video track available');
+    return;
+  }
+  const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+  if (!capabilities || !capabilities.torch) {
+    // Some browsers expose torch in capabilities; if absent, we try applyConstraints anyway but show a warning
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+      torchOn = !torchOn;
+      torchBtn.textContent = torchOn ? '🔦' : '🔦';
+    } catch (err) {
+      alert('Torch not supported on this device/browser.');
+    }
+    return;
+  }
+  try {
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    // update button style to indicate state
+    torchBtn.style.background = torchOn ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.45)';
+    torchBtn.style.color = torchOn ? '#111' : 'white';
+  } catch (err) {
+    console.warn('Torch toggle failed:', err);
+    alert('Failed to toggle torch: ' + err.message);
+  }
+}
+
+torchBtn.addEventListener('click', toggleTorch);
+
+// Barcode scanner with multi-detection confirmation
 function startScanner() {
+  // Reset detection state
+  lastDetectedCode = null;
+  consecutiveDetectCount = 0;
+  acceptCooldown = false;
+  detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+  detectBadge.style.display = "block";
+
+  // Initialize Quagga
   Quagga.init({
     inputStream: { name: 'Live', type: 'LiveStream', target: video },
-    decoder: { readers: ['ean_reader','upc_reader','code_128_reader'] }
-  }, err => { if(err) console.error(err); else Quagga.start(); });
+    decoder: { readers: ['ean_reader','upc_reader','code_128_reader'] },
+    locate: true
+  }, err => {
+    if(err) {
+      console.error(err);
+      return;
+    }
+    Quagga.start();
+  });
 
   Quagga.onDetected(result => {
+    if (!result || !result.codeResult) return;
     const code = result.codeResult.code;
-    currentCode = code;
-    const item = barcodeDB[code];
-    if(item){
-      itemNameDisplay.textContent = item.name;
-      barcodeDisplay.textContent = "Barcode: " + code;
-      dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
-      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
-      switchTab(document.getElementById('tab-map'));
+
+    // If we are already handling an accepted code, ignore until reset
+    if (acceptCooldown) return;
+
+    if (lastDetectedCode === code) {
+      consecutiveDetectCount++;
     } else {
-      itemNameDisplay.textContent = "❌ Not found in database";
-      barcodeDisplay.textContent = "Barcode: " + code;
-      dateDisplay.textContent = "Date of location: -";
-      shelfDisplay.textContent = "";
-      itemBarcodeInput.value = code;
-      video.style.display = "none";
-      addForm.style.display = "flex";
-      itemCard.classList.remove("hidden");
-      stopCamera();
+      lastDetectedCode = code;
+      consecutiveDetectCount = 1;
+    }
+
+    // update badge
+    detectBadge.textContent = `${consecutiveDetectCount}/${CONFIRMATION_THRESHOLD}`;
+
+    // Only accept the code if we've seen it CONFIRMATION_THRESHOLD times in a row
+    if (consecutiveDetectCount >= CONFIRMATION_THRESHOLD) {
+      acceptCooldown = true; // avoid double handling
+      // reset counters so the next scan starts fresh
+      lastDetectedCode = null;
+      consecutiveDetectCount = 0;
+      detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+
+      // process confirmed code
+      currentCode = code;
+      const item = barcodeDB[code];
+      if(item){
+        itemNameDisplay.textContent = item.name;
+        barcodeDisplay.textContent = "Barcode: " + code;
+        dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
+        shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+        // switch to map tab
+        switchTab(document.getElementById('tab-map'));
+      } else {
+        // not in DB => show add form
+        itemNameDisplay.textContent = "❌ Not found in database";
+        barcodeDisplay.textContent = "Barcode: " + code;
+        dateDisplay.textContent = "Date of location: -";
+        shelfDisplay.textContent = "";
+        itemBarcodeInput.value = code;
+        video.style.display = "none";
+        addForm.style.display = "flex";
+        itemCard.classList.remove("hidden");
+        // stop camera to allow user to edit/save
+        stopCamera();
+      }
+
+      // small timeout to allow UI to settle; then unlock
+      setTimeout(()=> {
+        acceptCooldown = false;
+        // hide badge and torch when leaving scan (if switching to map/add it will be hidden).
+        detectBadge.style.display = "none";
+      }, 700);
     }
   });
 }
