@@ -23,7 +23,46 @@ body {
 .tabs button.active { background: white; color: #2563eb; border-radius: 6px; }
 .main { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
 .main.add-tab { justify-content: center; align-items: flex-start; overflow-y: auto; padding: 10px; }
-#map { width: 100%; height: 100%; object-fit: cover; display: none; background: white; }
+
+/* map container so we can absolutely position markers on top of the image */
+#mapWrap { position: relative; width: 100%; height: 100%; display: none; background: white; overflow: hidden; }
+#map { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
+
+.map-marker {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -100%); /* center bottom of the marker on the click point */
+  pointer-events: none;
+  z-index: 10;
+  display: none;
+}
+.map-marker .pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 50%;
+  background: #ef4444; /* red pin */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border: 2px solid white;
+  transform: scale(1);
+}
+.map-marker .pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -2px);
+  width: 8px;
+  height: 8px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+/* show marker with a small appear animation */
+.map-marker.show { display: block; animation: pop 160ms ease; }
+@keyframes pop { from { transform: translate(-50%, -100%) scale(0.8); opacity: 0 } to { transform: translate(-50%, -100%) scale(1); opacity: 1 } }
+
 #video { width: 100%; height: 100%; object-fit: cover; display: none; }
 .item-card { background: white; border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); position: relative; bottom: 0; }
 .item-card h2 { margin: 0 0 6px; font-size: 16px; }
@@ -39,6 +78,20 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 .list-item p { margin: 2px 0; font-size: 13px; color: #444; }
 .load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
 .empty { text-align: center; color: #666; padding: 20px; }
+
+/* small hint text near map */
+.map-hint {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 20;
+  background: rgba(255,255,255,0.9);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -58,7 +111,15 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 
   <!-- Map / Camera / List -->
   <div class="main">
-    <img id="map" />
+    <!-- map wrapped so we can place markers on top -->
+    <div id="mapWrap">
+      <div class="map-hint">Click on the map to place a pin for the selected item</div>
+      <img id="map" alt="Store map" draggable="false" />
+      <div id="marker" class="map-marker" title="Item location">
+        <div class="pin"></div>
+      </div>
+    </div>
+
     <video id="video" playsinline autoplay muted></video>
     <div id="listPage" style="display:none;"></div>
   </div>
@@ -82,6 +143,8 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 // DOM Elements
 const video = document.getElementById('video');
 const mapImg = document.getElementById('map');
+const mapWrap = document.getElementById('mapWrap');
+const marker = document.getElementById('marker');
 const mainDiv = document.querySelector('.main');
 const itemCard = document.getElementById('itemCard');
 const itemNameDisplay = document.getElementById('itemNameDisplay');
@@ -109,12 +172,20 @@ const PAGE_SIZE = 100; // max 100 at a time
 let lastRenderStart = 0;
 let lastRenderedItems = [];
 
+/* ---------- MAP URL ----------
+   Update this if your image is hosted elsewhere.
+   Examples:
+   - If using GitHub Pages (username.github.io/repo): "/repo/Assets/Map.png"
+   - If using raw GitHub content: "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/Assets/Map.png"
+*/
+const MAP_URL = './Assets/Map.png'; // <-- change this path if needed
+
 // Switch Tab Function
 function switchTab(tab) {
   tabs.forEach(btn => btn.classList.remove("active"));
   tab.classList.add("active");
 
-  mapImg.style.display = "none";
+  mapWrap.style.display = "none";
   video.style.display = "none";
   addForm.style.display = "none";
   listPage.style.display = "none";
@@ -122,7 +193,7 @@ function switchTab(tab) {
   mainDiv.classList.remove("add-tab");
 
   if(tab.id === "tab-map"){
-    mapImg.style.display = "block";
+    mapWrap.style.display = "block";
     itemCard.classList.remove("hidden");
     stopCamera();
   } else if(tab.id === "tab-scan"){
@@ -223,10 +294,17 @@ function renderList(items, startIndex = 0) {
       const barcode = div.dataset.barcode;
       const item = barcodeDB[barcode];
       if(item){
+        currentCode = barcode;
         itemNameDisplay.textContent = item.name || '-';
         barcodeDisplay.textContent = 'Barcode: ' + barcode;
         dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
         shelfDisplay.textContent = 'Shelf / Section nr: ' + (item.shelf || '-') + ' / ' + (item.section || '-');
+        // show marker for item if coordinates exist
+        if(item.map && typeof item.map.x === 'number' && typeof item.map.y === 'number'){
+          placeMarker(item.map.x, item.map.y);
+        } else {
+          hideMarker();
+        }
         // switch to map tab
         switchTab(document.getElementById('tab-map'));
       } else {
@@ -356,7 +434,91 @@ async function saveToDatabase(newCode, newItem) {
   });
 }
 
-// Camera Control
+/* ---------- Map helpers ---------- */
+function placeMarker(xPct, yPct) {
+  // xPct and yPct are numbers [0..1]
+  if(typeof xPct !== 'number' || typeof yPct !== 'number') return;
+  // convert to pixels relative to mapWrap
+  const rect = mapImg.getBoundingClientRect();
+  // if image hasn't been laid out yet, do a retry shortly
+  if(rect.width === 0 || rect.height === 0) {
+    setTimeout(()=>placeMarker(xPct, yPct), 60);
+    return;
+  }
+  // compute absolute position based on image visible area inside mapWrap
+  // We assume the img covers the whole mapWrap area (object-fit: contain) so we must account for letterboxing
+  const wrapRect = mapWrap.getBoundingClientRect();
+  const imgAspect = mapImg.naturalWidth && mapImg.naturalHeight ? mapImg.naturalWidth / mapImg.naturalHeight : rect.width / rect.height;
+  const wrapAspect = wrapRect.width / wrapRect.height;
+  let imgLeft = rect.left;
+  let imgTop = rect.top;
+  let imgWidth = rect.width;
+  let imgHeight = rect.height;
+
+  // absolute coordinates (client)
+  const clientX = imgLeft + xPct * imgWidth;
+  const clientY = imgTop + yPct * imgHeight;
+
+  // position marker relative to mapWrap (use percent)
+  const leftPercent = ((clientX - wrapRect.left) / wrapRect.width) * 100;
+  const topPercent = ((clientY - wrapRect.top) / wrapRect.height) * 100;
+
+  marker.style.left = leftPercent + '%';
+  marker.style.top = topPercent + '%';
+  marker.classList.add('show');
+  marker.style.display = 'block';
+}
+
+function hideMarker() {
+  marker.classList.remove('show');
+  marker.style.display = 'none';
+}
+
+/* Clicking on the map: place marker and optionally save to current item */
+mapImg.addEventListener('click', async (e) => {
+  const rect = mapImg.getBoundingClientRect();
+  if(rect.width === 0 || rect.height === 0) return;
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  // clamp
+  const xPct = Math.max(0, Math.min(1, x));
+  const yPct = Math.max(0, Math.min(1, y));
+  placeMarker(xPct, yPct);
+
+  // if a current item is selected (existing in DB), save coordinates
+  if(currentCode && barcodeDB[currentCode]) {
+    barcodeDB[currentCode].map = { x: xPct, y: yPct };
+    // persist immediately
+    try {
+      await saveToDatabase(currentCode, barcodeDB[currentCode]);
+      // update display
+      shelfDisplay.textContent = 'Shelf / Section nr: ' + (barcodeDB[currentCode].shelf || '-') + ' / ' + (barcodeDB[currentCode].section || '-')
+        + `  (map: ${Math.round(xPct*100)}%, ${Math.round(yPct*100)}%)`;
+    } catch (err) {
+      console.error('Error saving map position:', err);
+      alert('Failed to save location to DB.');
+    }
+    return;
+  }
+
+  // if user is in "add form" mode (adding new item), fill shelf/section with coordinates as helper
+  if(addForm.style.display !== 'none') {
+    itemShelfInput.value = Math.round(xPct * 100); // e.g., percent as shelf placeholder
+    itemSectionInput.value = Math.round(yPct * 100);
+    // keep add form visible — user still needs to press Save
+  }
+});
+
+// place marker for item (if it has saved map coords)
+function showMarkerForItem(item) {
+  if(item && item.map && typeof item.map.x === 'number' && typeof item.map.y === 'number'){
+    placeMarker(item.map.x, item.map.y);
+  } else {
+    hideMarker();
+  }
+}
+
+/* ---------- Camera Control ---------- */
 function stopCamera() {
   if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
   video.srcObject = null;
@@ -388,7 +550,9 @@ function startScanner() {
       itemNameDisplay.textContent = item.name;
       barcodeDisplay.textContent = "Barcode: " + code;
       dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
-      shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+      shelfDisplay.textContent = "Shelf / Section nr: " + (item.shelf || '-') + " / " + (item.section || '-');
+      // show marker if item has coordinates
+      showMarkerForItem(item);
       switchTab(document.getElementById('tab-map'));
     } else {
       itemNameDisplay.textContent = "❌ Not found in database";
@@ -415,19 +579,42 @@ saveBtn.addEventListener("click", async () => {
     return;
   }
   const newItem = { name, shelf, section };
+  // if a marker exists and currentCode matches this barcode, keep map coordinates
+  if(currentCode === barcode && barcodeDB[barcode] && barcodeDB[barcode].map) {
+    newItem.map = barcodeDB[barcode].map;
+  }
   await saveToDatabase(barcode,newItem);
+  barcodeDB[barcode] = newItem;
+  currentCode = barcode;
   itemNameDisplay.textContent = name;
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
+  // show marker if present
+  showMarkerForItem(newItem);
 });
 
-// Init
+// Init - load map image
 mapImg.style.display = "block";
+mapImg.src = MAP_URL;
+mapImg.addEventListener('load', ()=> {
+  // nothing special needed, marker placement will calculate using sizes later
+});
+mapImg.addEventListener('error', ()=>{
+  console.warn('Failed to load map image at', MAP_URL);
+  // If you see this, set MAP_URL to the correct path (GitHub raw or GitHub Pages path)
+  // Example raw GitHub URL:
+  // const MAP_URL = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/Assets/Map.png";
+});
+
 // Constants for DB access (preserve your existing values)
 const BIN_ID = "68b57c0543b1c97be932f78d"; 
 const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
-window.addEventListener('load', async ()=>{ await loadDatabase(); });
+window.addEventListener('load', async ()=>{
+  await loadDatabase();
+  // if you have a currently-selected code (e.g., persisted elsewhere), show it; otherwise hide marker
+  hideMarker();
+});
 </script>
 </body>
 </html>
