@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator — Updated (fuzzy + click-to-map + torch + multi-detect)</title>
+<title>Store Item Locator — Updated (fuzzy + click-to-map + torch + multi-detect + photos)</title>
 <style>
 body {
   margin: 0;
@@ -25,49 +25,49 @@ body {
 .main.add-tab { justify-content: center; align-items: flex-start; overflow-y: auto; padding: 10px; }
 #map { width: 100%; height: 100%; object-fit: cover; display: none; background: white; }
 #video { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+/* Item card */
 .item-card { background: white; border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); position: relative; bottom: 0; }
 .item-card h2 { margin: 0 0 6px; font-size: 16px; }
 .item-card p { margin: 4px 0; font-size: 14px; color: #333; }
 button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8px; background: #2563eb; color: white; font-size: 14px; cursor: pointer; }
 #addForm { display: flex; flex-direction: column; gap: 8px; max-width: 400px; width: 90%; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-#addForm input { padding: 6px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; box-sizing: border-box; }
+#addForm input[type="text"], #addForm input[type="file"] { padding: 6px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; box-sizing: border-box; }
 .item-card.hidden { display: none; }
-/* Torch button overlay */
+
+/* Torch button overlay moved to bottom center */
 #torchBtn {
   position: absolute;
-  right: 12px;
-  top: 12px;
-  z-index: 20;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
   background: rgba(0,0,0,0.45);
   color: white;
   border: none;
-  padding: 10px;
+  padding: 12px;
   border-radius: 50%;
   font-size: 18px;
   display: none;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
-/* small detection counter badge (over video) */
-#detectBadge {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  z-index: 20;
-  background: rgba(0,0,0,0.45);
-  color: white;
-  padding: 6px 8px;
-  border-radius: 12px;
-  font-size: 13px;
-  display: none;
-}
+
+/* hide the old detect counter UI completely */
+#detectBadge { display: none !important; }
+
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; }
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; }
 .list-item h3 { margin: 0 0 6px; font-size: 16px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #444; }
+.list-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #f0f0f0; flex: 0 0 56px; }
 .load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
 .empty { text-align: center; color: #666; padding: 20px; }
+
+/* item-card photo preview */
+#itemPhotoDisplay { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; float: right; margin-left: 10px; }
+#photoPreview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #eee; display: block; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -98,6 +98,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 
   <!-- Item Card for Scan -->
   <div class="item-card" id="itemCard">
+    <img id="itemPhotoDisplay" src="" alt="photo" style="display:none;" />
     <h2 id="itemNameDisplay">No item selected</h2>
     <p id="barcodeDisplay">Barcode: -</p>
     <p id="dateDisplay">Date of location: -</p>
@@ -107,6 +108,17 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
       <input type="text" id="itemName" placeholder="Item name" />
       <input type="text" id="itemShelf" placeholder="Shelf number" />
       <input type="text" id="itemSection" placeholder="Section number" />
+
+      <!-- Photo inputs: preview, file upload and hidden data holder -->
+      <div style="display:flex; gap:10px; align-items:center;">
+        <img id="photoPreview" src="" alt="preview" style="display:none;" />
+        <div style="flex:1;">
+          <input type="file" id="itemPhotoInput" accept="image/*" />
+          <small style="color:#666;">You can replace the captured photo before saving.</small>
+          <input type="hidden" id="itemPhotoData" />
+        </div>
+      </div>
+
       <button class="save" id="saveBtn">💾 Save Item</button>
     </div>
   </div>
@@ -136,6 +148,11 @@ const detectBadge = document.getElementById('detectBadge');
 
 const tabs = document.querySelectorAll(".tabs button");
 
+const photoPreview = document.getElementById('photoPreview');
+const itemPhotoInput = document.getElementById('itemPhotoInput');
+const itemPhotoData = document.getElementById('itemPhotoData');
+const itemPhotoDisplay = document.getElementById('itemPhotoDisplay');
+
 // DB
 let barcodeDB = {};
 let currentCode = null;
@@ -145,14 +162,13 @@ let currentStream = null;
 let torchOn = false;
 
 // Detection confirmation
-// You can set CONFIRMATION_THRESHOLD to 3, 4, or 5 depending on how strict you want it.
 const CONFIRMATION_THRESHOLD = 3;
 let lastDetectedCode = null;
 let consecutiveDetectCount = 0;
 let acceptCooldown = false; // prevents double-accepts while handling
 
 // paging for list
-const PAGE_SIZE = 100; // max 100 at a time
+const PAGE_SIZE = 100;
 let lastRenderStart = 0;
 let lastRenderedItems = [];
 
@@ -180,9 +196,9 @@ function switchTab(tab) {
     video.style.display = "block";
     itemCard.classList.add("hidden");
     startCamera();
-    // show torch button and detection badge when scanning
+    // show torch button when scanning
     torchBtn.style.display = "block";
-    detectBadge.style.display = "block";
+    // detection counter UI hidden by CSS; detection still works
   } else if(tab.id === "tab-add"){
     // List tab
     listPage.style.display = "flex";
@@ -216,7 +232,14 @@ async function loadDatabase() {
 }
 
 function getAllItemsArray() {
-  return Object.entries(barcodeDB).map(([barcode, item]) => ({ barcode, name: item.name || '', shelf: item.shelf || '', section: item.section || '' }));
+  return Object.entries(barcodeDB).map(([barcode, item]) => ({
+    barcode,
+    name: item.name || '',
+    shelf: item.shelf || '',
+    section: item.section || '',
+    // prefer inline photo data, then stored path
+    photo: item.photo || item.photoPath || ''
+  }));
 }
 
 // Levenshtein distance for fuzzy matching
@@ -262,14 +285,33 @@ function renderList(items, startIndex = 0) {
     const div = document.createElement('div');
     div.className = 'list-item';
     div.setAttribute('data-barcode', it.barcode);
-    div.innerHTML = `<h3>${escapeHtml(it.name || '-')}</h3>
-                     <p>Barcode: ${escapeHtml(it.barcode)}</p>
-                     <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>`;
+
+    const thumbSrc = it.photo ? escapeHtml(it.photo) : '';
+    const thumbHTML = thumbSrc ? `<img class="list-thumb" src="${thumbSrc}" alt="thumb" />` : `<div class="list-thumb" style="display:flex;align-items:center;justify-content:center;color:#888;font-size:12px;">No<br>Img</div>`;
+
+    div.innerHTML = `${thumbHTML}
+                     <div style="flex:1;">
+                       <h3>${escapeHtml(it.name || '-')}</h3>
+                       <p>Barcode: ${escapeHtml(it.barcode)}</p>
+                       <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>
+                     </div>`;
+
     // click to view on map
-    div.addEventListener('click', ()=>{
+    div.addEventListener('click', ()=> {
       const barcode = div.dataset.barcode;
       const item = barcodeDB[barcode];
       if(item){
+        // set photo display if exists
+        if(item.photo){
+          itemPhotoDisplay.src = item.photo;
+          itemPhotoDisplay.style.display = 'block';
+        } else if(item.photoPath){
+          itemPhotoDisplay.src = item.photoPath;
+          itemPhotoDisplay.style.display = 'block';
+        } else {
+          itemPhotoDisplay.style.display = 'none';
+        }
+
         itemNameDisplay.textContent = item.name || '-';
         barcodeDisplay.textContent = 'Barcode: ' + barcode;
         dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
@@ -421,8 +463,8 @@ async function startCamera() {
   acceptCooldown = false;
   lastDetectedCode = null;
   consecutiveDetectCount = 0;
+  // detectBadge UI is hidden; still set text safely
   detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
-  detectBadge.style.display = "block";
   try {
     // request environment camera
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -475,6 +517,35 @@ async function toggleTorch() {
 
 torchBtn.addEventListener('click', toggleTorch);
 
+// helper: capture current video frame to data URL
+function captureFrameDataURL() {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    console.warn('Failed to capture frame:', e);
+    return null;
+  }
+}
+
+// when a file is selected, read it into hidden data input & preview
+itemPhotoInput.addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const data = ev.target.result;
+    itemPhotoData.value = data;
+    photoPreview.src = data;
+    photoPreview.style.display = 'block';
+  };
+  reader.readAsDataURL(f);
+});
+
 // Barcode scanner with multi-detection confirmation
 function startScanner() {
   // Reset detection state
@@ -482,7 +553,6 @@ function startScanner() {
   consecutiveDetectCount = 0;
   acceptCooldown = false;
   detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
-  detectBadge.style.display = "block";
 
   // Initialize Quagga
   Quagga.init({
@@ -511,9 +581,7 @@ function startScanner() {
       consecutiveDetectCount = 1;
     }
 
-    // update badge
-    detectBadge.textContent = `${consecutiveDetectCount}/${CONFIRMATION_THRESHOLD}`;
-
+    // detection counter UI removed (hidden). we still use the internal counts.
     // Only accept the code if we've seen it CONFIRMATION_THRESHOLD times in a row
     if (consecutiveDetectCount >= CONFIRMATION_THRESHOLD) {
       acceptCooldown = true; // avoid double handling
@@ -526,6 +594,17 @@ function startScanner() {
       currentCode = code;
       const item = barcodeDB[code];
       if(item){
+        // set photo display if exists
+        if(item.photo){
+          itemPhotoDisplay.src = item.photo;
+          itemPhotoDisplay.style.display = 'block';
+        } else if(item.photoPath){
+          itemPhotoDisplay.src = item.photoPath;
+          itemPhotoDisplay.style.display = 'block';
+        } else {
+          itemPhotoDisplay.style.display = 'none';
+        }
+
         itemNameDisplay.textContent = item.name;
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
@@ -533,15 +612,29 @@ function startScanner() {
         // switch to map tab
         switchTab(document.getElementById('tab-map'));
       } else {
-        // not in DB => show add form
+        // not in DB => capture a photo from the live stream and show add form
         itemNameDisplay.textContent = "❌ Not found in database";
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: -";
         shelfDisplay.textContent = "";
         itemBarcodeInput.value = code;
+
+        // capture a frame for initial photo suggestion
+        const dataURL = captureFrameDataURL();
+        if(dataURL){
+          itemPhotoData.value = dataURL;
+          photoPreview.src = dataURL;
+          photoPreview.style.display = 'block';
+        } else {
+          itemPhotoData.value = '';
+          photoPreview.style.display = 'none';
+        }
+
+        // hide the live video and show add form
         video.style.display = "none";
         addForm.style.display = "flex";
         itemCard.classList.remove("hidden");
+
         // stop camera to allow user to edit/save
         stopCamera();
       }
@@ -549,8 +642,7 @@ function startScanner() {
       // small timeout to allow UI to settle; then unlock
       setTimeout(()=> {
         acceptCooldown = false;
-        // hide badge and torch when leaving scan (if switching to map/add it will be hidden).
-        detectBadge.style.display = "none";
+        // detectBadge is hidden; nothing else to hide
       }, 700);
     }
   });
@@ -566,17 +658,32 @@ saveBtn.addEventListener("click", async () => {
     alert("Please fill all fields");
     return;
   }
-  const newItem = { name, shelf, section };
+
+  // photo handling: prefer uploaded/edited data, fallback to captured
+  const photoDataVal = itemPhotoData.value || null;
+  const photoPath = `/assets/Item_photo/${barcode}.png`;
+
+  const newItem = { name, shelf, section, photo: photoDataVal, photoPath };
   await saveToDatabase(barcode,newItem);
+
+  // update UI
   itemNameDisplay.textContent = name;
   shelfDisplay.textContent = "Shelf / Section nr: " + shelf + " / " + section;
   addForm.style.display = "none";
+
+  // show saved photo in item card if available
+  if(newItem.photo){
+    itemPhotoDisplay.src = newItem.photo;
+    itemPhotoDisplay.style.display = 'block';
+  } else {
+    itemPhotoDisplay.style.display = 'none';
+  }
 });
 
 // Init
 mapImg.style.display = "block";
 // Constants for DB access (preserve your existing values)
-const BIN_ID = "68b57c0543b1c97be932f78d"; 
+const BIN_ID = "68b57c0543b1c97be932f78d";
 const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
 
 window.addEventListener('load', async ()=>{ await loadDatabase(); });
