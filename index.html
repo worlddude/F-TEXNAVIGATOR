@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8" />j
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Store Item Locator — Supabase Demo</title>
 
@@ -445,7 +445,7 @@ async function uploadImageToSupabase(barcode, dataURL) {
   if (!dataURL) return null;
   try {
     const blob = dataURLtoBlob(dataURL);
-    // filename: sku + timestamp
+    // filename: barcode + timestamp
     const filename = `${barcode}/${Date.now()}.jpg`;
     const path = filename; // store path relative to bucket root
 
@@ -471,7 +471,7 @@ async function uploadImageToSupabase(barcode, dataURL) {
 }
 
 /* ---------- Save metadata row to Supabase ----------
-   Upsert (insert or update) the item by sku (barcode).
+   Upsert (insert or update) the item by  (barcode).
 */
 async function saveItemToSupabase(barcode, item) {
   // item: { name, shelf, section, image_url }
@@ -485,7 +485,7 @@ async function saveItemToSupabase(barcode, item) {
     };
     const { data, error } = await supabaseClient
       .from('items')
-      .upsert(row, { onConflict: 'sku' });
+      .upsert(row, { onConflict: 'barcode' });
 
     if (error) throw error;
     return data;
@@ -497,7 +497,7 @@ async function saveItemToSupabase(barcode, item) {
 
 /* ---------- Load items from Supabase into barcodeDB ----------
    Fetch all rows from items and convert into the same shape
-   your existing code expects: barcodeDB[sku] = { name, shelf, section, photo: image_url }
+   your existing code expects: barcodeDB[] = { name, shelf, section, photo: image_url }
 */
 async function loadDatabaseFromSupabase() {
   try {
@@ -511,7 +511,7 @@ async function loadDatabaseFromSupabase() {
     // convert to your local map
     barcodeDB = {};
     for (const row of data) {
-      barcodeDB[row.sku] = {
+      barcodeDB[row.barcode] = {
         name: row.name || '',
         shelf: row.shelf || '',
         section: row.section || '',
@@ -824,5 +824,6 @@ window.addEventListener('load', async ()=>{
 </script>
 </body>
 </html>
+
 
 
