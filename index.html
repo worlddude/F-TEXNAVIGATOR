@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -40,7 +40,25 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 /* Torch button overlay moved to bottom center */
 #torchBtn {
   position: absolute;
-  left: 50%;
+  left: calc(50% + 28px);
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Telephoto (magnifier) button */
+#teleBtn {
+  position: absolute;
+  left: calc(50% - 28px);
   bottom: 18px;
   transform: translateX(-50%);
   z-index: 60;
@@ -117,6 +135,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     <div id="listPage" style="display:none;"></div>
 
     <!-- torch toggle button (shown only on scan tab) -->
+    <button id="teleBtn" title="Toggle telephoto camera">🔍</button>
     <button id="torchBtn" title="Toggle flash">🔦</button>
     <div id="detectBadge">0/3</div>
   </div>
@@ -191,6 +210,7 @@ const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
 
 const torchBtn = document.getElementById('torchBtn');
+const teleBtn = document.getElementById('teleBtn');
 const detectBadge = document.getElementById('detectBadge');
 
 const tabs = document.querySelectorAll(".tabs button");
@@ -207,6 +227,8 @@ let currentCode = null;
 // Camera / Torch
 let currentStream = null;
 let torchOn = false;
+let usingTele = false;        // new: whether telephoto mode is active
+let preferredTeleDeviceId = null; // cached tele device id if found
 
 // Detection confirmation
 const CONFIRMATION_THRESHOLD = 3;
@@ -236,6 +258,7 @@ function switchTab(tab) {
   // hide detect badge and torch by default
   detectBadge.style.display = "none";
   torchBtn.style.display = "none";
+  teleBtn.style.display = "none";
 
   if(tab.id === "tab-map"){
     mapImg.style.display = "block";
@@ -244,8 +267,9 @@ function switchTab(tab) {
   } else if(tab.id === "tab-scan"){
     video.style.display = "block";
     itemCard.classList.add("hidden");
-    startCamera();
+    startCamera(usingTele);
     torchBtn.style.display = "block";
+    teleBtn.style.display = "block";
   } else if(tab.id === "tab-add"){
     // List tab
     listPage.style.display = "flex";
@@ -665,6 +689,7 @@ function stopCamera() {
   consecutiveDetectCount = 0;
   detectBadge.style.display = "none";
   torchBtn.style.display = "none";
+  teleBtn.style.display = "none";
 
   if (currentStream) {
     currentStream.getTracks().forEach(track => track.stop());
@@ -679,20 +704,76 @@ function stopCamera() {
   }
 }
 
-async function startCamera() {
+async function findTelephotoDeviceId() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+    // heuristics: prefer device labels that contain tele/telephoto/zoom/2x/rear 2/back 2
+    const teleRegex = /(tele|telephoto|zoom|2x|2 x|back 2|rear 2|rear2|perspective)/i;
+    for (const d of videoInputs) {
+      if (d.label && teleRegex.test(d.label)) return d.deviceId;
+    }
+
+    // fallback: prefer a non-front (rear) camera if multiple exist
+    for (const d of videoInputs) {
+      if (d.label && /back|rear|environment/i.test(d.label)) return d.deviceId;
+    }
+
+    // last fallback: return the first device if any
+    if (videoInputs.length) return videoInputs[0].deviceId;
+    return null;
+  } catch (err) {
+    console.warn('Failed to enumerate devices for telephoto detection', err);
+    return null;
+  }
+}
+
+async function startCamera(useTele = false) {
   acceptCooldown = false;
   lastDetectedCode = null;
   consecutiveDetectCount = 0;
   detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
+
+  // stop existing streams & Quagga
+  if (currentStream) {
+    try { currentStream.getTracks().forEach(t => t.stop()); } catch(e){}
+    currentStream = null;
+  }
+  if (window.Quagga) {
+    try { Quagga.stop(); } catch(e){}
+  }
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    let constraints = { video: { facingMode: 'environment' } };
+
+    if (useTele) {
+      // try to find tele device id (may require prior permission)
+      try {
+        if (!preferredTeleDeviceId) {
+          preferredTeleDeviceId = await findTelephotoDeviceId();
+        }
+        if (preferredTeleDeviceId) {
+          constraints = { video: { deviceId: { exact: preferredTeleDeviceId } } };
+        } else {
+          // if we couldn't detect, fall back to environment
+          constraints = { video: { facingMode: 'environment' } };
+        }
+      } catch (err) {
+        constraints = { video: { facingMode: 'environment' } };
+      }
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     currentStream = stream;
     video.srcObject = stream;
     video.play().catch(()=>{});
     torchOn = false;
+
+    // restart scanner after camera started
     startScanner();
   } catch (err) {
-    alert('Error accessing camera: ' + err.message);
+    alert('Error accessing camera: ' + (err && err.message ? err.message : err));
   }
 }
 
@@ -730,6 +811,23 @@ async function toggleTorch() {
 }
 
 torchBtn.addEventListener('click', toggleTorch);
+
+/* Telephoto toggle: attempt to switch to telephoto camera (or back) */
+teleBtn.addEventListener('click', async () => {
+  try {
+    // flip usingTele flag and restart camera with that preference
+    usingTele = !usingTele;
+    // when switching, turn off torch flag (it may not be supported on different camera)
+    torchOn = false;
+    await startCamera(usingTele);
+    // visually indicate tele mode by a subtle background change
+    teleBtn.style.background = usingTele ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.45)';
+    teleBtn.style.color = usingTele ? '#111' : 'white';
+  } catch (err) {
+    console.warn('Telephoto toggle failed:', err);
+    alert('Failed to switch camera: ' + (err && err.message ? err.message : err));
+  }
+});
 
 /* -------------------------
    Image resize helper (keeps from your file)
