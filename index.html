@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Store Item Locator — Client-side GitHub Upload</title>
+<title>Store Item Locator — Supabase Demo</title>
+
 <style>
+/* (unchanged UI styles from your original file) */
 body {
   margin: 0;
   font-family: sans-serif;
@@ -70,7 +72,10 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 #photoPreview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #eee; display: block; }
 </style>
 
+<!-- Quagga for barcode scanning -->
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<!-- Supabase client (v2) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 </head>
 <body>
   <!-- Header -->
@@ -124,6 +129,25 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
   </div>
 
 <script>
+/* -------------------------
+   CONFIG - REPLACE THESE
+   -------------------------
+   1) Replace SUPABASE_URL and SUPABASE_ANON_KEY with values from:
+      Supabase Dashboard → Settings → API
+   2) Make sure you created a public storage bucket named 'item-images'
+      and a table 'items' with columns: sku (text unique), name, shelf, section, image_url, created_at.
+   3) For fast prototyping you can disable Row Level Security (RLS) on the 'items' table.
+*/
+const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/'; // <-- REPLACE
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';           // <-- REPLACE
+const SUPABASE_BUCKET = 'item_images'; // change if you named it differently
+
+// Initialize Supabase client (global `supabase` from CDN exposes createClient)
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* -------------------------
+   DOM & UI code (mostly your original)
+   ------------------------- */
 // DOM Elements
 const video = document.getElementById('video');
 const mapImg = document.getElementById('map');
@@ -172,21 +196,9 @@ const PAGE_SIZE = 100;
 let lastRenderStart = 0;
 let lastRenderedItems = [];
 
-// --- YOUR CONFIG ---
-// JSONBin constants (preserve your existing values)
-const BIN_ID = "68b57c0543b1c97be932f78d";
-const API_KEY = "$2a$10$rDmMHZ2kVWr8MQlJkpRBb.nYegJ2YjslyO0/4sZEpm7HWbCm0Rjvq";
-
-// GITHUB client-side config (VERY SENSITIVE — do not publish the token)
-// Fill these with your values for client-side upload testing.
-const GITHUB_OWNER = "worlddude";     // e.g. "your-github-username"
-const GITHUB_REPO  = "F-TEXNAVIGATOR";     // e.g. "your-repo-name"
-const GITHUB_BRANCH = "main"; // or your branch
-const GITHUB_TOKEN = "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";     // your fine-grained PAT with "Contents: Read & write"
-const GITHUB_PHOTO_PATH = "Assets/Item_photo"; // path in repo to store images
-
-// --------------------
-
+/* -------------------------
+   Utility functions (original)
+   ------------------------- */
 function switchTab(tab) {
   tabs.forEach(btn => btn.classList.remove("active"));
   tab.classList.add("active");
@@ -226,21 +238,6 @@ function switchTab(tab) {
 document.getElementById('tab-map').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-scan').addEventListener('click', e => switchTab(e.target));
 document.getElementById('tab-add').addEventListener('click', e => switchTab(e.target));
-
-// Load DB
-async function loadDatabase() {
-  try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-      headers: { "X-Master-Key": API_KEY }
-    });
-    if (!res.ok) throw new Error("DB not found");
-    const data = await res.json();
-    barcodeDB = data.record || {};
-  } catch (err) {
-    console.warn("⚠️ Using empty DB:", err);
-    barcodeDB = {};
-  }
-}
 
 function getAllItemsArray() {
   return Object.entries(barcodeDB).map(([barcode, item]) => ({
@@ -424,79 +421,112 @@ searchInput.addEventListener('keydown', (e)=>{
   }
 });
 
-// ---------------------------
-// Client-side save/upload code
-// ---------------------------
-
-// Save to JSONBin and error-check
-async function saveToDatabase(newCode, newItem) {
-  barcodeDB[newCode] = newItem;
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY },
-    body: JSON.stringify(barcodeDB, null, 2)
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error('JSONBin save failed: ' + res.status + ' ' + txt);
-  }
-  try { return await res.json(); } catch(e) { return null; }
+/* -------------------------
+   Client side image helpers for Supabase
+   ------------------------- */
+// convert dataURL to Blob (for upload)
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const meta = parts[0];
+  const base64 = parts[1];
+  const mime = meta.match(/:(.*?);/)[1];
+  const binary = atob(base64);
+  const len = binary.length;
+  const u8arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8arr[i] = binary.charCodeAt(i);
+  return new Blob([u8arr], { type: mime });
 }
 
-// dataURL -> base64 portion
-function dataURLtoBase64(dataURL) {
-  const idx = dataURL.indexOf('base64,');
-  if (idx === -1) return null;
-  return dataURL.substring(idx + 7);
-}
-
-// Upload to GitHub (client-side). Returns raw.githubusercontent URL.
-async function uploadToGitHub(barcode, dataURL) {
-  if (!GITHUB_OWNER || !GITHUB_REPO || !GITHUB_TOKEN) {
-    throw new Error('GitHub config missing');
-  }
-  const path = `${GITHUB_PHOTO_PATH}/${barcode}.png`;
-  const apiUrl = `https://api.github.com/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${encodeURIComponent(path)}`;
-
-  const contentBase64 = dataURLtoBase64(dataURL);
-  if (!contentBase64) throw new Error('Invalid image data');
-
-  // Try GET to obtain sha if file exists (so we can update)
-  let sha = null;
+/* ---------- Supabase image upload ----------
+   Upload a dataURL (compressed image) to the public bucket
+   and return the public URL.
+*/
+async function uploadImageToSupabase(barcode, dataURL) {
+  if (!dataURL) return null;
   try {
-    const getRes = await fetch(apiUrl + `?ref=${encodeURIComponent(GITHUB_BRANCH)}`, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' }
-    });
-    if (getRes.ok) {
-      const json = await getRes.json();
-      if (json && json.sha) sha = json.sha;
+    const blob = dataURLtoBlob(dataURL);
+    // filename: sku + timestamp
+    const filename = `${barcode}/${Date.now()}.jpg`;
+    const path = filename; // store path relative to bucket root
+
+    // upload
+    const { data, error: uploadErr } = await supabaseClient
+      .storage
+      .from(SUPABASE_BUCKET)
+      .upload(path, blob, { cacheControl: '3600', upsert: true });
+
+    if (uploadErr) throw uploadErr;
+
+    // get public URL
+    const { data: publicData } = supabaseClient
+      .storage
+      .from(SUPABASE_BUCKET)
+      .getPublicUrl(path);
+
+    return publicData.publicUrl; // full URL to the uploaded file
+  } catch (err) {
+    console.error('Supabase upload error', err);
+    throw err;
+  }
+}
+
+/* ---------- Save metadata row to Supabase ----------
+   Upsert (insert or update) the item by sku (barcode).
+*/
+async function saveItemToSupabase(barcode, item) {
+  // item: { name, shelf, section, image_url }
+  try {
+    const row = {
+      sku: barcode,
+      name: item.name || null,
+      shelf: item.shelf || null,
+      section: item.section || null,
+      image_url: item.image_url || null
+    };
+    const { data, error } = await supabaseClient
+      .from('items')
+      .upsert(row, { onConflict: 'sku' });
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('saveItemToSupabase error', err);
+    throw err;
+  }
+}
+
+/* ---------- Load items from Supabase into barcodeDB ----------
+   Fetch all rows from items and convert into the same shape
+   your existing code expects: barcodeDB[sku] = { name, shelf, section, photo: image_url }
+*/
+async function loadDatabaseFromSupabase() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('items')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // convert to your local map
+    barcodeDB = {};
+    for (const row of data) {
+      barcodeDB[row.sku] = {
+        name: row.name || '',
+        shelf: row.shelf || '',
+        section: row.section || '',
+        photo: row.image_url || ''
+      };
     }
   } catch (err) {
-    console.warn('GitHub GET failed (maybe not exists):', err);
+    console.warn('Failed to load items from Supabase:', err);
+    barcodeDB = {};
   }
-
-  const body = {
-    message: `Add/update photo for ${barcode}`,
-    content: contentBase64,
-    branch: GITHUB_BRANCH
-  };
-  if (sha) body.sha = sha;
-
-  const putRes = await fetch(apiUrl, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!putRes.ok) {
-    const txt = await putRes.text();
-    throw new Error('GitHub upload failed: ' + putRes.status + ' ' + txt);
-  }
-
-  // raw url
-  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`;
 }
 
+/* -------------------------
+   Existing camera + scanning + utility code (kept)
+   ------------------------- */
 // helper: capture current video frame to data URL
 function captureFrameDataURL() {
   try {
@@ -678,9 +708,9 @@ async function toggleTorch() {
 
 torchBtn.addEventListener('click', toggleTorch);
 
-// ---------------------------
-// Save button handler (client-side flow)
-// ---------------------------
+/* -------------------------
+   Image resize helper (keeps from your file)
+   ------------------------- */
 // helper: resize/compress a dataURL (returns a JPEG dataURL)
 async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
@@ -707,7 +737,10 @@ async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
   });
 }
 
-// NEW save handler: upload photo to GitHub first, then save small JSON to JSONBin
+/* -------------------------
+   NEW: Save handler (Supabase flow)
+   Replaces GitHub/JSONBin logic.
+   ------------------------- */
 saveBtn.addEventListener("click", async () => {
   try {
     const name = itemNameInput.value.trim();
@@ -719,14 +752,13 @@ saveBtn.addEventListener("click", async () => {
       return;
     }
 
-    // Step 1: get photo (base64 dataURL) if present
+    // Step 1: get photo (dataURL) if present
     const inlinePhoto = itemPhotoData.value || null;
 
-    // Step 2: If there's a photo, compress/resize it first (reduces upload size)
+    // Step 2: compress/resize it first (reduces upload size)
     let uploadDataURL = null;
     if (inlinePhoto) {
       try {
-        // reduce to at most 1024px width, jpeg quality 0.75
         uploadDataURL = await resizeDataURL(inlinePhoto, 1024, 0.75);
       } catch (err) {
         console.warn('Resize failed — falling back to original photo', err);
@@ -734,43 +766,39 @@ saveBtn.addEventListener("click", async () => {
       }
     }
 
-    // Step 3: If we have image data and GitHub is configured, upload to GitHub first
-    let finalPhotoPath = null;
-    if (uploadDataURL && GITHUB_TOKEN && GITHUB_OWNER && GITHUB_REPO) {
+    // Step 3: If we have image data, upload to Supabase Storage
+    let finalPhotoUrl = null;
+    if (uploadDataURL) {
       try {
-        // uploadToGitHub should exist in your code and return the raw.githubusercontent URL
-        finalPhotoPath = await uploadToGitHub(barcode, uploadDataURL);
-      } catch (ghErr) {
-        console.error('GitHub upload failed:', ghErr);
-        alert('Image upload to GitHub failed: ' + ghErr.message + '\nSave aborted to avoid JSONBin exceeding size limits.');
+        finalPhotoUrl = await uploadImageToSupabase(barcode, uploadDataURL);
+      } catch (err) {
+        console.error('Image upload failed:', err);
+        alert('Image upload failed: ' + (err.message || err));
         return;
       }
     }
 
-    // Step 4: Build small metadata object (do NOT include large inline base64)
+    // Step 4: Build item object and save to Supabase table
     const itemToSave = {
       name,
       shelf,
       section,
-      photoPath: finalPhotoPath || `/assets/Item_photo/${barcode}.png`
+      image_url: finalPhotoUrl // or null
     };
 
-    // Step 5: Save small JSON to JSONBin (this should be <100KB)
-    await saveToDatabase(barcode, itemToSave);
+    await saveItemToSupabase(barcode, itemToSave);
 
-    // Step 6: Refresh DB and update UI
-    await loadDatabase();
+    // Step 5: reload DB and update UI
+    await loadDatabaseFromSupabase();
     const saved = barcodeDB[barcode];
-    if (saved) {
-      if (saved.photoPath) {
-        itemPhotoDisplay.src = saved.photoPath;
-        itemPhotoDisplay.style.display = 'block';
-      } else {
-        itemPhotoDisplay.style.display = 'none';
-      }
-      itemNameDisplay.textContent = saved.name || name;
-      shelfDisplay.textContent = "Shelf / Section nr: " + (saved.shelf || shelf) + " / " + (saved.section || section);
+    if (saved && saved.photo) {
+      itemPhotoDisplay.src = saved.photo;
+      itemPhotoDisplay.style.display = 'block';
+    } else {
+      itemPhotoDisplay.style.display = 'none';
     }
+    itemNameDisplay.textContent = saved?.name || name;
+    shelfDisplay.textContent = "Shelf / Section nr: " + (saved?.shelf || shelf) + " / " + (saved?.section || section);
 
     addForm.style.display = "none";
     switchTab(document.getElementById('tab-map'));
@@ -778,17 +806,21 @@ saveBtn.addEventListener("click", async () => {
 
   } catch (err) {
     console.error('Save failed:', err);
-    alert('Save failed: ' + err.message);
+    alert('Save failed: ' + (err.message || err));
   }
 });
-  
-// Init
+
+/* -------------------------
+   Init on page load
+   ------------------------- */
 mapImg.style.display = "block";
-window.addEventListener('load', async ()=>{ await loadDatabase(); });
+window.addEventListener('load', async ()=>{
+  try {
+    await loadDatabaseFromSupabase();
+  } catch(e) {
+    console.warn('Initial load failed', e);
+  }
+});
 </script>
 </body>
 </html>
-
-
-
-
