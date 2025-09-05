@@ -477,7 +477,7 @@ async function saveItemToSupabase(barcode, item) {
   // item: { name, shelf, section, image_url }
   try {
     const row = {
-      sku: barcode,
+      barcode: barcode,
       name: item.name || null,
       shelf: item.shelf || null,
       section: item.section || null,
@@ -824,4 +824,5 @@ window.addEventListener('load', async ()=>{
 </script>
 </body>
 </html>
+
 
