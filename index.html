@@ -98,12 +98,7 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 
     <!-- torch toggle button (shown only on scan tab) -->
     <button id="torchBtn" title="Toggle flash">🔦</button>
-    <button id="teleBtn" title="Toggle close-up camera" 
-      style="position:absolute; left:calc(50% + 60px); bottom:18px; transform:translateX(-50%); 
-             z-index:60; background:rgba(0,0,0,0.45); color:white; border:none; 
-             padding:12px; border-radius:50%; font-size:18px; display:none; cursor:pointer; 
-             box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔍</button>
-
+    <div id="detectBadge">0/3</div>
   </div>
 
   <!-- Item Card for Scan -->
@@ -190,10 +185,6 @@ let currentCode = null;
 let currentStream = null;
 let torchOn = false;
 
-// New: Telephoto / Close-up camera
-let useTelephoto = false; 
-const teleBtn = document.getElementById('teleBtn');
-  
 // Detection confirmation
 const CONFIRMATION_THRESHOLD = 3;
 let lastDetectedCode = null;
@@ -226,19 +217,16 @@ function switchTab(tab) {
   if(tab.id === "tab-map"){
     mapImg.style.display = "block";
     itemCard.classList.remove("hidden");
-    teleBtn.style.display = "block";
     stopCamera();
   } else if(tab.id === "tab-scan"){
     video.style.display = "block";
     itemCard.classList.add("hidden");
-    teleBtn.style.display = "none";
     startCamera();
     torchBtn.style.display = "block";
   } else if(tab.id === "tab-add"){
     // List tab
     listPage.style.display = "flex";
     mainDiv.classList.add("add-tab");
-    teleBtn.style.display = "none";
     stopCamera();
     const all = getAllItemsArray();
     lastRenderStart = 0;
@@ -674,23 +662,17 @@ async function startCamera() {
   consecutiveDetectCount = 0;
   detectBadge.textContent = `0/${CONFIRMATION_THRESHOLD}`;
   try {
-    // enumerate video devices
-const devices = await navigator.mediaDevices.enumerateDevices();
-const videoDevices = devices.filter(d => d.kind === 'videoinput');
-
-let constraints = { facingMode: 'environment' };
-
-if(useTelephoto){
-  // try to pick a telephoto camera if the device label contains "tele" or "zoom"
-  const teleDevice = videoDevices.find(d => /tele|zoom/i.test(d.label));
-  if(teleDevice){
-    constraints = { deviceId: { exact: teleDevice.deviceId } };
-  } else {
-    alert('Telephoto camera not found, using regular camera.');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    currentStream = stream;
+    video.srcObject = stream;
+    video.play().catch(()=>{});
+    torchOn = false;
+    startScanner();
+  } catch (err) {
+    alert('Error accessing camera: ' + err.message);
   }
 }
-const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
-  
+
 // Torch control
 async function toggleTorch() {
   if (!currentStream) {
@@ -826,19 +808,8 @@ saveBtn.addEventListener("click", async () => {
     console.error('Save failed:', err);
     alert('Save failed: ' + (err.message || err));
   }
-  
-    // Telephoto toggle button
-    teleBtn.addEventListener('click', async () => {
-      useTelephoto = !useTelephoto; // toggle mode
-      stopCamera();                  // stop current camera
-      await startCamera();           // restart camera with new mode
-      // update button visuals
-      teleBtn.style.background = useTelephoto ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.45)';
-      teleBtn.style.color = useTelephoto ? '#111' : 'white';
 });
 
-
-    
 /* -------------------------
    Init on page load
    ------------------------- */
@@ -853,7 +824,6 @@ window.addEventListener('load', async ()=>{
 </script>
 </body>
 </html>
-
 
 
 
