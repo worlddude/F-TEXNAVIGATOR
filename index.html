@@ -54,7 +54,25 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
-
+/* Modal for enlarged photo */
+#photoModal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  justify-content: center;
+  align-items: center;
+}
+#photoModal img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  cursor: zoom-out;
+}
 /* hide the old detect counter UI completely */
 #detectBadge { display: none !important; }
 
@@ -821,9 +839,31 @@ window.addEventListener('load', async ()=>{
     console.warn('Initial load failed', e);
   }
 });
+
+const photoModal = document.getElementById('photoModal');
+const modalPhoto = document.getElementById('modalPhoto');
+
+// Click on photo to enlarge
+itemPhotoDisplay.addEventListener('click', () => {
+  if (itemPhotoDisplay.src) {
+    modalPhoto.src = itemPhotoDisplay.src;
+    photoModal.style.display = 'flex';
+  }
+});
+
+// Click modal to close
+photoModal.addEventListener('click', () => {
+  photoModal.style.display = 'none';
+  modalPhoto.src = '';
+});
+ 
 </script>
+  <div id="photoModal">
+  <img src="" alt="Enlarged photo" id="modalPhoto">
+</div>
 </body>
 </html>
+
 
 
 
