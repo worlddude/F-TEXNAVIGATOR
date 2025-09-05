@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -70,6 +70,26 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 /* item-card photo preview */
 #itemPhotoDisplay { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; float: right; margin-left: 10px; }
 #photoPreview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #eee; display: block; }
+
+/* Modal for enlarged photo */
+#photoModal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  justify-content: center;
+  align-items: center;
+}
+#photoModal img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  cursor: zoom-out;
+}
 </style>
 
 <!-- Quagga for barcode scanning -->
@@ -128,7 +148,10 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     </div>
   </div>
 
-
+  <!-- Modal for enlarged photo -->
+  <div id="photoModal">
+    <img src="" alt="Enlarged photo" id="modalPhoto">
+  </div>
 
 <!-- Supabase client (v2) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
@@ -821,10 +844,36 @@ window.addEventListener('load', async ()=>{
     console.warn('Initial load failed', e);
   }
 });
+
+/* -------------------------
+   Modal enlargement feature (minimal, non-invasive)
+   ------------------------- */
+const photoModal = document.getElementById('photoModal');
+const modalPhoto = document.getElementById('modalPhoto');
+
+// Click on the small item photo (in the map/item card) to open modal.
+// Only open if the image has a non-empty src.
+itemPhotoDisplay.addEventListener('click', () => {
+  try {
+    if (itemPhotoDisplay && itemPhotoDisplay.src) {
+      modalPhoto.src = itemPhotoDisplay.src;
+      photoModal.style.display = 'flex';
+    }
+  } catch (err) {
+    // don't break other features if something goes wrong
+    console.warn('Failed to open photo modal', err);
+  }
+});
+
+// Clicking the modal closes it and clears the src to release memory.
+photoModal.addEventListener('click', () => {
+  try {
+    photoModal.style.display = 'none';
+    modalPhoto.src = '';
+  } catch (err) {
+    console.warn('Failed to close photo modal', err);
+  }
+});
 </script>
 </body>
 </html>
-
-
-
-
