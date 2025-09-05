@@ -128,22 +128,22 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     </div>
   </div>
 
+
+
+<!-- Supabase client (v2) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+
 <script>
 /* -------------------------
    CONFIG - REPLACE THESE
-   -------------------------
-   1) Replace SUPABASE_URL and SUPABASE_ANON_KEY with values from:
-      Supabase Dashboard → Settings → API
-   2) Make sure you created a public storage bucket named 'item-images'
-      and a table 'items' with columns: sku (text unique), name, shelf, section, image_url, created_at.
-   3) For fast prototyping you can disable Row Level Security (RLS) on the 'items' table.
-*/
+   ------------------------- */
 const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/'; // <-- REPLACE
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';           // <-- REPLACE
 const SUPABASE_BUCKET = 'item_images'; // change if you named it differently
 
-// Initialize Supabase client (global `supabase` from CDN exposes createClient)
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ✅ Initialize Supabase client (v2 UMD build)
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* -------------------------
    DOM & UI code (mostly your original)
@@ -824,3 +824,4 @@ window.addEventListener('load', async ()=>{
 </script>
 </body>
 </html>
+
