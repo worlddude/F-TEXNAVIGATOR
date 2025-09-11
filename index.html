@@ -335,6 +335,57 @@ function levenshtein(a, b) {
   return matrix[b.length][a.length];
 }
 
+/* -------------------------
+   NEW helper: open item in Scan tab for editing
+   Only minimal logic to populate the form/photo and show the addForm.
+   ------------------------- */
+function openItemForEdit(barcode) {
+  const item = barcodeDB[barcode];
+  // Switch to scan tab (user asked specifically to switch to scan)
+  switchTab(document.getElementById('tab-scan'));
+
+  // Ensure camera is stopped and we show the itemCard + addForm for editing.
+  stopCamera();
+  // Show item card and the add form
+  itemCard.classList.remove('hidden');
+  addForm.style.display = 'flex';
+  video.style.display = 'none';
+
+  // Populate form fields
+  itemBarcodeInput.value = barcode || '';
+  itemNameInput.value = (item && item.name) ? item.name : '';
+  itemShelfInput.value = (item && item.shelf) ? item.shelf : '';
+  itemSectionInput.value = (item && item.section) ? item.section : '';
+
+  // Populate display area
+  itemNameDisplay.textContent = (item && item.name) ? item.name : '-';
+  barcodeDisplay.textContent = 'Barcode: ' + (barcode || '-');
+  dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
+  shelfDisplay.textContent = 'Shelf / Section nr: ' + ((item && item.shelf) || '-') + ' / ' + ((item && item.section) || '-');
+
+  // Photo handling: show existing photo if present
+  if (item && (item.photo || item.photoPath)) {
+    const src = item.photo || item.photoPath;
+    itemPhotoDisplay.src = src;
+    itemPhotoDisplay.style.display = 'block';
+
+    // also populate preview & hidden data if possible (we can't fetch remote dataURL easily,
+    // so just set preview src to the URL and leave itemPhotoData empty — user can replace)
+    photoPreview.src = src;
+    photoPreview.style.display = 'block';
+    itemPhotoData.value = ''; // leave blank because we only have remote URL
+  } else {
+    itemPhotoDisplay.style.display = 'none';
+    photoPreview.style.display = 'none';
+    itemPhotoData.value = '';
+    photoPreview.src = '';
+    itemPhotoDisplay.src = '';
+  }
+}
+
+/* -------------------------
+   renderList (only slight additions below to attach long-press)
+   ------------------------- */
 function renderList(items, startIndex = 0) {
   lastRenderedItems = items;
   lastRenderStart = startIndex;
@@ -388,6 +439,53 @@ function renderList(items, startIndex = 0) {
         alert('Item not found');
       }
     });
+
+    /* -------------------------
+       ADD: long-press support for editing:
+       - hold (mouse or touch) for > 2500ms to open item for edit
+       - minimal and non-invasive: timer cleared on up/leave/cancel
+       ------------------------- */
+    (function(localDiv, barcode) {
+      let longPressTimer = null;
+      const LONG_PRESS_MS = 2500;
+
+      function startLongPress() {
+        clearLongPress();
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null;
+          // open for edit in scan tab
+          openItemForEdit(barcode);
+        }, LONG_PRESS_MS);
+      }
+      function clearLongPress() {
+        if(longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
+
+      // Mouse
+      localDiv.addEventListener('mousedown', (e) => {
+        // ignore secondary buttons etc.
+        if (e.button !== 0) return;
+        startLongPress();
+      });
+      localDiv.addEventListener('mouseup', clearLongPress);
+      localDiv.addEventListener('mouseleave', clearLongPress);
+
+      // Touch
+      localDiv.addEventListener('touchstart', (e) => {
+        // If multiple touches, don't start long-press
+        if (e.touches && e.touches.length > 1) return;
+        startLongPress();
+      }, { passive: true });
+      localDiv.addEventListener('touchend', clearLongPress);
+      localDiv.addEventListener('touchcancel', clearLongPress);
+
+      // pointer events fallback (optional)
+      localDiv.addEventListener('pointercancel', clearLongPress);
+      localDiv.addEventListener('pointerup', clearLongPress);
+    })(div, it.barcode);
 
     listPage.appendChild(div);
   }
@@ -1102,4 +1200,3 @@ window.addEventListener('wheel', function(e) {
 </script>
 </body>
 </html>
-
