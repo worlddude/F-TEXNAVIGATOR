@@ -88,12 +88,23 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 /* Prevent selection / copy / long-press callout on mobile for list items */
-.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; position: relative; overflow: hidden; }
 .list-item h3 { margin: 0 0 6px; font-size: 16px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #444; }
 .list-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #f0f0f0; flex: 0 0 56px; }
 .load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
 .empty { text-align: center; color: #666; padding: 20px; }
+
+/* overlay used for press progress indicator (NEW) */
+.press-overlay {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: rgba(37,99,235,0.18); /* blue-ish */
+  opacity: 0;
+  transition: opacity 120ms linear;
+  border-radius: 8px;
+}
 
 /* item-card photo preview */
 #itemPhotoDisplay { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; float: right; margin-left: 10px; }
@@ -336,14 +347,12 @@ function levenshtein(a, b) {
 
 /* -------------------------
    NEW helper: open item in Scan tab for editing
-   Only minimal logic to populate the form/photo and show the addForm.
-   IMPORTANT: does NOT start the camera (avoids permission prompt)
+   (unchanged except it still does NOT start camera)
    ------------------------- */
 function openItemForEdit(barcode) {
   const item = barcodeDB[barcode];
 
   // Manually set the UI to look like Scan tab but DON'T start the camera.
-  // (This avoids requesting camera permission on long-press.)
   tabs.forEach(btn => btn.classList.remove('active'));
   document.getElementById('tab-scan').classList.add('active');
 
@@ -394,7 +403,10 @@ function openItemForEdit(barcode) {
 }
 
 /* -------------------------
-   renderList (only slight additions below to attach long-press)
+   renderList (updated: long-press overlay + non-blocking touch)
+   - Small visual indicator overlay that fills opacity from 0 -> 1 while holding
+   - Do NOT call e.preventDefault() on touchstart so short taps still trigger map click
+   - CSS already disables text selection / callout; that plus overlay avoids copy menu
    ------------------------- */
 function renderList(items, startIndex = 0) {
   lastRenderedItems = items;
@@ -425,7 +437,12 @@ function renderList(items, startIndex = 0) {
                        <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>
                      </div>`;
 
-    // click to view on map
+    // add press overlay element (NEW)
+    const overlay = document.createElement('div');
+    overlay.className = 'press-overlay';
+    div.appendChild(overlay);
+
+    // click to view on map (restored - works on touch too because we do NOT preventDefault on touchstart)
     div.addEventListener('click', ()=> {
       const barcode = div.dataset.barcode;
       const item = barcodeDB[barcode];
@@ -451,22 +468,38 @@ function renderList(items, startIndex = 0) {
     });
 
     /* -------------------------
-       ADD: long-press support for editing:
+       ADD: long-press support for editing with visual progress overlay
        - hold (mouse or touch) for > 2500ms to open item for edit
-       - prevent native copy/context/select behaviors on mobile
+       - touchstart is passive-friendly (we don't call preventDefault), so short taps still work
+       - overlay opacity is animated via requestAnimationFrame to provide smooth progress
        ------------------------- */
-    (function(localDiv, barcode) {
+    (function(localDiv, barcode, overlayEl) {
       let longPressTimer = null;
       const LONG_PRESS_MS = 2500;
+      let pressingStart = null;
+      let raf = null;
+
+      function updateOverlayProgress() {
+        if (!pressingStart) return;
+        const elapsed = Date.now() - pressingStart;
+        const clamped = Math.max(0, Math.min(1, elapsed / LONG_PRESS_MS));
+        overlayEl.style.opacity = String(0.12 + clamped * 0.88); // grow from faint to full
+        if (clamped >= 1) return; // done
+        raf = requestAnimationFrame(updateOverlayProgress);
+      }
 
       function startLongPress(e) {
-        // prevent native long-press menu / selection on touch
-        if (e && e.type === 'touchstart') {
-          try { e.preventDefault(); } catch(_) {}
-        }
         clearLongPress();
+        pressingStart = Date.now();
+        overlayEl.style.transition = 'opacity 60ms linear';
+        // start visual progress loop
+        raf = requestAnimationFrame(updateOverlayProgress);
+
         longPressTimer = setTimeout(() => {
           longPressTimer = null;
+          pressingStart = null;
+          cancelAnimationFrame(raf);
+          overlayEl.style.opacity = '0';
           // open for edit in scan tab without starting camera
           openItemForEdit(barcode);
         }, LONG_PRESS_MS);
@@ -476,6 +509,14 @@ function renderList(items, startIndex = 0) {
           clearTimeout(longPressTimer);
           longPressTimer = null;
         }
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = null;
+        }
+        pressingStart = null;
+        // fade overlay out smoothly
+        overlayEl.style.transition = 'opacity 180ms linear';
+        overlayEl.style.opacity = '0';
       }
 
       // Mouse
@@ -486,22 +527,23 @@ function renderList(items, startIndex = 0) {
       localDiv.addEventListener('mouseup', clearLongPress);
       localDiv.addEventListener('mouseleave', clearLongPress);
 
-      // Touch (non-passive so we can preventDefault)
+      // Touch (we do NOT call preventDefault here so short taps still trigger click)
       localDiv.addEventListener('touchstart', (e) => {
+        // if multiple touches, ignore
         if (e.touches && e.touches.length > 1) return;
         startLongPress(e);
-      }, { passive: false });
+      }, { passive: true }); // passive true to avoid blocking tap/click generation
       localDiv.addEventListener('touchend', clearLongPress);
       localDiv.addEventListener('touchcancel', clearLongPress);
 
-      // prevent context menu & selection
+      // prevent context menu & selection fallback
       localDiv.addEventListener('contextmenu', (e) => { e.preventDefault(); });
       localDiv.addEventListener('selectstart', (e) => { e.preventDefault(); });
 
       // pointer events fallback
       localDiv.addEventListener('pointercancel', clearLongPress);
       localDiv.addEventListener('pointerup', clearLongPress);
-    })(div, it.barcode);
+    })(div, it.barcode, overlay);
 
     listPage.appendChild(div);
   }
@@ -917,7 +959,8 @@ async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
 }
 
 /* -------------------------
-   NEW: Save handler (Supabase flow)
+   Save handler (Supabase flow)
+   - MINOR change: if user did not supply a new inline photo, keep existing remote photo URL (if any)
    ------------------------- */
 saveBtn.addEventListener("click", async () => {
   try {
@@ -953,6 +996,13 @@ saveBtn.addEventListener("click", async () => {
         console.error('Image upload failed:', err);
         alert('Image upload failed: ' + (err.message || err));
         return;
+      }
+    } else {
+      // <-- NEW: preserve existing photo URL if user didn't provide a new image
+      if (barcodeDB[barcode] && barcodeDB[barcode].photo) {
+        finalPhotoUrl = barcodeDB[barcode].photo;
+      } else {
+        finalPhotoUrl = null;
       }
     }
 
