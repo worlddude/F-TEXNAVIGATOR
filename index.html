@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<!-- NOTE: maximum-scale=1,user-scalable=no disables browser pinch-zoom for the page.
-     Map zoom/pan is implemented in JS so only the map can be zoomed. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Store Item Locator — Supabase Demo</title>
 
@@ -89,7 +87,8 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 
 /* List Page */
 #listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; }
+/* Prevent selection / copy / long-press callout on mobile for list items */
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .list-item h3 { margin: 0 0 6px; font-size: 16px; }
 .list-item p { margin: 2px 0; font-size: 13px; color: #444; }
 .list-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #f0f0f0; flex: 0 0 56px; }
@@ -338,18 +337,27 @@ function levenshtein(a, b) {
 /* -------------------------
    NEW helper: open item in Scan tab for editing
    Only minimal logic to populate the form/photo and show the addForm.
+   IMPORTANT: does NOT start the camera (avoids permission prompt)
    ------------------------- */
 function openItemForEdit(barcode) {
   const item = barcodeDB[barcode];
-  // Switch to scan tab (user asked specifically to switch to scan)
-  switchTab(document.getElementById('tab-scan'));
 
-  // Ensure camera is stopped and we show the itemCard + addForm for editing.
-  stopCamera();
-  // Show item card and the add form
+  // Manually set the UI to look like Scan tab but DON'T start the camera.
+  // (This avoids requesting camera permission on long-press.)
+  tabs.forEach(btn => btn.classList.remove('active'));
+  document.getElementById('tab-scan').classList.add('active');
+
+  // hide other views
+  mapContainer.style.display = "none";
+  mapImg.style.display = "none";
+  video.style.display = "none";
+  listPage.style.display = "none";
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+
+  // Show item card + add form for editing
   itemCard.classList.remove('hidden');
   addForm.style.display = 'flex';
-  video.style.display = 'none';
 
   // Populate form fields
   itemBarcodeInput.value = barcode || '';
@@ -369,11 +377,10 @@ function openItemForEdit(barcode) {
     itemPhotoDisplay.src = src;
     itemPhotoDisplay.style.display = 'block';
 
-    // also populate preview & hidden data if possible (we can't fetch remote dataURL easily,
-    // so just set preview src to the URL and leave itemPhotoData empty — user can replace)
+    // set preview to URL (user can replace). Do NOT fetch and convert to dataURL here
     photoPreview.src = src;
     photoPreview.style.display = 'block';
-    itemPhotoData.value = ''; // leave blank because we only have remote URL
+    itemPhotoData.value = ''; // leave empty (remote image)
   } else {
     itemPhotoDisplay.style.display = 'none';
     photoPreview.style.display = 'none';
@@ -381,6 +388,9 @@ function openItemForEdit(barcode) {
     photoPreview.src = '';
     itemPhotoDisplay.src = '';
   }
+
+  // Change save button text for edit
+  saveBtn.textContent = '💾 Save changes';
 }
 
 /* -------------------------
@@ -443,17 +453,21 @@ function renderList(items, startIndex = 0) {
     /* -------------------------
        ADD: long-press support for editing:
        - hold (mouse or touch) for > 2500ms to open item for edit
-       - minimal and non-invasive: timer cleared on up/leave/cancel
+       - prevent native copy/context/select behaviors on mobile
        ------------------------- */
     (function(localDiv, barcode) {
       let longPressTimer = null;
       const LONG_PRESS_MS = 2500;
 
-      function startLongPress() {
+      function startLongPress(e) {
+        // prevent native long-press menu / selection on touch
+        if (e && e.type === 'touchstart') {
+          try { e.preventDefault(); } catch(_) {}
+        }
         clearLongPress();
         longPressTimer = setTimeout(() => {
           longPressTimer = null;
-          // open for edit in scan tab
+          // open for edit in scan tab without starting camera
           openItemForEdit(barcode);
         }, LONG_PRESS_MS);
       }
@@ -466,23 +480,25 @@ function renderList(items, startIndex = 0) {
 
       // Mouse
       localDiv.addEventListener('mousedown', (e) => {
-        // ignore secondary buttons etc.
         if (e.button !== 0) return;
-        startLongPress();
+        startLongPress(e);
       });
       localDiv.addEventListener('mouseup', clearLongPress);
       localDiv.addEventListener('mouseleave', clearLongPress);
 
-      // Touch
+      // Touch (non-passive so we can preventDefault)
       localDiv.addEventListener('touchstart', (e) => {
-        // If multiple touches, don't start long-press
         if (e.touches && e.touches.length > 1) return;
-        startLongPress();
-      }, { passive: true });
+        startLongPress(e);
+      }, { passive: false });
       localDiv.addEventListener('touchend', clearLongPress);
       localDiv.addEventListener('touchcancel', clearLongPress);
 
-      // pointer events fallback (optional)
+      // prevent context menu & selection
+      localDiv.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+      localDiv.addEventListener('selectstart', (e) => { e.preventDefault(); });
+
+      // pointer events fallback
       localDiv.addEventListener('pointercancel', clearLongPress);
       localDiv.addEventListener('pointerup', clearLongPress);
     })(div, it.barcode);
@@ -786,6 +802,9 @@ function startScanner() {
           photoPreview.style.display = 'none';
         }
 
+        // Ensure save button text is the "add new" label
+        saveBtn.textContent = '💾 Save Item';
+
         video.style.display = "none";
         addForm.style.display = "flex";
         itemCard.classList.remove("hidden");
@@ -872,7 +891,6 @@ torchBtn.addEventListener('click', toggleTorch);
 /* -------------------------
    Image resize helper (keeps from your file)
    ------------------------- */
-// helper: resize/compress a dataURL (returns a JPEG dataURL)
 async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -900,7 +918,6 @@ async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
 
 /* -------------------------
    NEW: Save handler (Supabase flow)
-   Replaces GitHub/JSONBin logic.
    ------------------------- */
 saveBtn.addEventListener("click", async () => {
   try {
@@ -1014,11 +1031,7 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (minimal & self-contained)
-   - mouse wheel zoom
-   - drag to pan (mouse & single-touch)
-   - two-finger pinch to zoom (touch)
-   Only affects #mapContainer. Rest of the page remains non-zoomable.
+   MAP pan / zoom implementation (unchanged)
    ------------------------- */
 
 let scale = 1;
@@ -1038,46 +1051,29 @@ let lastTouchDist = null;
 let lastTouchCenter = null;
 
 function applyTransform() {
-  // apply translate + scale with transform-origin at top-left
   mapImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
-// clamp helper
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-// wheel zoom (mouse): zoom centered at mouse pos
 mapContainer.addEventListener('wheel', function(e) {
-  // only when map is visible (if hidden, ignore)
   if (mapContainer.style.display === 'none') return;
-
-  // Prevent default page scroll/zoom and handle map zoom
   e.preventDefault();
-
   const rect = mapImg.getBoundingClientRect();
-  // mouse pos relative to image top-left
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
-
-  // delta: typical wheel -> e.deltaY positive when scrolling down (zoom out)
   const delta = -e.deltaY;
-  const zoomFactor = Math.exp(delta * 0.0015); // smooth zoom
+  const zoomFactor = Math.exp(delta * 0.0015);
   let newScale = clamp(scale * zoomFactor, minScale, maxScale);
-  // compute focal point adjustments so zoom centers on mouse
   const scaleRatio = newScale / scale;
-  // pan so that point under cursor remains fixed
   panX = (panX - mx) * scaleRatio + mx;
   panY = (panY - my) * scaleRatio + my;
   scale = newScale;
   applyTransform();
 }, { passive: false });
 
-// Pointer-based panning (mouse and stylus)
 mapContainer.addEventListener('pointerdown', function(e) {
-  // only single-pointer panning here
-  if (e.pointerType === 'touch') {
-    // touch will be handled in touchstart below (we use pointercancel for fallback)
-    return;
-  }
+  if (e.pointerType === 'touch') return;
   isPanning = true;
   panStartX = e.clientX;
   panStartY = e.clientY;
@@ -1104,11 +1100,9 @@ mapContainer.addEventListener('pointercancel', function(e) {
   try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
 });
 
-/* Touch handlers: single-touch pan, two-touch pinch/zoom */
 mapContainer.addEventListener('touchstart', function(e) {
   if (!e.touches) return;
   if (e.touches.length === 1) {
-    // single finger -> pan
     lastTouchDist = null;
     const t = e.touches[0];
     isPanning = true;
@@ -1117,7 +1111,6 @@ mapContainer.addEventListener('touchstart', function(e) {
     lastPanX = panX;
     lastPanY = panY;
   } else if (e.touches.length === 2) {
-    // pinch start
     isPanning = false;
     const t0 = e.touches[0];
     const t1 = e.touches[1];
@@ -1132,7 +1125,6 @@ mapContainer.addEventListener('touchstart', function(e) {
 mapContainer.addEventListener('touchmove', function(e) {
   if (!e.touches) return;
   if (e.touches.length === 1 && isPanning) {
-    // single finger pan
     e.preventDefault();
     const t = e.touches[0];
     const dx = t.clientX - panStartX;
@@ -1141,7 +1133,6 @@ mapContainer.addEventListener('touchmove', function(e) {
     panY = lastPanY + dy;
     applyTransform();
   } else if (e.touches.length === 2) {
-    // pinch zoom
     e.preventDefault();
     const t0 = e.touches[0];
     const t1 = e.touches[1];
@@ -1173,7 +1164,6 @@ mapContainer.addEventListener('touchend', function(e) {
     lastTouchDist = null;
     lastTouchCenter = null;
   } else if (e.touches.length === 1) {
-    // if one finger remains after pinch, become pan
     const t = e.touches[0];
     isPanning = true;
     panStartX = t.clientX;
@@ -1184,11 +1174,7 @@ mapContainer.addEventListener('touchend', function(e) {
   }
 }, { passive: false });
 
-/* Safeguard: prevent Ctrl+wheel from zooming the page when not over map.
-   (Since viewport prevents pinch zoom globally, this mainly helps desktop ctrl+wheel.)
-*/
 window.addEventListener('wheel', function(e) {
-  // if ctrlKey and target is outside the map container -> prevent browser zoom
   if (e.ctrlKey && !mapContainer.contains(e.target)) {
     e.preventDefault();
   }
