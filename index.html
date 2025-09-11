@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<!-- NOTE: maximum-scale=1,user-scalable=no disables browser pinch-zoom for the page.
-     Map zoom/pan is implemented in JS so only the map can be zoomed. -->
+<!-- keep page pinch-zoom disabled; we handle map zoom in JS -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Store Item Locator — Supabase Demo</title>
 
@@ -28,7 +27,7 @@ body {
 .main { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
 .main.add-tab { justify-content: center; align-items: flex-start; overflow-y: auto; padding: 10px; }
 
-/* Map container and image (new additions, minimal) */
+/* Map container and image (small changes only) */
 #mapContainer {
   width:100%;
   height:100%;
@@ -54,7 +53,7 @@ body {
   pointer-events: none; /* container handles pointer events for panning */
 }
 
-/* keep original video element for scanning */
+/* keep original video element for scan */
 #video { width: 100%; height: 100%; object-fit: cover; display: none; }
 
 /* Item card */
@@ -877,13 +876,243 @@ saveBtn.addEventListener("click", async () => {
    Init on page load
    ------------------------- */
 mapContainer.style.display = "flex"; // show map by default (matches original behavior)
-window.addEventListener('load', async ()=>{
-  try {
-    await loadDatabaseFromSupabase();
-  } catch(e) {
-    console.warn('Initial load failed', e);
+
+/* -------------------------
+   Map pan / zoom implementation (adjusted)
+   - starts zoomed out to fit entire image
+   - pinch anywhere on screen will zoom the map (and won't zoom the page)
+   - single-touch / pointer pan still works when touching the map area
+   ------------------------- */
+
+let scale = 1;
+const minScale = 0.25; // allow a wider zoom-out so entire map is visible
+const maxScale = 6;
+let panX = 0;
+let panY = 0;
+
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let lastPanX = 0;
+let lastPanY = 0;
+
+// touch pinch trackers (map-local single-touch pan is still on mapContainer)
+let lastTouchDist = null;
+let lastTouchCenter = null;
+
+// global pinch (anywhere on screen) — this is what makes "pinch top bar -> zoom map" work
+let globalPinchActive = false;
+let lastGlobalPinchDist = null;
+let lastGlobalPinchCenter = null;
+
+function applyTransform() {
+  mapImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
+// clamp helper
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// Fit image to container initially (so you see as much as possible)
+function fitMapToContainer() {
+  // wait until image has natural dimensions
+  const cw = mapContainer.clientWidth;
+  const ch = mapContainer.clientHeight;
+  const iw = mapImg.naturalWidth || mapImg.width;
+  const ih = mapImg.naturalHeight || mapImg.height;
+  if (!iw || !ih || cw === 0 || ch === 0) return;
+
+  // choose scale so the whole image fits (letterbox)
+  const fitScale = Math.min(cw / iw, ch / ih);
+  scale = clamp(fitScale, minScale, maxScale);
+  // center the image
+  const displayedW = iw * scale;
+  const displayedH = ih * scale;
+  panX = Math.round((cw - displayedW) / 2);
+  panY = Math.round((ch - displayedH) / 2);
+  applyTransform();
+}
+
+// wheel zoom (mouse): zoom centered at mouse pos
+mapContainer.addEventListener('wheel', function(e) {
+  if (mapContainer.style.display === 'none') return;
+  e.preventDefault();
+  const rect = mapImg.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const delta = -e.deltaY;
+  const zoomFactor = Math.exp(delta * 0.0015);
+  let newScale = clamp(scale * zoomFactor, minScale, maxScale);
+  const scaleRatio = newScale / scale;
+  panX = (panX - mx) * scaleRatio + mx;
+  panY = (panY - my) * scaleRatio + my;
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+// Pointer-based panning (mouse and stylus) — only when pointer starts inside mapContainer
+mapContainer.addEventListener('pointerdown', function(e) {
+  // don't start pointer panning for multi-touch (touch two-finger handled elsewhere)
+  if (e.pointerType === 'touch') {
+    // ignore: touch-based panning handled in touch handlers (single-touch)
+    return;
   }
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartY = e.clientY;
+  lastPanX = panX;
+  lastPanY = panY;
+  try { mapContainer.setPointerCapture(e.pointerId); } catch (_) {}
 });
+
+mapContainer.addEventListener('pointermove', function(e) {
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX;
+  const dy = e.clientY - panStartY;
+  panX = lastPanX + dx;
+  panY = lastPanY + dy;
+  applyTransform();
+});
+
+mapContainer.addEventListener('pointerup', function(e) {
+  isPanning = false;
+  try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
+});
+mapContainer.addEventListener('pointercancel', function(e) {
+  isPanning = false;
+  try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
+});
+
+/* mapContainer touch handlers: single-touch panning ONLY here */
+mapContainer.addEventListener('touchstart', function(e) {
+  if (!e.touches) return;
+  if (e.touches.length === 1) {
+    // single finger -> pan inside map
+    lastTouchDist = null;
+    const t = e.touches[0];
+    isPanning = true;
+    panStartX = t.clientX;
+    panStartY = t.clientY;
+    lastPanX = panX;
+    lastPanY = panY;
+  } else {
+    // multi-touch inside map: let global pinch handler handle it (so center anywhere works)
+    isPanning = false;
+  }
+}, { passive: false });
+
+mapContainer.addEventListener('touchmove', function(e) {
+  if (!e.touches) return;
+  if (e.touches.length === 1 && isPanning) {
+    e.preventDefault();
+    const t = e.touches[0];
+    const dx = t.clientX - panStartX;
+    const dy = t.clientY - panStartY;
+    panX = lastPanX + dx;
+    panY = lastPanY + dy;
+    applyTransform();
+  }
+}, { passive: false });
+
+mapContainer.addEventListener('touchend', function(e) {
+  if (!e.touches || e.touches.length === 0) {
+    isPanning = false;
+    lastTouchDist = null;
+    lastTouchCenter = null;
+  } else if (e.touches.length === 1) {
+    const t = e.touches[0];
+    isPanning = true;
+    panStartX = t.clientX;
+    panStartY = t.clientY;
+    lastPanX = panX;
+    lastPanY = panY;
+    lastTouchDist = null;
+  }
+}, { passive: false });
+
+/* GLOBAL two-finger pinch handler (anywhere on page).
+   This prevents the browser from zooming the page and instead zooms the map.
+*/
+window.addEventListener('touchstart', function(e) {
+  if (!e.touches) return;
+  if (e.touches.length === 2) {
+    // start global pinch
+    globalPinchActive = true;
+    const t0 = e.touches[0];
+    const t1 = e.touches[1];
+    lastGlobalPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    lastGlobalPinchCenter = {
+      x: (t0.clientX + t1.clientX) / 2,
+      y: (t0.clientY + t1.clientY) / 2
+    };
+    // prevent browser pinch-zoom
+    e.preventDefault();
+  }
+}, { passive: false });
+
+window.addEventListener('touchmove', function(e) {
+  if (!globalPinchActive || !e.touches || e.touches.length < 2) return;
+  // handle pinch-to-zoom the map centered at pinch center
+  const t0 = e.touches[0];
+  const t1 = e.touches[1];
+  const curDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+  const curCenter = {
+    x: (t0.clientX + t1.clientX) / 2,
+    y: (t0.clientY + t1.clientY) / 2
+  };
+  if (lastGlobalPinchDist && lastGlobalPinchDist > 0) {
+    const zoomFactor = curDist / lastGlobalPinchDist;
+    let newScale = clamp(scale * zoomFactor, minScale, maxScale);
+
+    // compute focal point relative to the image rect
+    const rect = mapImg.getBoundingClientRect();
+    const cx = curCenter.x - rect.left;
+    const cy = curCenter.y - rect.top;
+
+    const scaleRatio = newScale / scale;
+    panX = (panX - cx) * scaleRatio + cx;
+    panY = (panY - cy) * scaleRatio + cy;
+    scale = newScale;
+    applyTransform();
+  }
+  lastGlobalPinchDist = curDist;
+  lastGlobalPinchCenter = curCenter;
+  e.preventDefault(); // prevent page zoom/scroll
+}, { passive: false });
+
+window.addEventListener('touchend', function(e) {
+  if (!e.touches || e.touches.length < 2) {
+    globalPinchActive = false;
+    lastGlobalPinchDist = null;
+    lastGlobalPinchCenter = null;
+  }
+}, { passive: false });
+
+// For iOS Safari: prevent built-in gesture events that may zoom page
+window.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
+window.addEventListener('gesturechange', function(e){ e.preventDefault(); }, { passive: false });
+window.addEventListener('gestureend', function(e){ e.preventDefault(); }, { passive: false });
+
+/* Safeguard: prevent Ctrl+wheel from zooming the page when not over map.
+   (Since viewport prevents pinch zoom globally, this mainly helps desktop ctrl+wheel.)
+*/
+window.addEventListener('wheel', function(e) {
+  if (e.ctrlKey && !mapContainer.contains(e.target)) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+/* Ensure map fits on initial load & on resize */
+mapImg.addEventListener('load', () => {
+  fitMapToContainer();
+});
+window.addEventListener('resize', () => {
+  // keep the current center-ish view when resizing: we'll recenter to fit if scale equals fit scale
+  fitMapToContainer();
+});
+
+/* -------------------------
+   END map pan/zoom code
+   ------------------------- */
 
 /* -------------------------
    Modal enlargement feature (minimal, non-invasive)
@@ -916,189 +1145,17 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (minimal & self-contained)
-   - mouse wheel zoom
-   - drag to pan (mouse & single-touch)
-   - two-finger pinch to zoom (touch)
-   Only affects #mapContainer. Rest of the page remains non-zoomable.
+   Init and DB load (unchanged)
    ------------------------- */
-
-let scale = 1;
-const minScale = 0.5;
-const maxScale = 5;
-let panX = 0;
-let panY = 0;
-
-let isPanning = false;
-let panStartX = 0;
-let panStartY = 0;
-let lastPanX = 0;
-let lastPanY = 0;
-
-// for touch pinch
-let lastTouchDist = null;
-let lastTouchCenter = null;
-
-function applyTransform() {
-  // apply translate + scale with transform-origin at top-left
-  mapImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-}
-
-// clamp helper
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-// wheel zoom (mouse): zoom centered at mouse pos
-mapContainer.addEventListener('wheel', function(e) {
-  // only when map is visible (if hidden, ignore)
-  if (mapContainer.style.display === 'none') return;
-
-  // Prevent default page scroll/zoom and handle map zoom
-  e.preventDefault();
-
-  const rect = mapImg.getBoundingClientRect();
-  // mouse pos relative to image top-left
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  // delta: typical wheel -> e.deltaY positive when scrolling down (zoom out)
-  const delta = -e.deltaY;
-  const zoomFactor = Math.exp(delta * 0.0015); // smooth zoom
-  let newScale = clamp(scale * zoomFactor, minScale, maxScale);
-  // compute focal point adjustments so zoom centers on mouse
-  const scaleRatio = newScale / scale;
-  // pan so that point under cursor remains fixed
-  panX = (panX - mx) * scaleRatio + mx;
-  panY = (panY - my) * scaleRatio + my;
-  scale = newScale;
-  applyTransform();
-}, { passive: false });
-
-// Pointer-based panning (mouse and stylus)
-mapContainer.addEventListener('pointerdown', function(e) {
-  // only single-pointer panning here
-  if (e.pointerType === 'touch') {
-    // touch will be handled in touchstart below (we use pointercancel for fallback)
-    return;
+window.addEventListener('load', async ()=>{
+  try {
+    await loadDatabaseFromSupabase();
+  } catch(e) {
+    console.warn('Initial load failed', e);
   }
-  isPanning = true;
-  panStartX = e.clientX;
-  panStartY = e.clientY;
-  lastPanX = panX;
-  lastPanY = panY;
-  mapContainer.setPointerCapture(e.pointerId);
+  // ensure fit if image already cached & loaded
+  if (mapImg.complete) fitMapToContainer();
 });
-
-mapContainer.addEventListener('pointermove', function(e) {
-  if (!isPanning) return;
-  const dx = e.clientX - panStartX;
-  const dy = e.clientY - panStartY;
-  panX = lastPanX + dx;
-  panY = lastPanY + dy;
-  applyTransform();
-});
-
-mapContainer.addEventListener('pointerup', function(e) {
-  isPanning = false;
-  try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
-});
-mapContainer.addEventListener('pointercancel', function(e) {
-  isPanning = false;
-  try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
-});
-
-/* Touch handlers: single-touch pan, two-touch pinch/zoom */
-mapContainer.addEventListener('touchstart', function(e) {
-  if (!e.touches) return;
-  if (e.touches.length === 1) {
-    // single finger -> pan
-    lastTouchDist = null;
-    const t = e.touches[0];
-    isPanning = true;
-    panStartX = t.clientX;
-    panStartY = t.clientY;
-    lastPanX = panX;
-    lastPanY = panY;
-  } else if (e.touches.length === 2) {
-    // pinch start
-    isPanning = false;
-    const t0 = e.touches[0];
-    const t1 = e.touches[1];
-    lastTouchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    lastTouchCenter = {
-      x: (t0.clientX + t1.clientX) / 2,
-      y: (t0.clientY + t1.clientY) / 2
-    };
-  }
-}, { passive: false });
-
-mapContainer.addEventListener('touchmove', function(e) {
-  if (!e.touches) return;
-  if (e.touches.length === 1 && isPanning) {
-    // single finger pan
-    e.preventDefault();
-    const t = e.touches[0];
-    const dx = t.clientX - panStartX;
-    const dy = t.clientY - panStartY;
-    panX = lastPanX + dx;
-    panY = lastPanY + dy;
-    applyTransform();
-  } else if (e.touches.length === 2) {
-    // pinch zoom
-    e.preventDefault();
-    const t0 = e.touches[0];
-    const t1 = e.touches[1];
-    const curDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    const curCenter = {
-      x: (t0.clientX + t1.clientX) / 2,
-      y: (t0.clientY + t1.clientY) / 2
-    };
-    if (lastTouchDist) {
-      const zoomFactor = curDist / lastTouchDist;
-      const newScale = clamp(scale * zoomFactor, minScale, maxScale);
-      const rect = mapImg.getBoundingClientRect();
-      const cx = curCenter.x - rect.left;
-      const cy = curCenter.y - rect.top;
-      const scaleRatio = newScale / scale;
-      panX = (panX - cx) * scaleRatio + cx;
-      panY = (panY - cy) * scaleRatio + cy;
-      scale = newScale;
-      applyTransform();
-    }
-    lastTouchDist = curDist;
-    lastTouchCenter = curCenter;
-  }
-}, { passive: false });
-
-mapContainer.addEventListener('touchend', function(e) {
-  if (!e.touches || e.touches.length === 0) {
-    isPanning = false;
-    lastTouchDist = null;
-    lastTouchCenter = null;
-  } else if (e.touches.length === 1) {
-    // if one finger remains after pinch, become pan
-    const t = e.touches[0];
-    isPanning = true;
-    panStartX = t.clientX;
-    panStartY = t.clientY;
-    lastPanX = panX;
-    lastPanY = panY;
-    lastTouchDist = null;
-  }
-}, { passive: false });
-
-/* Safeguard: prevent Ctrl+wheel from zooming the page when not over map.
-   (Since viewport prevents pinch zoom globally, this mainly helps desktop ctrl+wheel.)
-*/
-window.addEventListener('wheel', function(e) {
-  // if ctrlKey and target is outside the map container -> prevent browser zoom
-  if (e.ctrlKey && !mapContainer.contains(e.target)) {
-    e.preventDefault();
-  }
-}, { passive: false });
-
-/* -------------------------
-   END map pan/zoom code
-   ------------------------- */
 </script>
 </body>
 </html>
