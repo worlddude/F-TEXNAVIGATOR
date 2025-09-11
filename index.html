@@ -44,7 +44,7 @@ body {
 }
 #map {
   will-change: transform;
-  transform-origin: 0 0;
+  transform-origin: 50% 50%; /* <-- changed from 0 0 to center */
   user-select: none;
   -webkit-user-drag: none;
   max-width: none; /* allow free scaling */
@@ -1081,7 +1081,7 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (unchanged)
+   MAP pan / zoom implementation (MINOR CHANGES)
    ------------------------- */
 
 let scale = 1;
@@ -1110,12 +1110,14 @@ mapContainer.addEventListener('wheel', function(e) {
   if (mapContainer.style.display === 'none') return;
   e.preventDefault();
   const rect = mapImg.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  // pivot now the image center (rect.width/2, rect.height/2)
+  const mx = rect.width / 2;
+  const my = rect.height / 2;
   const delta = -e.deltaY;
   const zoomFactor = Math.exp(delta * 0.0015);
   let newScale = clamp(scale * zoomFactor, minScale, maxScale);
   const scaleRatio = newScale / scale;
+  // adjust pan so we zoom towards the image center
   panX = (panX - mx) * scaleRatio + mx;
   panY = (panY - my) * scaleRatio + my;
   scale = newScale;
@@ -1195,8 +1197,9 @@ mapContainer.addEventListener('touchmove', function(e) {
       const zoomFactor = curDist / lastTouchDist;
       const newScale = clamp(scale * zoomFactor, minScale, maxScale);
       const rect = mapImg.getBoundingClientRect();
-      const cx = curCenter.x - rect.left;
-      const cy = curCenter.y - rect.top;
+      // pivot now image center instead of finger center
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
       const scaleRatio = newScale / scale;
       panX = (panX - cx) * scaleRatio + cx;
       panY = (panY - cy) * scaleRatio + cy;
@@ -1236,15 +1239,3 @@ window.addEventListener('wheel', function(e) {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
