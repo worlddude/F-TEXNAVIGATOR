@@ -643,6 +643,15 @@ searchInput.addEventListener('keydown', (e)=>{
 /* -------------------------
    Client side image helpers for Supabase
    ------------------------- */
+-- SNIP: (the rest of the code for Supabase helpers, camera, scanner, save, etc. is unchanged)
+</script>
+
+<!-- For brevity, I left the remainder of your script unchanged in this view (camera/scanner/upload/save etc.). 
+     The actual file below contains the full unchanged script body except for the minimal map changes described. -->
+
+<script>
+/* ---------- Supabase image upload ---------- (unchanged) */
+
 // convert dataURL to Blob (for upload)
 function dataURLtoBlob(dataURL) {
   const parts = dataURL.split(',');
@@ -656,7 +665,7 @@ function dataURLtoBlob(dataURL) {
   return new Blob([u8arr], { type: mime });
 }
 
-/* ---------- Supabase image upload ----------
+/* ---------- Supabase image upload ---------- 
    Upload a dataURL (compressed image) to the public bucket
    and return the public URL.
 */
@@ -1081,11 +1090,14 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (unchanged)
+   MAP pan / zoom implementation (minimal changes only)
+   - only change: minScale is dynamic so the image can't be zoomed out further than "fit vertically".
+   - updated clamp usages to use getMinScale()
+   - added image load & resize handlers to ensure scale >= getMinScale()
    ------------------------- */
 
 let scale = 1;
-const minScale = 0.15;
+// minScale is now dynamic via getMinScale(); removed fixed minScale constant
 const maxScale = 0.8;
 let panX = 0;
 let panY = 0;
@@ -1106,6 +1118,17 @@ function applyTransform() {
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
+/**
+ * Compute minimum scale so scaled image height >= container height (no top/bottom bars).
+ * Falls back to 0.15 if measurements aren't available yet.
+ */
+function getMinScale() {
+  const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
+  const containerRect = mapContainer.getBoundingClientRect();
+  if (!natH || !containerRect.height) return 0.15;
+  return containerRect.height / natH;
+}
+
 mapContainer.addEventListener('wheel', function(e) {
   if (mapContainer.style.display === 'none') return;
   e.preventDefault();
@@ -1114,7 +1137,7 @@ mapContainer.addEventListener('wheel', function(e) {
   const my = e.clientY - rect.top;
   const delta = -e.deltaY;
   const zoomFactor = Math.exp(delta * 0.0015);
-  let newScale = clamp(scale * zoomFactor, minScale, maxScale);
+  let newScale = clamp(scale * zoomFactor, getMinScale(), maxScale); // <-- changed to dynamic min
   const scaleRatio = newScale / scale;
   panX = (panX - mx) * scaleRatio + mx;
   panY = (panY - my) * scaleRatio + my;
@@ -1193,7 +1216,7 @@ mapContainer.addEventListener('touchmove', function(e) {
     };
     if (lastTouchDist) {
       const zoomFactor = curDist / lastTouchDist;
-      const newScale = clamp(scale * zoomFactor, minScale, maxScale);
+      const newScale = clamp(scale * zoomFactor, getMinScale(), maxScale); // <-- changed to dynamic min
       const rect = mapImg.getBoundingClientRect();
       const cx = curCenter.x - rect.left;
       const cy = curCenter.y - rect.top;
@@ -1230,9 +1253,34 @@ window.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 
-/* -------------------------
-   END map pan/zoom code
-   ------------------------- */
+/* Ensure map cannot be smaller than vertical fit after image loads */
+mapImg.addEventListener('load', () => {
+  // if the image is taller than zero, ensure scale isn't below min
+  try {
+    scale = Math.max(scale, getMinScale());
+    // try to center vertically to avoid top/bottom bars
+    const containerRect = mapContainer.getBoundingClientRect();
+    const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
+    panY = (containerRect.height - (natH * scale)) / 2;
+    applyTransform();
+  } catch (e) {
+    // ignore if measurements not available yet
+  }
+});
+
+/* Enforce min-scale on resize as well */
+window.addEventListener('resize', function() {
+  try {
+    scale = Math.max(scale, getMinScale());
+    const containerRect = mapContainer.getBoundingClientRect();
+    const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
+    panY = (containerRect.height - (natH * scale)) / 2;
+    applyTransform();
+  } catch (e) {
+    // ignore measurement errors
+  }
+});
+
 </script>
 </body>
 </html>
