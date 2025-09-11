@@ -291,6 +291,9 @@ function switchTab(tab) {
     mapImg.style.display = "block";
     itemCard.classList.remove("hidden");
     stopCamera();
+    // ensure pan/zoom constraints are applied when opening the map
+    resetPanToCenter();
+    applyTransform();
   } else if(tab.id === "tab-scan"){
     video.style.display = "block";
     itemCard.classList.add("hidden");
@@ -656,7 +659,7 @@ function dataURLtoBlob(dataURL) {
   return new Blob([u8arr], { type: mime });
 }
 
-/* ---------- Supabase image upload ----------
+/* ---------- Supabase image upload ---------- 
    Upload a dataURL (compressed image) to the public bucket
    and return the public URL.
 */
@@ -1081,7 +1084,10 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (unchanged)
+   MAP pan / zoom implementation (modified minimally)
+   - Zoom uses the CENTER of the mapContainer (keeps image centered while zooming)
+   - Panning only enabled when scaled image is larger than container; otherwise image is centered
+   - Small helper functions added: getScaledDims, enforcePanBounds, resetPanToCenter
    ------------------------- */
 
 let scale = 1;
@@ -1104,26 +1110,105 @@ function applyTransform() {
   mapImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+/**
+ * Return scaled width/height for natural image dimensions.
+ * If naturalWidth is not available yet, fall back to bounding rect.
+ */
+function getScaledDims() {
+  const natW = mapImg.naturalWidth || mapImg.width || mapImg.getBoundingClientRect().width;
+  const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
+  return {
+    width: natW * scale,
+    height: natH * scale
+  };
+}
 
+/**
+ * Enforce pan bounds so the image covers the container when larger, or is centered when smaller.
+ */
+function enforcePanBounds() {
+  const containerRect = mapContainer.getBoundingClientRect();
+  const cW = containerRect.width;
+  const cH = containerRect.height;
+  const scaled = getScaledDims();
+  const sW = scaled.width;
+  const sH = scaled.height;
+
+  if (sW <= cW) {
+    // center horizontally
+    panX = (cW - sW) / 2;
+  } else {
+    // clamp so the image always covers the container: panX in [cW - sW, 0]
+    const minX = cW - sW;
+    const maxX = 0;
+    panX = Math.max(minX, Math.min(maxX, panX));
+  }
+
+  if (sH <= cH) {
+    // center vertically
+    panY = (cH - sH) / 2;
+  } else {
+    const minY = cH - sH;
+    const maxY = 0;
+    panY = Math.max(minY, Math.min(maxY, panY));
+  }
+}
+
+/**
+ * Reset pan to centered view (called on initial load / container resize / opening map)
+ */
+function resetPanToCenter() {
+  const containerRect = mapContainer.getBoundingClientRect();
+  const cW = containerRect.width;
+  const cH = containerRect.height;
+  // keep current scale but center the image within the container
+  const scaled = getScaledDims();
+  panX = (cW - scaled.width) / 2;
+  panY = (cH - scaled.height) / 2;
+  enforcePanBounds();
+  applyTransform();
+}
+
+/* mouse wheel: zoom around center of the mapContainer (so map stays centered) */
 mapContainer.addEventListener('wheel', function(e) {
   if (mapContainer.style.display === 'none') return;
   e.preventDefault();
-  const rect = mapImg.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+
+  // center of the container (absolute coordinates)
+  const containerRect = mapContainer.getBoundingClientRect();
+  const centerAbsX = containerRect.left + containerRect.width / 2;
+  const centerAbsY = containerRect.top + containerRect.height / 2;
+
+  // compute center point relative to image top-left
+  const imgRect = mapImg.getBoundingClientRect();
+  const mx = centerAbsX - imgRect.left;
+  const my = centerAbsY - imgRect.top;
+
   const delta = -e.deltaY;
   const zoomFactor = Math.exp(delta * 0.0015);
   let newScale = clamp(scale * zoomFactor, minScale, maxScale);
   const scaleRatio = newScale / scale;
+
+  // keep center-point fixed relative to container by adjusting pan
   panX = (panX - mx) * scaleRatio + mx;
   panY = (panY - my) * scaleRatio + my;
+
   scale = newScale;
+
+  // enforce pan bounds (if image too small => center; if large => clamp)
+  enforcePanBounds();
   applyTransform();
 }, { passive: false });
 
+/* pointer pan (desktop) */
 mapContainer.addEventListener('pointerdown', function(e) {
   if (e.pointerType === 'touch') return;
+  // allow panning only if the scaled image is larger than the container in at least one dimension
+  const scaled = getScaledDims();
+  const containerRect = mapContainer.getBoundingClientRect();
+  const canPan = (scaled.width > containerRect.width) || (scaled.height > containerRect.height);
+  if(!canPan) return;
+
   isPanning = true;
   panStartX = e.clientX;
   panStartY = e.clientY;
@@ -1138,6 +1223,7 @@ mapContainer.addEventListener('pointermove', function(e) {
   const dy = e.clientY - panStartY;
   panX = lastPanX + dx;
   panY = lastPanY + dy;
+  enforcePanBounds();
   applyTransform();
 });
 
@@ -1150,11 +1236,22 @@ mapContainer.addEventListener('pointercancel', function(e) {
   try { mapContainer.releasePointerCapture(e.pointerId); } catch(_) {}
 });
 
+/* touch handling: single-finger pan only when image fills container; pinch zoom uses container center */
 mapContainer.addEventListener('touchstart', function(e) {
   if (!e.touches) return;
   if (e.touches.length === 1) {
     lastTouchDist = null;
     const t = e.touches[0];
+
+    // only allow panning if the scaled image is larger than the container
+    const scaled = getScaledDims();
+    const containerRect = mapContainer.getBoundingClientRect();
+    const canPan = (scaled.width > containerRect.width) || (scaled.height > containerRect.height);
+    if (!canPan) {
+      isPanning = false;
+      return;
+    }
+
     isPanning = true;
     panStartX = t.clientX;
     panStartY = t.clientY;
@@ -1181,30 +1278,34 @@ mapContainer.addEventListener('touchmove', function(e) {
     const dy = t.clientY - panStartY;
     panX = lastPanX + dx;
     panY = lastPanY + dy;
+    enforcePanBounds();
     applyTransform();
   } else if (e.touches.length === 2) {
     e.preventDefault();
+    // For zooming use the CENTER of the container so the map stays visually centered
+    const containerRect = mapContainer.getBoundingClientRect();
+    const centerAbsX = containerRect.left + containerRect.width / 2;
+    const centerAbsY = containerRect.top + containerRect.height / 2;
+
     const t0 = e.touches[0];
     const t1 = e.touches[1];
     const curDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    const curCenter = {
-      x: (t0.clientX + t1.clientX) / 2,
-      y: (t0.clientY + t1.clientY) / 2
-    };
+    // center of pinch is ignored and replaced with container center
+    const cx = centerAbsX - mapImg.getBoundingClientRect().left;
+    const cy = centerAbsY - mapImg.getBoundingClientRect().top;
+
     if (lastTouchDist) {
       const zoomFactor = curDist / lastTouchDist;
       const newScale = clamp(scale * zoomFactor, minScale, maxScale);
-      const rect = mapImg.getBoundingClientRect();
-      const cx = curCenter.x - rect.left;
-      const cy = curCenter.y - rect.top;
       const scaleRatio = newScale / scale;
       panX = (panX - cx) * scaleRatio + cx;
       panY = (panY - cy) * scaleRatio + cy;
       scale = newScale;
+      enforcePanBounds();
       applyTransform();
     }
     lastTouchDist = curDist;
-    lastTouchCenter = curCenter;
+    lastTouchCenter = { x: cx, y: cy };
   }
 }, { passive: false });
 
@@ -1224,6 +1325,12 @@ mapContainer.addEventListener('touchend', function(e) {
   }
 }, { passive: false });
 
+window.addEventListener('resize', function() {
+  // recenter / re-clamp on resize
+  resetPanToCenter();
+});
+
+/* small guard to avoid allowing ctrl-wheel to zoom outside map accidentally */
 window.addEventListener('wheel', function(e) {
   if (e.ctrlKey && !mapContainer.contains(e.target)) {
     e.preventDefault();
@@ -1236,4 +1343,3 @@ window.addEventListener('wheel', function(e) {
 </script>
 </body>
 </html>
-
