@@ -245,21 +245,15 @@ const itemPhotoInput = document.getElementById('itemPhotoInput');
 const itemPhotoData = document.getElementById('itemPhotoData');
 const itemPhotoDisplay = document.getElementById('itemPhotoDisplay');
 
-// DB
+/// rest of your unchanged variables (DB, camera, etc.)
 let barcodeDB = {};
 let currentCode = null;
-
-// Camera / Torch
 let currentStream = null;
 let torchOn = false;
-
-// Detection confirmation
 const CONFIRMATION_THRESHOLD = 3;
 let lastDetectedCode = null;
 let consecutiveDetectCount = 0;
-let acceptCooldown = false; // prevents double-accepts while handling
-
-// paging for list
+let acceptCooldown = false;
 const PAGE_SIZE = 100;
 let lastRenderStart = 0;
 let lastRenderedItems = [];
@@ -291,6 +285,10 @@ function switchTab(tab) {
     mapImg.style.display = "block";
     itemCard.classList.remove("hidden");
     stopCamera();
+    // when opening map, ensure it's clamped/centered properly
+    scale = Math.max(scale, getMinScale());
+    enforcePanBounds();
+    applyTransform();
   } else if(tab.id === "tab-scan"){
     video.style.display = "block";
     itemCard.classList.add("hidden");
@@ -643,15 +641,6 @@ searchInput.addEventListener('keydown', (e)=>{
 /* -------------------------
    Client side image helpers for Supabase
    ------------------------- */
--- SNIP: (the rest of the code for Supabase helpers, camera, scanner, save, etc. is unchanged)
-</script>
-
-<!-- For brevity, I left the remainder of your script unchanged in this view (camera/scanner/upload/save etc.). 
-     The actual file below contains the full unchanged script body except for the minimal map changes described. -->
-
-<script>
-/* ---------- Supabase image upload ---------- (unchanged) */
-
 // convert dataURL to Blob (for upload)
 function dataURLtoBlob(dataURL) {
   const parts = dataURL.split(',');
@@ -1090,15 +1079,15 @@ photoModal.addEventListener('click', () => {
 });
 
 /* -------------------------
-   MAP pan / zoom implementation (minimal changes only)
-   - only change: minScale is dynamic so the image can't be zoomed out further than "fit vertically".
-   - updated clamp usages to use getMinScale()
-   - added image load & resize handlers to ensure scale >= getMinScale()
+   MAP pan / zoom implementation (minimal, correct fixes)
+   - kept "fit vertically" min scale rule
+   - increase maxScale so zooming works
+   - small helpers enforce pan bounds & centering
    ------------------------- */
 
 let scale = 1;
-// minScale is now dynamic via getMinScale(); removed fixed minScale constant
-const maxScale = 0.8;
+// increased maxScale so zooming in works (was 0.8 too small)
+const maxScale = 4;
 let panX = 0;
 let panY = 0;
 
@@ -1115,12 +1104,11 @@ let lastTouchCenter = null;
 function applyTransform() {
   mapImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
-
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 /**
- * Compute minimum scale so scaled image height >= container height (no top/bottom bars).
- * Falls back to 0.15 if measurements aren't available yet.
+ * Minimum scale so that scaled image height >= container height.
+ * This ensures no black bars at top/bottom when zoomed out.
  */
 function getMinScale() {
   const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
@@ -1129,6 +1117,58 @@ function getMinScale() {
   return containerRect.height / natH;
 }
 
+/**
+ * Return the scaled dimensions for the image (based on natural size).
+ */
+function getScaledDims() {
+  const natW = mapImg.naturalWidth || mapImg.width || mapImg.getBoundingClientRect().width;
+  const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
+  return { width: natW * scale, height: natH * scale };
+}
+
+/**
+ * Clamp/center pan so:
+ * - if scaled image smaller than container in an axis -> center it
+ * - else clamp so the image always covers container (no empty space)
+ */
+function enforcePanBounds() {
+  const containerRect = mapContainer.getBoundingClientRect();
+  const cW = containerRect.width;
+  const cH = containerRect.height;
+  const s = getScaledDims();
+  const sW = s.width;
+  const sH = s.height;
+
+  if (sW <= cW) {
+    panX = (cW - sW) / 2;
+  } else {
+    const minX = cW - sW;
+    const maxX = 0;
+    panX = Math.max(minX, Math.min(maxX, panX));
+  }
+
+  if (sH <= cH) {
+    panY = (cH - sH) / 2;
+  } else {
+    const minY = cH - sH;
+    const maxY = 0;
+    panY = Math.max(minY, Math.min(maxY, panY));
+  }
+}
+
+/**
+ * Reset pan to centered view (keeps current scale).
+ */
+function resetPanToCenter() {
+  const s = getScaledDims();
+  const containerRect = mapContainer.getBoundingClientRect();
+  panX = (containerRect.width - s.width) / 2;
+  panY = (containerRect.height - s.height) / 2;
+  enforcePanBounds();
+  applyTransform();
+}
+
+/* mouse wheel: zoom around the point, but never smaller than getMinScale() */
 mapContainer.addEventListener('wheel', function(e) {
   if (mapContainer.style.display === 'none') return;
   e.preventDefault();
@@ -1137,16 +1177,23 @@ mapContainer.addEventListener('wheel', function(e) {
   const my = e.clientY - rect.top;
   const delta = -e.deltaY;
   const zoomFactor = Math.exp(delta * 0.0015);
-  let newScale = clamp(scale * zoomFactor, getMinScale(), maxScale); // <-- changed to dynamic min
+  let newScale = clamp(scale * zoomFactor, getMinScale(), maxScale);
   const scaleRatio = newScale / scale;
   panX = (panX - mx) * scaleRatio + mx;
   panY = (panY - my) * scaleRatio + my;
   scale = newScale;
+  enforcePanBounds();
   applyTransform();
 }, { passive: false });
 
 mapContainer.addEventListener('pointerdown', function(e) {
   if (e.pointerType === 'touch') return;
+  // allow panning only if the scaled image is larger than the container in at least one dimension
+  const s = getScaledDims();
+  const containerRect = mapContainer.getBoundingClientRect();
+  const canPan = (s.width > containerRect.width) || (s.height > containerRect.height);
+  if(!canPan) return;
+
   isPanning = true;
   panStartX = e.clientX;
   panStartY = e.clientY;
@@ -1161,6 +1208,7 @@ mapContainer.addEventListener('pointermove', function(e) {
   const dy = e.clientY - panStartY;
   panX = lastPanX + dx;
   panY = lastPanY + dy;
+  enforcePanBounds();
   applyTransform();
 });
 
@@ -1178,6 +1226,16 @@ mapContainer.addEventListener('touchstart', function(e) {
   if (e.touches.length === 1) {
     lastTouchDist = null;
     const t = e.touches[0];
+
+    // only allow panning if the scaled image is larger than the container
+    const s = getScaledDims();
+    const containerRect = mapContainer.getBoundingClientRect();
+    const canPan = (s.width > containerRect.width) || (s.height > containerRect.height);
+    if (!canPan) {
+      isPanning = false;
+      return;
+    }
+
     isPanning = true;
     panStartX = t.clientX;
     panStartY = t.clientY;
@@ -1204,19 +1262,21 @@ mapContainer.addEventListener('touchmove', function(e) {
     const dy = t.clientY - panStartY;
     panX = lastPanX + dx;
     panY = lastPanY + dy;
+    enforcePanBounds();
     applyTransform();
   } else if (e.touches.length === 2) {
     e.preventDefault();
     const t0 = e.touches[0];
     const t1 = e.touches[1];
     const curDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    // use pinch center relative to image
     const curCenter = {
       x: (t0.clientX + t1.clientX) / 2,
       y: (t0.clientY + t1.clientY) / 2
     };
     if (lastTouchDist) {
       const zoomFactor = curDist / lastTouchDist;
-      const newScale = clamp(scale * zoomFactor, getMinScale(), maxScale); // <-- changed to dynamic min
+      const newScale = clamp(scale * zoomFactor, getMinScale(), maxScale);
       const rect = mapImg.getBoundingClientRect();
       const cx = curCenter.x - rect.left;
       const cy = curCenter.y - rect.top;
@@ -1224,6 +1284,7 @@ mapContainer.addEventListener('touchmove', function(e) {
       panX = (panX - cx) * scaleRatio + cx;
       panY = (panY - cy) * scaleRatio + cy;
       scale = newScale;
+      enforcePanBounds();
       applyTransform();
     }
     lastTouchDist = curDist;
@@ -1255,26 +1316,20 @@ window.addEventListener('wheel', function(e) {
 
 /* Ensure map cannot be smaller than vertical fit after image loads */
 mapImg.addEventListener('load', () => {
-  // if the image is taller than zero, ensure scale isn't below min
   try {
     scale = Math.max(scale, getMinScale());
-    // try to center vertically to avoid top/bottom bars
-    const containerRect = mapContainer.getBoundingClientRect();
-    const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
-    panY = (containerRect.height - (natH * scale)) / 2;
+    enforcePanBounds();
     applyTransform();
   } catch (e) {
     // ignore if measurements not available yet
   }
 });
 
-/* Enforce min-scale on resize as well */
+/* Enforce min-scale & bounds on resize as well */
 window.addEventListener('resize', function() {
   try {
     scale = Math.max(scale, getMinScale());
-    const containerRect = mapContainer.getBoundingClientRect();
-    const natH = mapImg.naturalHeight || mapImg.height || mapImg.getBoundingClientRect().height;
-    panY = (containerRect.height - (natH * scale)) / 2;
+    enforcePanBounds();
     applyTransform();
   } catch (e) {
     // ignore measurement errors
