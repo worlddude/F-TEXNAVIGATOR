@@ -44,7 +44,7 @@ body {
 }
 #map {
   will-change: transform;
-  transform-origin: 50% 50%; /* <-- changed from 0 0 to center */
+  transform-origin: 0 0; /* <-- keep top-left origin (pan/zoom math expects this) */
   user-select: none;
   -webkit-user-drag: none;
   max-width: none; /* allow free scaling */
@@ -1085,7 +1085,7 @@ photoModal.addEventListener('click', () => {
    ------------------------- */
 
 let scale = 1;
-const minScale = 0.1;
+const minScale = 1;
 const maxScale = 6;
 let panX = 0;
 let panY = 0;
@@ -1110,7 +1110,7 @@ mapContainer.addEventListener('wheel', function(e) {
   if (mapContainer.style.display === 'none') return;
   e.preventDefault();
   const rect = mapImg.getBoundingClientRect();
-  // pivot now the image center (rect.width/2, rect.height/2)
+  // pivot = image center *in element coords* (top-left origin)
   const mx = rect.width / 2;
   const my = rect.height / 2;
   const delta = -e.deltaY;
@@ -1197,7 +1197,7 @@ mapContainer.addEventListener('touchmove', function(e) {
       const zoomFactor = curDist / lastTouchDist;
       const newScale = clamp(scale * zoomFactor, minScale, maxScale);
       const rect = mapImg.getBoundingClientRect();
-      // pivot now image center instead of finger center
+      // pivot = image center (element coords)
       const cx = rect.width / 2;
       const cy = rect.height / 2;
       const scaleRatio = newScale / scale;
