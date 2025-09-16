@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Store Item Locator — Supabase Demo</title>
+<title>Store Item Locator — Supabase Demo (Categories + Autosuggest)</title>
 
 <style>
 /* (unchanged UI styles from your original file) */
@@ -180,9 +180,15 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
     <p id="barcodeDisplay">Barcode: -</p>
     <p id="dateDisplay">Date of location: -</p>
     <p id="shelfDisplay">Shelf / Section nr: -</p>
+    <p id="categoryDisplay">Category: -</p> <!-- NEW: show category here -->
     <div id="addForm" style="display:none; margin-top:10px;">
       <input type="text" id="itemBarcode" placeholder="Barcode" readonly />
       <input type="text" id="itemName" placeholder="Item name" />
+
+      <!-- Category input uses datalist for autosuggest but still allows new entries -->
+      <input list="categoryList" id="itemCategory" placeholder="Category (start typing, e.g. soda)" />
+      <datalist id="categoryList"></datalist>
+
       <input type="text" id="itemShelf" placeholder="Shelf number" />
       <input type="text" id="itemSection" placeholder="Section number" />
 
@@ -233,15 +239,18 @@ const itemNameDisplay = document.getElementById('itemNameDisplay');
 const barcodeDisplay = document.getElementById('barcodeDisplay');
 const dateDisplay = document.getElementById('dateDisplay');
 const shelfDisplay = document.getElementById('shelfDisplay');
+const categoryDisplay = document.getElementById('categoryDisplay'); // NEW
 const addForm = document.getElementById('addForm');
 const saveBtn = document.getElementById('saveBtn');
 const itemNameInput = document.getElementById('itemName');
+const itemCategoryInput = document.getElementById('itemCategory'); // NEW
 const itemShelfInput = document.getElementById('itemShelf');
 const itemSectionInput = document.getElementById('itemSection');
 const itemBarcodeInput = document.getElementById('itemBarcode');
 const listPage = document.getElementById('listPage');
 const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
+const categoryDatalist = document.getElementById('categoryList'); // datalist element
 
 const torchBtn = document.getElementById('torchBtn');
 const detectBadge = document.getElementById('detectBadge');
@@ -257,6 +266,10 @@ const itemPhotoDisplay = document.getElementById('itemPhotoDisplay');
 let barcodeDB = {};
 let currentCode = null;
 
+// categories set (used to populate datalist)
+let categoriesSet = new Set();
+
+/* ... camera/torch/detection variables kept unchanged ... */
 // Camera / Torch
 let currentStream = null;
 let torchOn = false;
@@ -324,6 +337,7 @@ function getAllItemsArray() {
   return Object.entries(barcodeDB).map(([barcode, item]) => ({
     barcode,
     name: item.name || '',
+    category: item.category || '', // NEW
     shelf: item.shelf || '',
     section: item.section || '',
     photo: item.photo || item.photoPath || ''
@@ -354,8 +368,24 @@ function levenshtein(a, b) {
 }
 
 /* -------------------------
+   Category datalist helper (NEW)
+   - populates the <datalist> with unique categories from categoriesSet
+   ------------------------- */
+function updateCategoryDatalist() {
+  // clear existing options
+  categoryDatalist.innerHTML = '';
+  const arr = Array.from(categoriesSet).filter(c => c && String(c).trim() !== '');
+  arr.sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'}));
+  for(const c of arr){
+    const opt = document.createElement('option');
+    opt.value = c;
+    categoryDatalist.appendChild(opt);
+  }
+}
+
+/* -------------------------
    NEW helper: open item in Scan tab for editing
-   (unchanged except it still does NOT start camera)
+   (unchanged except it now handles category too)
    ------------------------- */
 function openItemForEdit(barcode) {
   const item = barcodeDB[barcode];
@@ -379,6 +409,7 @@ function openItemForEdit(barcode) {
   // Populate form fields
   itemBarcodeInput.value = barcode || '';
   itemNameInput.value = (item && item.name) ? item.name : '';
+  itemCategoryInput.value = (item && item.category) ? item.category : ''; // NEW
   itemShelfInput.value = (item && item.shelf) ? item.shelf : '';
   itemSectionInput.value = (item && item.section) ? item.section : '';
 
@@ -387,6 +418,7 @@ function openItemForEdit(barcode) {
   barcodeDisplay.textContent = 'Barcode: ' + (barcode || '-');
   dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
   shelfDisplay.textContent = 'Shelf / Section nr: ' + ((item && item.shelf) || '-') + ' / ' + ((item && item.section) || '-');
+  categoryDisplay.textContent = 'Category: ' + ((item && item.category) || '-'); // NEW
 
   // Photo handling: show existing photo if present
   if (item && (item.photo || item.photoPath)) {
@@ -441,6 +473,7 @@ function renderList(items, startIndex = 0) {
     div.innerHTML = `${thumbHTML}
                      <div style="flex:1;">
                        <h3>${escapeHtml(it.name || '-')}</h3>
+                       <p>Category: ${escapeHtml(it.category || '-')}</p>
                        <p>Barcode: ${escapeHtml(it.barcode)}</p>
                        <p>Shelf / Section: ${escapeHtml(it.shelf || '-') } / ${escapeHtml(it.section || '-')}</p>
                      </div>`;
@@ -469,6 +502,7 @@ function renderList(items, startIndex = 0) {
         barcodeDisplay.textContent = 'Barcode: ' + barcode;
         dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
         shelfDisplay.textContent = 'Shelf / Section nr: ' + (item.shelf || '-') + ' / ' + (item.section || '-');
+        categoryDisplay.textContent = 'Category: ' + (item.category || '-'); // NEW
         switchTab(document.getElementById('tab-map'));
       } else {
         alert('Item not found');
@@ -587,16 +621,22 @@ function performSearch() {
   for(const it of all){
     const name = (it.name || '').toLowerCase();
     const barcode = (it.barcode || '').toLowerCase();
+    const category = (it.category || '').toLowerCase(); // NEW
     let score = 10000;
 
+    // Strong matches first
     if(name === q) score = -1000;
     else if(barcode === q) score = -900;
+    else if(category === q) score = -950; // category exact match slightly less than name exact
     else if(name.startsWith(q)) score = -100 + name.indexOf(q);
+    else if(category.startsWith(q)) score = -120 + category.indexOf(q); // category prefix
     else if(barcode.startsWith(q)) score = -50 + barcode.indexOf(q);
     else if(name.includes(q)) score = 10 + name.indexOf(q);
+    else if(category.includes(q)) score = 5 + category.indexOf(q); // category contains
     else if(barcode.includes(q)) score = 20 + barcode.indexOf(q);
     else if((it.shelf || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q)) score = 200;
     else {
+      // fuzzy name
       const levName = levenshtein(q, name);
       const maxAllowed = Math.max(2, Math.floor(name.length * 0.25));
       if(name && levName <= maxAllowed) score = 50 + levName;
@@ -604,6 +644,12 @@ function performSearch() {
         const levBarcode = levenshtein(q, barcode);
         const maxAllowedBar = Math.max(1, Math.floor(barcode.length * 0.15));
         if(barcode && levBarcode <= maxAllowedBar) score = 60 + levBarcode;
+        else {
+          // fuzzy category
+          const levCategory = levenshtein(q, category);
+          const maxAllowedCat = Math.max(1, Math.floor(category.length * 0.25));
+          if(category && levCategory <= maxAllowedCat) score = 70 + levCategory;
+        }
       }
     }
 
@@ -612,7 +658,7 @@ function performSearch() {
 
   if(results.length === 0){
     for(const it of all){
-      const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'')).toLowerCase();
+      const hay = ((it.name||'') + ' ' + (it.barcode||'') + ' ' + (it.shelf||'') + ' ' + (it.section||'') + ' ' + (it.category||'')).toLowerCase();
       if(hay.includes(q)) {
         results.push({it, score: 500 + hay.indexOf(q)});
       }
@@ -701,11 +747,12 @@ async function uploadImageToSupabase(barcode, dataURL) {
    Upsert (insert or update) the item by  (barcode).
 */
 async function saveItemToSupabase(barcode, item) {
-  // item: { name, shelf, section, image_url }
+  // item: { name, category, shelf, section, image_url }
   try {
     const row = {
       barcode: barcode,
       name: item.name || null,
+      category: item.category || null, // NEW
       shelf: item.shelf || null,
       section: item.section || null,
       image_url: item.image_url || null
@@ -724,7 +771,7 @@ async function saveItemToSupabase(barcode, item) {
 
 /* ---------- Load items from Supabase into barcodeDB ----------
    Fetch all rows from items and convert into the same shape
-   your existing code expects: barcodeDB[] = { name, shelf, section, photo: image_url }
+   your existing code expects: barcodeDB[] = { name, shelf, section, photo: image_url, category }
 */
 async function loadDatabaseFromSupabase() {
   try {
@@ -737,17 +784,25 @@ async function loadDatabaseFromSupabase() {
 
     // convert to your local map
     barcodeDB = {};
+    categoriesSet = new Set(); // reset categories
     for (const row of data) {
       barcodeDB[row.barcode] = {
         name: row.name || '',
+        category: row.category || '', // NEW
         shelf: row.shelf || '',
         section: row.section || '',
         photo: row.image_url || ''
       };
+      if (row.category) categoriesSet.add(row.category);
     }
+
+    // update datalist options
+    updateCategoryDatalist();
   } catch (err) {
     console.warn('Failed to load items from Supabase:', err);
     barcodeDB = {};
+    categoriesSet = new Set();
+    updateCategoryDatalist();
   }
 }
 
@@ -833,12 +888,14 @@ function startScanner() {
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: " + new Date().toLocaleDateString();
         shelfDisplay.textContent = "Shelf / Section nr: " + item.shelf + " / " + item.section;
+        categoryDisplay.textContent = "Category: " + (item.category || '-'); // NEW
         switchTab(document.getElementById('tab-map'));
       } else {
         itemNameDisplay.textContent = "❌ Not found in database";
         barcodeDisplay.textContent = "Barcode: " + code;
         dateDisplay.textContent = "Date of location: -";
         shelfDisplay.textContent = "";
+        categoryDisplay.textContent = "Category: -"; // NEW
         itemBarcodeInput.value = code;
 
         // capture frame for preview
@@ -968,16 +1025,18 @@ async function resizeDataURL(dataURL, maxWidth = 1024, quality = 0.75) {
 
 /* -------------------------
    Save handler (Supabase flow)
-   - MINOR change: if user did not supply a new inline photo, keep existing remote photo URL (if any)
+   - MINOR change: handle category (required) and preserve existing photo URL if any
+   - NEW: if category is new, it's added to categoriesSet and datalist updated
    ------------------------- */
 saveBtn.addEventListener("click", async () => {
   try {
     const name = itemNameInput.value.trim();
+    const category = itemCategoryInput.value.trim(); // NEW
     const shelf = itemShelfInput.value.trim();
     const section = itemSectionInput.value.trim();
     const barcode = itemBarcodeInput.value.trim();
-    if (!name || !shelf || !section || !barcode) {
-      alert("Please fill all fields");
+    if (!name || !shelf || !section || !barcode || !category) {
+      alert("Please fill all fields (Category is required)");
       return;
     }
 
@@ -1017,12 +1076,19 @@ saveBtn.addEventListener("click", async () => {
     // Step 4: Build item object and save to Supabase table
     const itemToSave = {
       name,
+      category, // NEW
       shelf,
       section,
       image_url: finalPhotoUrl // or null
     };
 
     await saveItemToSupabase(barcode, itemToSave);
+
+    // Step 4.5: if category is new, add to set and update datalist
+    if (category) {
+      categoriesSet.add(category);
+      updateCategoryDatalist();
+    }
 
     // Step 5: reload DB and update UI
     await loadDatabaseFromSupabase();
@@ -1035,6 +1101,7 @@ saveBtn.addEventListener("click", async () => {
     }
     itemNameDisplay.textContent = saved?.name || name;
     shelfDisplay.textContent = "Shelf / Section nr: " + (saved?.shelf || shelf) + " / " + (saved?.section || section);
+    categoryDisplay.textContent = "Category: " + (saved?.category || category || '-'); // NEW
 
     addForm.style.display = "none";
     switchTab(document.getElementById('tab-map'));
@@ -1279,5 +1346,3 @@ window.addEventListener('wheel', function(e) {
 </script>
 </body>
 </html>
-
-
