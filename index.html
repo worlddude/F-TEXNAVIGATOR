@@ -14,8 +14,10 @@ body {
   color: #111;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;    /* allow the page to grow */
+  height: auto;         /* not fixed to viewport */
+  overflow-y: auto;     /* allow vertical scrolling */
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
 }
 .header { background: #2563eb; color: white; padding: 10px; display: flex; flex-direction: column; position: relative; }
 .search-bar { background: white; border-radius: 6px; padding: 6px 10px; margin-bottom: 0; display: flex; align-items: center; position: relative; }
@@ -1346,3 +1348,4 @@ window.addEventListener('wheel', function(e) {
 </script>
 </body>
 </html>
+
