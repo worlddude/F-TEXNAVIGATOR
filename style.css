@@ -1,4 +1,4 @@
-<style>
+
 /* (unchanged UI styles from your original file) */
 body {
   margin: 0;
@@ -132,5 +132,4 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   cursor: zoom-out;
 }
-</style>
 
