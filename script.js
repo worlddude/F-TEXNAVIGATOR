@@ -1,4 +1,4 @@
-<script>
+
 /* -------------------------
    CONFIG - REPLACE THESE
    ------------------------- */
@@ -1127,4 +1127,4 @@ window.addEventListener('wheel', function(e) {
 /* -------------------------
    END map pan/zoom code
    ------------------------- */
-</script>
+
