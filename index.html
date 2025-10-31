@@ -147,14 +147,14 @@ button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8
 
 
 <script>
-// ─── Config ─────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
-const SUPABASE_BUCKET = 'item_images';
-
-const { createClient } = Supabase;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+  // ─── Config ─────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+  const SUPABASE_BUCKET = 'item_images';
+  
+  const { createClient } = Supabase;
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
 // ─── DOM Elements ───────────────────────────────────────────────
 const els = {
   video: document.getElementById('video'),
