@@ -1,5 +1,4 @@
-
-content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -191,8 +190,4 @@ mapContainer.addEventListener('touchend',function(e){if(!e.touches||e.touches.le
 window.addEventListener('wheel',function(e){if(e.ctrlKey&&!mapContainer.contains(e.target))e.preventDefault()},{passive:false});
 </script>
 </body>
-</html>"""
-with open('/mnt/data/compact_index.html','w',encoding='utf-8') as f:
-    f.write(content)
-print("Wrote /mnt/data/compact_index.html")
-
+</html>
