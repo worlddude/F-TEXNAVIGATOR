@@ -1,147 +1,341 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory Scanner</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="https://unpkg.com/quagga"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Store Item Locator — Supabase Demo (Categories + Autosuggest)</title>
+
 <style>
-/* simplified and responsive layout */
-body{margin:0;font-family:sans-serif;background:#fff;color:#111;display:flex;flex-direction:column;min-height:100vh}
-.header{background:#2563eb;color:#fff;padding:10px;display:flex;flex-direction:column}
-.search-bar{background:#fff;border-radius:6px;padding:6px 10px;margin-bottom:0;display:flex;align-items:center}
-.search-bar input{border:none;outline:none;flex:1;font-size:14px}
-.tabs{display:flex;justify-content:space-around;background:#1e40af;border-radius:6px;margin-top:8px}
-.tabs button{flex:1;background:none;border:none;color:#fff;padding:10px;font-size:14px;transition:.2s}
-.tabs button.active{background:#fff;color:#2563eb;border-radius:6px}
-.main{flex:1;display:flex;justify-content:center;align-items:center;position:relative;overflow:hidden}
-.main.add-tab{justify-content:center;align-items:flex-start;overflow-y:auto;padding:10px}
-#mapContainer{width:100%;height:100%;overflow:hidden;touch-action:none;position:absolute;display:none;justify-content:center;align-items:center;background:#fff}
-#map{will-change:transform;transform-origin:0 0;user-select:none;-webkit-user-drag:none;height:100%;width:auto;object-fit:contain}
-#video{width:100%;height:100%;object-fit:cover;display:none}
-.item-card{background:#fff;border-radius:16px 16px 0 0;padding:16px;box-shadow:0 -2px 10px rgba(0,0,0,.2)}
-.item-card.hidden{display:none}
-#addForm{display:flex;flex-direction:column;gap:8px;max-width:400px;width:90%;margin:auto;background:#f9f9f9;padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
-#addForm input{padding:6px 10px;font-size:14px;border:1px solid #ccc;border-radius:6px;width:100%}
-#torchBtn{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;background:rgba(0,0,0,.45);color:#fff;border:none;padding:12px;border-radius:50%;font-size:18px;display:none;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-#listPage{width:100%;max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
-.list-item{background:#fff;border-radius:8px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;display:flex;align-items:center;gap:12px;user-select:none;position:relative}
-.list-thumb{width:56px;height:56px;object-fit:cover;border-radius:8px;background:#f0f0f0;flex:0 0 56px}
-.load-more{padding:10px;border-radius:8px;border:none;background:#1e40af;color:#fff;cursor:pointer}
-.empty{text-align:center;color:#666;padding:20px}
-#itemPhotoDisplay,#photoPreview{width:72px;height:72px;object-fit:cover;border-radius:8px;background:#eee}
-#photoModal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.8);justify-content:center;align-items:center}
-#photoModal img{max-width:90%;max-height:90%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);cursor:zoom-out}
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: white;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.header { background: #2563eb; color: white; padding: 10px; display: flex; flex-direction: column; position: relative; }
+.search-bar { background: white; border-radius: 6px; padding: 6px 10px; margin-bottom: 0; display: flex; align-items: center; position: relative; }
+.search-bar input { border: none; outline: none; flex: 1; font-size: 14px; }
+.tabs { display: flex; justify-content: space-around; background: #1e40af; border-radius: 6px; margin-top: 8px; }
+.tabs button { flex: 1; background: none; border: none; color: white; padding: 10px; font-size: 14px; transition: background 0.2s; }
+.tabs button.active { background: white; color: #2563eb; border-radius: 6px; }
+.main { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+.main.add-tab { justify-content: center; align-items: flex-start; overflow-y: auto; padding: 10px; }
+#mapContainer {
+  width:100%;
+  height:100%;
+  overflow: hidden;
+  touch-action: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  z-index: 1;
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#map {
+  will-change: transform;
+  transform-origin: 0 0;
+  user-select: none;
+  -webkit-user-drag: none;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  transform: none !important;
+}
+#video { width: 100%; height: 100%; object-fit: cover; display: none; }
+.item-card { background: white; border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); position: relative; bottom: 0; }
+.item-card h2 { margin: 0 0 6px; font-size: 16px; }
+.item-card p { margin: 4px 0; font-size: 14px; color: #333; }
+button.save { margin-top: 8px; padding: 8px 12px; border: none; border-radius: 8px; background: #2563eb; color: white; font-size: 14px; cursor: pointer; }
+#addForm { display: flex; flex-direction: column; gap: 8px; max-width: 400px; width: 90%; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+#addForm input[type="text"], #addForm input[type="file"] { padding: 6px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; box-sizing: border-box; }
+.item-card.hidden { display: none; }
+#torchBtn {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#detectBadge { display: none !important; }
+#listPage { width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.list-item { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; position: relative; overflow: hidden; }
+.list-item h3 { margin: 0 0 6px; font-size: 16px; }
+.list-item p { margin: 2px 0; font-size: 13px; color: #444; }
+.list-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: #f0f0f0; flex: 0 0 56px; }
+.load-more { padding: 10px; border-radius: 8px; border: none; background: #1e40af; color: #fff; cursor: pointer; }
+.empty { text-align: center; color: #666; padding: 20px; }
+.press-overlay {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: rgba(255, 0, 0, 0.40);
+  opacity: 0;
+  transition: opacity 120ms linear;
+  border-radius: 8px;
+}
+#itemPhotoDisplay { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; float: right; margin-left: 10px; }
+#photoPreview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #eee; display: block; }
+#photoModal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  justify-content: center;
+  align-items: center;
+}
+#photoModal img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  cursor: zoom-out;
+}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 </head>
 <body>
-<div class="header">
-  <div class="search-bar"><form id="searchForm" style="display:flex;flex:1;"><input id="searchInput" type="text" placeholder="Search items..."></form></div>
-  <div class="tabs"><button id="tab-map" class="active">Map</button><button id="tab-scan">Scan</button><button id="tab-add">List</button></div>
-</div>
-
-<div class="main">
-  <div id="mapContainer"><img id="map" src="map.png" alt="Map"></div>
-  <video id="video" autoplay></video>
-  <button id="torchBtn">🔦</button>
-  <form id="addForm">
-    <input type="text" id="itemName" placeholder="Item name">
-    <input type="text" id="itemCategory" list="categoryList" placeholder="Category">
-    <datalist id="categoryList"></datalist>
-    <input type="text" id="itemShelf" placeholder="Shelf">
-    <input type="text" id="itemSection" placeholder="Section">
-    <input type="text" id="itemBarcode" placeholder="Barcode">
-    <input type="file" id="itemPhotoInput" accept="image/*">
-    <img id="photoPreview" style="display:none">
-    <input type="hidden" id="itemPhotoData">
-    <button type="button" id="saveBtn" class="save">💾 Save Item</button>
-  </form>
-  <div id="listPage"></div>
-
-  <div id="itemCard" class="item-card hidden">
-    <img id="itemPhotoDisplay" style="display:none">
-    <h2 id="itemNameDisplay">-</h2>
-    <p id="barcodeDisplay">Barcode: -</p>
-    <p id="dateDisplay">Date: -</p>
-    <p id="shelfDisplay">Shelf / Section: - / -</p>
-    <p id="categoryDisplay">Category: -</p>
+  <div class="header">
+    <form class="search-bar" id="searchForm" autocomplete="off">
+      <input type="text" id="searchInput" placeholder="Search for an item or scan a barcode">
+    </form>
+    <div class="tabs">
+      <button id="tab-add">List</button>
+      <button id="tab-map" class="active">Map</button>
+      <button id="tab-scan">Scan</button>
+    </div>
   </div>
-</div>
 
-<div id="photoModal"><img id="modalPhoto"></div>
+  <div class="main">
+    <div id="mapContainer">
+      <img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Map/map_random%20(1).png" alt="Store map" />
+    </div>
+    <video id="video" playsinline autoplay muted></video>
+    <div id="listPage" style="display:none;"></div>
+    <button id="torchBtn" title="Toggle flash">🔦</button>
+    <div id="detectBadge">0/3</div>
+  </div>
+
+  <div class="item-card" id="itemCard">
+    <img id="itemPhotoDisplay" src="" alt="photo" style="display:none;" />
+    <h2 id="itemNameDisplay">No item selected</h2>
+    <p id="barcodeDisplay">Barcode: -</p>
+    <p id="dateDisplay">Date of location: -</p>
+    <p id="shelfDisplay">Shelf / Section nr: -</p>
+    <p id="categoryDisplay">Category: -</p>
+    <div id="addForm" style="display:none; margin-top:10px;">
+      <input type="text" id="itemBarcode" placeholder="Barcode" readonly />
+      <input type="text" id="itemName" placeholder="Item name" />
+      <input list="categoryList" id="itemCategory" placeholder="Category (start typing, e.g. soda)" />
+      <datalist id="categoryList"></datalist>
+      <input type="text" id="itemShelf" placeholder="Shelf number" />
+      <input type="text" id="itemSection" placeholder="Section number" />
+      <div style="display:flex; gap:10px; align-items:center;">
+        <img id="photoPreview" src="" alt="preview" style="display:none;" />
+        <div style="flex:1;">
+          <input type="file" id="itemPhotoInput" accept="image/*" />
+          <small style="color:#666;">You can replace the captured photo before saving.</small>
+          <input type="hidden" id="itemPhotoData" />
+        </div>
+      </div>
+      <button class="save" id="saveBtn">💾 Save Item</button>
+    </div>
+  </div>
+
+  <div id="photoModal">
+    <img src="" alt="Enlarged photo" id="modalPhoto">
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 
 <script>
-const SUPABASE_URL="https://lpcygniycyffeswzrnms.supabase.co/';
-const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
-const SUPABASE_BUCKET="item_images";
-const { createClient }=Supabase;
-const supabaseClient=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+const SUPABASE_BUCKET = 'item_images';
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const els=(id)=>document.getElementById(id);
-const video=els("video"),mapImg=els("map"),mapContainer=els("mapContainer"),
-mainDiv=document.querySelector(".main"),itemCard=els("itemCard"),
-itemNameDisplay=els("itemNameDisplay"),barcodeDisplay=els("barcodeDisplay"),
-dateDisplay=els("dateDisplay"),shelfDisplay=els("shelfDisplay"),
-categoryDisplay=els("categoryDisplay"),addForm=els("addForm"),
-saveBtn=els("saveBtn"),itemNameInput=els("itemName"),
-itemCategoryInput=els("itemCategory"),itemShelfInput=els("itemShelf"),
-itemSectionInput=els("itemSection"),itemBarcodeInput=els("itemBarcode"),
-listPage=els("listPage"),searchForm=els("searchForm"),
-searchInput=els("searchInput"),categoryDatalist=els("categoryList"),
-torchBtn=els("torchBtn"),photoPreview=els("photoPreview"),
-itemPhotoInput=els("itemPhotoInput"),itemPhotoData=els("itemPhotoData"),
-itemPhotoDisplay=els("itemPhotoDisplay"),photoModal=els("photoModal"),
-modalPhoto=els("modalPhoto");
-const tabs=document.querySelectorAll(".tabs button");
-let barcodeDB={},categoriesSet=new Set(),currentStream=null,torchOn=false;
+const video = document.getElementById('video');
+const mapImg = document.getElementById('map');
+const mapContainer = document.getElementById('mapContainer');
+const mainDiv = document.querySelector('.main');
+const itemCard = document.getElementById('itemCard');
+const itemNameDisplay = document.getElementById('itemNameDisplay');
+const barcodeDisplay = document.getElementById('barcodeDisplay');
+const dateDisplay = document.getElementById('dateDisplay');
+const shelfDisplay = document.getElementById('shelfDisplay');
+const categoryDisplay = document.getElementById('categoryDisplay');
+const addForm = document.getElementById('addForm');
+const saveBtn = document.getElementById('saveBtn');
+const itemNameInput = document.getElementById('itemName');
+const itemCategoryInput = document.getElementById('itemCategory');
+const itemShelfInput = document.getElementById('itemShelf');
+const itemSectionInput = document.getElementById('itemSection');
+const itemBarcodeInput = document.getElementById('itemBarcode');
+const listPage = document.getElementById('listPage');
+const searchForm = document.getElementById('searchForm');
+const searchInput = document.getElementById('searchInput');
+const categoryDatalist = document.getElementById('categoryList');
+const torchBtn = document.getElementById('torchBtn');
+const detectBadge = document.getElementById('detectBadge');
+const tabs = document.querySelectorAll(".tabs button");
+const photoPreview = document.getElementById('photoPreview');
+const itemPhotoInput = document.getElementById('itemPhotoInput');
+const itemPhotoData = document.getElementById('itemPhotoData');
+const itemPhotoDisplay = document.getElementById('itemPhotoDisplay');
 
-function hideAll(){mapContainer.style.display="none";video.style.display="none";addForm.style.display="none";listPage.style.display="none";itemCard.classList.add("hidden");torchBtn.style.display="none";}
-function showDetails(it,code){itemNameDisplay.textContent=it?.name||"-";barcodeDisplay.textContent="Barcode: "+(code||"-");dateDisplay.textContent="Date: "+new Date().toLocaleDateString();shelfDisplay.textContent="Shelf / Section: "+(it?.shelf||"-")+" / "+(it?.section||"-");categoryDisplay.textContent="Category: "+(it?.category||"-");}
-function showPhoto(url){if(url){itemPhotoDisplay.src=url;itemPhotoDisplay.style.display="block";}else itemPhotoDisplay.style.display="none";}
-function escapeHtml(s){return s?String(s).replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])):"";}
-function getAllItems(){return Object.entries(barcodeDB).map(([b,i])=>({barcode:b,name:i.name,category:i.category,shelf:i.shelf,section:i.section,photo:i.photo}));}
-function switchTab(tab){tabs.forEach(t=>t.classList.remove("active"));tab.classList.add("active");hideAll();
- if(tab.id==="tab-map"){mapContainer.style.display="flex";itemCard.classList.remove("hidden");stopCamera();}
- else if(tab.id==="tab-scan"){video.style.display="block";startCamera();torchBtn.style.display="block";}
- else{listPage.style.display="flex";mainDiv.classList.add("add-tab");stopCamera();renderList(getAllItems(),0);}}
-tabs.forEach(b=>b.addEventListener("click",e=>switchTab(e.target)));
+let barcodeDB = {};
+let currentCode = null;
+let categoriesSet = new Set();
+let currentStream = null;
+let torchOn = false;
+const CONFIRMATION_THRESHOLD = 3;
+let lastDetectedCode = null;
+let consecutiveDetectCount = 0;
+let acceptCooldown = false;
+const PAGE_SIZE = 100;
+let lastRenderStart = 0;
+let lastRenderedItems = [];
 
-async function loadDB(){try{const{data}=await supabaseClient.from("items").select("*").order("created_at",{ascending:false});barcodeDB={};categoriesSet=new Set();for(const r of data){barcodeDB[r.barcode]={name:r.name,category:r.category,shelf:r.shelf,section:r.section,photo:r.image_url};if(r.category)categoriesSet.add(r.category);}updateCatList();}catch(e){console.warn(e);}}
-function updateCatList(){categoryDatalist.innerHTML="";[...categoriesSet].sort().forEach(c=>{const o=document.createElement("option");o.value=c;categoryDatalist.appendChild(o);});}
+function switchTab(tab) {
+  tabs.forEach(btn => btn.classList.remove("active"));
+  tab.classList.add("active");
+  mapContainer.style.display = "none";
+  mapImg.style.display = "none";
+  video.style.display = "none";
+  addForm.style.display = "none";
+  listPage.style.display = "none";
+  itemCard.classList.add("hidden");
+  mainDiv.classList.remove("add-tab");
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+  if(tab.id === "tab-map"){
+    mapContainer.style.display = "flex";
+    mapImg.style.display = "block";
+    itemCard.classList.remove("hidden");
+    stopCamera();
+  } else if(tab.id === "tab-scan"){
+    video.style.display = "block";
+    itemCard.classList.add("hidden");
+    startCamera();
+    torchBtn.style.display = "block";
+  } else if(tab.id === "tab-add"){
+    listPage.style.display = "flex";
+    mainDiv.classList.add("add-tab");
+    stopCamera();
+    const all = getAllItemsArray();
+    lastRenderStart = 0;
+    renderList(all, lastRenderStart);
+  }
+}
 
-function renderList(items,start=0){listPage.innerHTML="";if(!items.length){listPage.innerHTML='<div class="empty">No items found</div>';return;}
-const end=Math.min(start+100,items.length);
-for(let i=start;i<end;i++){const it=items[i];const d=document.createElement("div");d.className="list-item";d.dataset.barcode=it.barcode;
-d.innerHTML=`${it.photo?`<img class="list-thumb" src="${escapeHtml(it.photo)}">`:`<div class="list-thumb" style="color:#888;font-size:12px;display:flex;align-items:center;justify-content:center">No<br>Img</div>`}
-<div style="flex:1"><h3>${escapeHtml(it.name||"-")}</h3><p>Category: ${escapeHtml(it.category||"-")}</p><p>Barcode: ${escapeHtml(it.barcode)}</p><p>Shelf/Section: ${escapeHtml(it.shelf||"-")}/${escapeHtml(it.section||"-")}</p></div>`;
-d.onclick=()=>{const item=barcodeDB[it.barcode];if(item){showPhoto(item.photo);showDetails(item,it.barcode);switchTab(document.getElementById("tab-map"));}};
-listPage.appendChild(d);}if(end<items.length){const b=document.createElement("button");b.className="load-more";b.textContent="Load more";b.onclick=()=>renderList(items,end);listPage.appendChild(b);}}
-searchForm.onsubmit=e=>{e.preventDefault();switchTab(document.getElementById("tab-add"));search();};
-let timer=null;searchInput.oninput=()=>{if(timer)clearTimeout(timer);timer=setTimeout(()=>search(),150);};
-function search(){const q=searchInput.value.trim().toLowerCase();if(!q)return renderList(getAllItems(),0);const all=getAllItems().filter(it=>Object.values(it).join(" ").toLowerCase().includes(q));renderList(all,0);}
+document.getElementById('tab-map').addEventListener('click', e => switchTab(e.target));
+document.getElementById('tab-scan').addEventListener('click', e => switchTab(e.target));
+document.getElementById('tab-add').addEventListener('click', e => switchTab(e.target));
 
-function dataURLtoBlob(url){const [meta,base]=url.split(",");const mime=meta.match(/:(.*?);/)[1];const bin=atob(base);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime});}
-async function uploadImage(barcode,url){const blob=dataURLtoBlob(url);const filename=`${barcode}/${Date.now()}.jpg`;const{error}=await supabaseClient.storage.from(SUPABASE_BUCKET).upload(filename,blob,{upsert:true});if(error)throw error;return supabaseClient.storage.from(SUPABASE_BUCKET).getPublicUrl(filename).data.publicUrl;}
+function getAllItemsArray() {
+  return Object.entries(barcodeDB).map(([barcode, item]) => ({
+    barcode,
+    name: item.name || '',
+    category: item.category || '',
+    shelf: item.shelf || '',
+    section: item.section || '',
+    photo: item.photo || item.photoPath || ''
+  }));
+}
 
-async function saveItem(barcode,item){await supabaseClient.from("items").upsert({barcode,...item});}
-async function startCamera(){try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});currentStream=s;video.srcObject=s;video.play();startScanner();}catch(e){alert(e.message);}}
-function stopCamera(){if(currentStream){currentStream.getTracks().forEach(t=>t.stop());currentStream=null;}if(window.Quagga)try{Quagga.stop();}catch{}}
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+  for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
 
-function startScanner(){Quagga.init({inputStream:{name:"Live",type:"LiveStream",target:video},decoder:{readers:["ean_reader","upc_reader","code_128_reader"]}},err=>{if(err)return console.error(err);Quagga.start();});
-let last=null,count=0;Quagga.onDetected(r=>{const c=r?.codeResult?.code;if(!c)return;if(c===last)count++;else{last=c;count=1;}if(count>=3){count=0;last=null;handleDetected(c);}});}
-function handleDetected(code){const item=barcodeDB[code];if(item){showPhoto(item.photo);showDetails(item,code);switchTab(document.getElementById("tab-map"));}else{itemNameDisplay.textContent="❌ Not found";barcodeDisplay.textContent="Barcode: "+code;addForm.style.display="flex";video.style.display="none";stopCamera();}}
+function updateCategoryDatalist() {
+  categoryDatalist.innerHTML = '';
+  const arr = Array.from(categoriesSet).filter(c => c && String(c).trim() !== '');
+  arr.sort((a,b)=> a.localeCompare(b, , {sensitivity:'base'}));
+  for(const c of arr){
+    const opt = document.createElement('option');
+    opt.value = c;
+    categoryDatalist.appendChild(opt);
+  }
+}
 
-torchBtn.onclick=async()=>{if(!currentStream)return alert("Camera not started");const track=currentStream.getVideoTracks()[0];try{await track.applyConstraints({advanced:[{torch:!torchOn}]});torchOn=!torchOn;torchBtn.style.background=torchOn?"#fff":"rgba(0,0,0,.45)";torchBtn.style.color=torchOn?"#111":"#fff";}catch{alert("Torch not supported");}};
-
-itemPhotoInput.onchange=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{photoPreview.src=ev.target.result;photoPreview.style.display="block";itemPhotoData.value=ev.target.result;};r.readAsDataURL(f);};
-
-saveBtn.onclick=async()=>{const name=itemNameInput.value.trim(),category=itemCategoryInput.value.trim(),shelf=itemShelfInput.value.trim(),section=itemSectionInput.value.trim(),barcode=itemBarcodeInput.value.trim();if(!name||!category||!shelf||!section||!barcode)return alert("All fields required");let img=itemPhotoData.value||null;if(img)img=await uploadImage(barcode,img);await saveItem(barcode,{name,category,shelf,section,image_url:img});await loadDB();showDetails(barcodeDB[barcode],barcode);showPhoto(barcodeDB[barcode].photo);addForm.style.display="none";switchTab(document.getElementById("tab-map"));alert("Saved");};
-
-window.onload=loadDB;
-mapImg.onload=()=>{mapImg.style.height="100%";mapImg.style.width="auto";mapImg.style.objectFit="contain";}
-itemPhotoDisplay.onclick=()=>{modalPhoto.src=itemPhotoDisplay.src;photoModal.style.display="flex";}
-photoModal.onclick=()=>{photoModal.style.display="none";}
-</script>
-</body>
-</html>
+function openItemForEdit(barcode) {
+  const item = barcodeDB[barcode];
+  tabs.forEach(btn => btn.classList.remove('active'));
+  document.getElementById('tab-scan').classList.add('active');
+  mapContainer.style.display = "none";
+  mapImg.style.display = "none";
+  video.style.display = "none";
+  listPage.style.display = "none";
+  detectBadge.style.display = "none";
+  torchBtn.style.display = "none";
+  itemCard.classList.remove('hidden');
+  addForm.style.display = 'flex';
+  itemBarcodeInput.value = barcode || '';
+  itemNameInput.value = (item && item.name) ? item.name : '';
+  itemCategoryInput.value = (item && item.category) ? item.category : '';
+  itemShelfInput.value = (item && item.shelf) ? item.shelf : '';
+  itemSectionInput.value = (item && item.section) ? item.section : '';
+  itemNameDisplay.textContent = (item && item.name) ? item.name : '-';
+  barcodeDisplay.textContent = 'Barcode: ' + (barcode || '-');
+  dateDisplay.textContent = 'Date of location: ' + new Date().toLocaleDateString();
+  shelfDisplay.textContent = 'Shelf / Section nr: ' + ((item && item.shelf) || '-') + ' / ' + ((item && item.section) || '-');
+  categoryDisplay.textContent = 'Category: ' + ((item && item.category) || '-');
+  if (item && (item.photo || item.photoPath)) {
+    const src = item.photo || item.photoPath;
+    itemPhotoDisplay.src = src;
+    itemPhotoDisplay.style.display = 'block';
+    photoPreview.src = src;
+    photoPreview.style.display = 'block';
+    itemPhotoData.value = '';
+  } else {
+    itemPhotoDisplay.style.display = 'none';
+    photoPreview.style.display = 'none';
+    itemPhotoData.value = '';
+    photoPreview.src = '';
+    itemPhotoDisplay.src = '';
+  }
