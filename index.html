@@ -295,7 +295,7 @@ function levenshtein(a, b) {
 function updateCategoryDatalist() {
   categoryDatalist.innerHTML = '';
   const arr = Array.from(categoriesSet).filter(c => c && String(c).trim() !== '');
-  arr.sort((a,b)=> a.localeCompare(b, , {sensitivity:'base'}));
+  arr.sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'}));
   for(const c of arr){
     const opt = document.createElement('option');
     opt.value = c;
@@ -338,4 +338,4 @@ function openItemForEdit(barcode) {
     itemPhotoData.value = '';
     photoPreview.src = '';
     itemPhotoDisplay.src = '';
-  }
+ 
