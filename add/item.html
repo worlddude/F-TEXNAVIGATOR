@@ -72,12 +72,13 @@
       <label>Oprettelsesdato</label>
       <input id="dateInput" readonly />
 
+      <!-- Gem-knappen er flyttet HER (over listen) -->
+      <div class="bottom">
+        <button id="saveBtn" class="primary" disabled style="width:100%">Gem produkt</button>
+      </div>
+
       <label>Lokalt scannede</label>
       <ul id="list"></ul>
-    </div>
-
-    <div class="bottom">
-      <button id="saveBtn" class="primary" disabled style="width:100%">Gem produkt</button>
     </div>
   </div>
 </div>
@@ -112,6 +113,7 @@ let lastScanned=null;
 let localProducts=[];
 let lockShelf=false, lockRow=false;
 let savedShelf=null, savedRow=null;
+let inactivityTimer = null;
 
 function setStatus(t){statusEl.textContent=t}
 
@@ -131,6 +133,14 @@ lockRowBtn.onclick=()=>{
 startBtn.onclick=startScanning;
 stopBtn.onclick=stopScanning;
 saveBtn.onclick=manualSave;
+
+function resetInactivityTimer(){
+  if(inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(()=>{
+    setStatus('Ingen scanning i 60s — stopper kamera');
+    stopScanning();
+  }, 60000);
+}
 
 async function startScanning(){
   // stop tidligere streams
@@ -160,6 +170,7 @@ async function startScanning(){
     }
 
     video.srcObject = stream; await video.play(); stopBtn.disabled=false; setStatus('Scanner...');
+    resetInactivityTimer();
 
     // native detector
     if('BarcodeDetector' in window){
@@ -194,11 +205,12 @@ async function handleBarcode(code){
   // hvis brugeren allerede har samme stregkode i input (fx manuelt indtastet), så ignorer
   if(barcodeInput.value && barcodeInput.value === code){
     setStatus('Samme stregkode som i input — ignoreret');
+    resetInactivityTimer();
     return;
   }
 
   // debounce mod hurtige gentagelser
-  if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) return;
+  if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) { resetInactivityTimer(); return; }
   lastScanned = {code, time: Date.now()};
 
   // sæt inputfelter
@@ -220,16 +232,9 @@ async function handleBarcode(code){
     } else setStatus('Ingen info fundet'); }
   }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
 
-  // Forsøg auto-gem kun hvis det er en NY stregkode
-  const missing = requiredMissing();
-  if(missing.length===0){
-    // auto-gem
-    setStatus('Alle felter udfyldt — gemmer automatisk');
-    await saveProduct();
-  }else{
-    setStatus('Manglende felter: ' + missing.join(', '));
-    saveBtn.disabled = false;
-  }
+  // aktiver kun manuel gem-knap (auto-gem er fjernet helt)
+  saveBtn.disabled = false;
+  resetInactivityTimer();
 }
 
 function requiredMissing(){
@@ -319,6 +324,7 @@ function renderList(){
 function stopScanning(){
   try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  if(inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
   startBtn.disabled=false; stopBtn.disabled=true; setStatus('Stoppet');
 }
 
