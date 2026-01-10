@@ -223,7 +223,7 @@ async function startScanning(){
 
 async function handleBarcode(code){
   if(barcodeInput.value && barcodeInput.value === code){
-    //setStatus('Samme stregkode som i input — ignoreret');
+    setStatus('Scannet');
     resetInactivityTimer();
     return;
   }
