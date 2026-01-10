@@ -191,10 +191,17 @@ async function startScanning(){
 }
 
 async function handleBarcode(code){
-  // debounce
+  // hvis brugeren allerede har samme stregkode i input (fx manuelt indtastet), så ignorer
+  if(barcodeInput.value && barcodeInput.value === code){
+    setStatus('Samme stregkode som i input — ignoreret');
+    return;
+  }
+
+  // debounce mod hurtige gentagelser
   if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) return;
   lastScanned = {code, time: Date.now()};
 
+  // sæt inputfelter
   barcodeInput.value = code;
   dateInput.value = new Date().toLocaleString();
 
@@ -213,9 +220,17 @@ async function handleBarcode(code){
     } else setStatus('Ingen info fundet'); }
   }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
 
-  // auto-gem er fjernet – brug kun Gem-knappen
+  // Forsøg auto-gem kun hvis det er en NY stregkode
+  const missing = requiredMissing();
+  if(missing.length===0){
+    // auto-gem
+    setStatus('Alle felter udfyldt — gemmer automatisk');
+    await saveProduct();
+  }else{
+    setStatus('Manglende felter: ' + missing.join(', '));
+    saveBtn.disabled = false;
+  }
 }
-
 
 function requiredMissing(){
   const need = [];
@@ -269,11 +284,8 @@ async function saveProduct(){
   }
 }
 
-
-// manual save handler (knap)
-async function manualSave(){
-  await saveProduct();
-}
+// manual save handler
+async function manualSave(){ await saveProduct(); }
 
 async function uploadAll(){
   if(localProducts.length===0){ setStatus('Ingen produkter at uploade'); return; }
