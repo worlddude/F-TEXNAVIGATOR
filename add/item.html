@@ -311,7 +311,7 @@ async function saveProduct(){
 
   saveBtn.disabled = true;
 
-  if(localProducts.length>=21){
+  if(localProducts.length>=2){
     if(confirm('Du har 20+ produkter lokalt. Vil du uploade til Supabase nu?')){
       await uploadAll();
     }
