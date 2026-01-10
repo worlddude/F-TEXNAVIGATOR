@@ -213,20 +213,9 @@ async function handleBarcode(code){
     } else setStatus('Ingen info fundet'); }
   }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
 
-  // når en ny stregkode scannes: auto-save hvis alle felter udfyldte
-  const missing = requiredMissing();
-  if(missing.length===0){
-    // automatisk gem
-    await saveProduct();
-  }else{
-    // vis fejl/meddelelse
-    setStatus('Manglende felter: ' + missing.join(', '));
-    // aktiver gem-knappen så brugeren nemt kan gemme manuelt
-    saveBtn.disabled = false;
-    // opret en lokal post i listen uden upload (indikerer ikke gemt til supabase)
-    // men vi gør ikke automatisk push til localProducts før brugeren trykker Gem
-  }
+  // auto-gem er fjernet – brug kun Gem-knappen
 }
+
 
 function requiredMissing(){
   const need = [];
@@ -240,7 +229,6 @@ function requiredMissing(){
 }
 
 async function saveProduct(){
-  // used internally by auto-save; validate first
   const missing = requiredMissing();
   if(missing.length){
     setStatus('Fejl: manglende felter - ' + missing.join(', '));
@@ -258,19 +246,29 @@ async function saveProduct(){
     created_at: new Date().toISOString()
   };
 
-  // push til lokal buffer
   localProducts.push(p);
   renderList();
   setStatus('Produkt gemt lokalt');
+
+  // ryd inputs – men behold låste værdier
+  barcodeInput.value = '';
+  nameInput.value = '';
+  brandInput.value = '';
+  categoryInput.value = '';
+  dateInput.value = '';
+
+  if(!lockShelf) shelfInput.value = '';
+  if(!lockRow) rowInput.value = '';
+
   saveBtn.disabled = true;
 
-  // hvis >=10, spørg om upload
   if(localProducts.length>=10){
     if(confirm('Du har 10+ produkter lokalt. Vil du uploade til Supabase nu?')){
       await uploadAll();
     }
   }
 }
+
 
 // manual save handler (knap)
 async function manualSave(){
