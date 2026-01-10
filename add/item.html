@@ -118,33 +118,99 @@ stopBtn.onclick=stopScanning;
 saveBtn.onclick=saveProduct;
 
 async function startScanning(){
-  startBtn.disabled=true;
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-    video.srcObject=stream; await video.play();
-    stopBtn.disabled=false; setStatus('Scanner...');
+  // stop evt. tidligere ting
+  try{ if(controls && typeof controls.stop === 'function') controls.stop(); }catch(e){}
+  try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; } }catch(e){}
 
-    if('BarcodeDetector'in window){
-      const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128']});
-      const ctx=canvas.getContext('2d');
-      (async function loop(){
-        if(!stream) return;
-        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        const codes=await detector.detect(canvas);
-        if(codes[0]) handleBarcode(codes[0].rawValue);
-        requestAnimationFrame(loop);
-      })();
-      return;
+  startBtn.disabled = true;
+  setStatus('Starter kamera — tillad venligst adgang');
+
+  // Hjælpefunktion: hent et back-kamera deviceId hvis muligt
+  async function findBackDeviceId(){
+    try{
+      // Sørg for at vi har tilladelse så labels udfyldes
+      const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+      tmp.getTracks().forEach(t=>t.stop());
+    }catch(e){
+      // Ignorer fejl her — vi prøver andre ting senere
     }
 
-    reader=new ZXingBrowser.BrowserMultiFormatReader();
-    const devices=await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-    controls=await reader.decodeFromVideoDevice(devices[0].deviceId,video,(res)=>{
-      if(res) handleBarcode(res.text);
-    });
-  }catch(e){setStatus('Kamera-fejl');startBtn.disabled=false}
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+    // Forsøg at finde enhed med 'back|rear|environment' i label
+    const back = videoDevices.find(d => /back|rear|environment/i.test(d.label));
+    if(back) return back.deviceId;
+
+    // Hvis ikke, returner sidste video-enhed (ofte bagkamera på mange mobiler)
+    return videoDevices.length ? videoDevices[videoDevices.length - 1].deviceId : null;
+  }
+
+  try{
+    let deviceId = null;
+    try{ deviceId = await findBackDeviceId(); }catch(e){ deviceId = null; }
+
+    // Hvis vi fik et deviceId, brug det. Ellers prøv facingMode fallback.
+    if(deviceId){
+      stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
+    }else{
+      // Fallback: prøv at bede om environment (kan stadig fejle på nogle browsere)
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+    }
+
+    video.srcObject = stream;
+    await video.play();
+    stopBtn.disabled = false;
+    setStatus('Scanner...');
+
+    // Start BarcodeDetector eller ZXing som før
+    if('BarcodeDetector' in window){
+      try{
+        const formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
+        const detector = new BarcodeDetector({ formats });
+        const ctx = canvas.getContext('2d');
+        const loop = async () => {
+          if(!stream) return;
+          try{
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            const barcodes = await detector.detect(canvas);
+            if(barcodes && barcodes.length){
+              const code = barcodes[0].rawValue || barcodes[0].raw_text || '';
+              if(code) handleBarcode(code);
+            }
+          }catch(e){}
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+        return;
+      }catch(e){ console.warn('BarcodeDetector fejl – fallback til ZXing', e); }
+    }
+
+    // ZXing fallback
+    if(window.ZXingBrowser){
+      try{
+        reader = new ZXingBrowser.BrowserMultiFormatReader();
+        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+        // Prøv at bruge samme deviceId hvis muligt, ellers fall back
+        let chosen = devices.find(d => d.deviceId === deviceId) || devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
+        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, (result, err) => {
+          if(result) handleBarcode(result.text);
+        });
+        return;
+      }catch(e){ console.warn('ZXing decode fejl', e); }
+    }
+
+    setStatus('Ingen scanner tilgængelig på denne enhed');
+    startBtn.disabled = false;
+  }catch(err){
+    console.error(err);
+    setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
+    startBtn.disabled = false;
+  }
 }
+
 
 async function handleBarcode(code){
   if(lastScanned&&lastScanned.code===code&&Date.now()-lastScanned.time<1500) return;
