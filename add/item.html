@@ -1,123 +1,109 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner v2</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Supabase Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #111; color: white; text-align: center; }
-        #video { width: 100%; max-width: 500px; border-radius: 15px; background: #000; display: none; }
-        .btn { background: #2563eb; color: white; padding: 20px; border: none; border-radius: 10px; font-size: 20px; width: 100%; cursor: pointer; }
-        .input-card { background: #222; padding: 20px; border-radius: 15px; margin-top: 20px; display: none; }
-        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
-        #status { color: #ff3e3e; margin-top: 10px; }
+        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #000; color: #fff; }
+        #interactive.viewport { width: 100%; height: 60vh; background: #222; position: relative; }
+        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
+        canvas.drawingBuffer { position: absolute; left: 0; top: 0; }
+        .ui-container { flex: 1; padding: 20px; background: #fff; color: #000; border-radius: 20px 20px 0 0; }
+        .btn { width: 100%; padding: 15px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        #status { text-align: center; color: #2563eb; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>Hurtig Scan</h1>
-    
-    <button id="startBtn" class="btn" onclick="activateCamera()">📷 ÅBN SCANNER</button>
-    
-    <video id="video" playsinline></video>
-    <p id="status"></p>
+    <div id="interactive" class="viewport"></div>
 
-    <div id="inputCard" class="input-card">
-        <h2>Vare Fundet</h2>
-        <input type="text" id="barcodeField" readonly>
-        <input type="text" id="nameField" placeholder="Hvad er det?">
-        <button class="btn" onclick="uploadData()">GEM I SUPABASE</button>
+    <div class="ui-container">
+        <div id="status">Klar til scan...</div>
+        
+        <div id="addForm">
+            <input type="text" id="barcodeInput" placeholder="Stregkode" readonly>
+            <input type="text" id="nameInput" placeholder="Varens navn">
+            <button class="btn" id="saveBtn">💾 Gem i Supabase</button>
+        </div>
+        <p style="color: #666; font-size: 12px; text-align: center; margin-top: 10px;">
+            Hvis kameraet ikke starter: Tjek Chrome indstillinger for kamera-adgang.
+        </p>
     </div>
 
-    <script>
-        const SUPABASE_URL = 'DIN_URL';
-        const SUPABASE_KEY = 'DIN_KEY';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+    // 1. Opsætning med dine nøgler fra din fil
+    const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/'; 
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); [cite: 4]
 
-        const video = document.getElementById('video');
-        const status = document.getElementById('status');
-        let scannerActive = false;
+    const status = document.getElementById('status');
+    const barcodeInput = document.getElementById('barcodeInput');
+    const nameInput = document.getElementById('nameInput');
 
-        async function activateCamera() {
-            status.innerText = "Anmoder om adgang...";
-            
-            try {
-                // Her tvinger vi Chrome til at spørge om lov
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
-                
-                video.srcObject = stream;
-                video.setAttribute("playsinline", true);
-                video.style.display = "block";
-                video.play();
-                
-                document.getElementById('startBtn').style.display = "none";
-                scannerActive = true;
-                status.innerText = "Scanner kører...";
-                
-                // Start selve genkendelsen
-                scanFrame();
-            } catch (err) {
-                status.innerText = "FEJL: " + err.message;
-                console.error(err);
-                alert("Du skal give Chrome lov til at bruge kameraet i dine iPhone-indstillinger!");
-            }
-        }
-
-        async function scanFrame() {
-            if (!scannerActive) return;
-
-            // Tjek om browseren har BarcodeDetector (Nyere Chrome/Safari)
-            if ('BarcodeDetector' in window) {
-                const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] });
-                try {
-                    const barcodes = await detector.detect(video);
-                    if (barcodes.length > 0) {
-                        foundCode(barcodes[0].rawValue);
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Detector fejl", e);
+    // 2. Start scanner med præcis samme config som din fungerende fil
+    function startScanner() {
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: {
+                    facingMode: "environment" // Tvinger bagkamera 
                 }
+            },
+            decoder: {
+                readers: ['ean_reader', 'upc_reader', 'code_128_reader'] [cite: 14]
+            },
+            locate: true [cite: 14]
+        }, (err) => {
+            if (err) {
+                status.innerText = "Fejl: " + err;
+                console.error(err);
+                return;
             }
-            
-            // Hvis BarcodeDetector ikke er klar endnu, prøv igen om 100ms
-            requestAnimationFrame(scanFrame);
-        }
+            Quagga.start();
+        });
 
-        function foundCode(code) {
-            scannerActive = false;
-            // Stop kamera-strømmen helt
-            video.srcObject.getTracks().forEach(track => track.stop());
-            video.style.display = "none";
-            
-            document.getElementById('barcodeField').value = code;
-            document.getElementById('inputCard').style.display = "block";
-            document.getElementById('nameField').focus();
-            
-            // Vibration feedback
+        Quagga.onDetected((result) => {
+            const code = result.codeResult.code; [cite: 14]
+            barcodeInput.value = code;
+            status.innerText = "KODE FUNDET!";
+            status.style.color = "green";
             if (navigator.vibrate) navigator.vibrate(200);
+            nameInput.focus();
+        });
+    }
+
+    // 3. Gem funktion
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+        const barcode = barcodeInput.value;
+        const name = nameInput.value;
+
+        if (!name || !barcode) return alert("Scan en kode og skriv et navn");
+
+        status.innerText = "Gemmer...";
+
+        const { error } = await supabaseClient
+            .from('items') // Sørg for at tabellen hedder 'items' som i din SQL [cite: 13]
+            .upsert({ barcode: barcode, name: name }); [cite: 13]
+
+        if (error) {
+            alert("Fejl: " + error.message);
+        } else {
+            alert("Vare gemt!");
+            barcodeInput.value = "";
+            nameInput.value = "";
+            status.innerText = "Klar til næste scan...";
+            status.style.color = "#2563eb";
         }
+    });
 
-        async function uploadData() {
-            const barcode = document.getElementById('barcodeField').value;
-            const name = document.getElementById('nameField').value;
-            
-            if (!name) return alert("Skriv et navn, mand!");
-
-            const { error } = await supabase
-                .from('items') // Sørg for at din tabel hedder 'items' [cite: 13]
-                .insert([{ barcode, name }]);
-
-            if (error) {
-                alert("Fejl: " + error.message);
-            } else {
-                alert("Varen er gemt!");
-                location.reload(); // Genstart appen
-            }
-        }
-    </script>
+    // Start ved load
+    window.addEventListener('load', startScanner);
+</script>
 </body>
 </html>
