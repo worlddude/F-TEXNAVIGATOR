@@ -1,1 +1,128 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hurtig Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #f0f0f0; text-align: center; }
+        #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 10px; overflow: hidden; background: #000; }
+        .hidden { display: none !important; }
+        .input-group { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
+        input { width: 90%; padding: 10px; margin: 10px 0; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; }
+        button { width: 100%; padding: 15px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 5px;}
+        button.cancel { background: #dc3545; margin-top: 10px; }
+        h2 { margin-top: 0; }
+        #status { margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
 
+    <h1>📦 Varelager Scanner</h1>
+
+    <div id="scanner-container">
+        <div id="reader"></div>
+        <p id="hint">Peg kameraet mod en stregkode</p>
+    </div>
+
+    <div id="result-container" class="hidden">
+        <div class="input-group">
+            <h2>Stregkode fundet!</h2>
+            <input type="text" id="barcode-input" readonly style="background: #eee; color: #555;">
+            <input type="text" id="name-input" placeholder="Indtast produktnavn">
+            <button onclick="saveProduct()" id="save-btn">Gem Produkt</button>
+            <button onclick="resetScanner()" class="cancel">Annuller / Scan Igen</button>
+            <p id="status"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. KONFIGURATION ---
+        const SUPABASE_URL = 'DIN_SUPABASE_URL_HER';
+        const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY_HER';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        const html5QrCode = new Html5Qrcode("reader");
+        let isScanning = true;
+
+        // --- 2. START KAMERA ---
+        function startCamera() {
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+            
+            // Bruger 'environment' for at vælge bagkameraet
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .catch(err => {
+                document.getElementById('hint').innerText = "Kunne ikke starte kamera. Tjek tilladelser.";
+            });
+        }
+
+        // --- 3. NÅR DEN FINDER EN STREGKODE ---
+        function onScanSuccess(decodedText, decodedResult) {
+            if (!isScanning) return;
+            
+            // Stop scanning midlertidigt
+            isScanning = false;
+            html5QrCode.pause(); 
+
+            // Vis formular
+            document.getElementById('scanner-container').classList.add('hidden');
+            document.getElementById('result-container').classList.remove('hidden');
+            
+            // Udfyld data
+            document.getElementById('barcode-input').value = decodedText;
+            document.getElementById('name-input').focus(); // Hop direkte til tekstfeltet
+        }
+
+        // --- 4. GEM I SUPABASE ---
+        async function saveProduct() {
+            const barcode = document.getElementById('barcode-input').value;
+            const name = document.getElementById('name-input').value;
+            const statusMsg = document.getElementById('status');
+            const saveBtn = document.getElementById('save-btn');
+
+            if (!name) {
+                alert("Husk at skrive et navn!");
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Gemmer...";
+
+            const { data, error } = await supabase
+                .from('products')
+                .insert([{ barcode: barcode, name: name }]);
+
+            if (error) {
+                statusMsg.innerText = "Fejl: " + error.message;
+                statusMsg.style.color = "red";
+            } else {
+                statusMsg.innerText = "Gemt!";
+                statusMsg.style.color = "green";
+                // Vent lidt og scan igen
+                setTimeout(resetScanner, 1000);
+            }
+            
+            saveBtn.disabled = false;
+            saveBtn.innerText = "Gem Produkt";
+        }
+
+        // --- 5. NULSTIL ---
+        function resetScanner() {
+            document.getElementById('name-input').value = "";
+            document.getElementById('status').innerText = "";
+            document.getElementById('scanner-container').classList.remove('hidden');
+            document.getElementById('result-container').classList.add('hidden');
+            
+            isScanning = true;
+            html5QrCode.resume();
+        }
+
+        // Start ved load
+        startCamera();
+
+    </script>
+</body>
+</html>
