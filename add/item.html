@@ -2,119 +2,151 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hurtig Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stregkode Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #f0f0f0; text-align: center; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f9; text-align: center; overflow-x: hidden; }
+        .header { background: #2563eb; color: white; padding: 15px; font-weight: bold; }
         
-        /* Scanner boks */
-        #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 10px; overflow: hidden; background: #000; min-height: 300px; display: none; }
-        
-        .hidden { display: none !important; }
-        
-        /* Knapper og inputs */
-        .input-group { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
-        input { width: 90%; padding: 10px; margin: 10px 0; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; }
-        
-        button { width: 100%; padding: 20px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold;}
-        button.cancel { background: #dc3545; margin-top: 10px; padding: 15px; font-size: 16px; }
-        
-        #start-btn { background-color: #28a745; margin-top: 50px; }
-        
-        h2 { margin-top: 0; }
-        #status { margin-top: 10px; font-weight: bold; }
-        #error-msg { color: red; margin-top: 20px; font-weight: bold; }
+        /* Kamera-containeren skal være præcis som i din fungerende kode */
+        #interactive.viewport { width: 100%; height: 300px; position: relative; overflow: hidden; background: #000; }
+        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
+        canvas.drawingBuffer { position: absolute; left: 0; top: 0; }
+
+        .hidden { display: none; }
+        .card { background: white; margin: 20px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-cancel { background: #666; color: white; margin-top: 10px; }
+        #status-msg { margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>📦 Varelager Scanner</h1>
+    <div class="header">STREGKODE SCANNER</div>
 
-    <div id="start-screen">
-        <p>Tryk for at aktivere kameraet</p>
-        <button id="start-btn" onclick="startCameraClick()">📷 Start Scanner</button>
-        <p id="error-msg"></p>
+    <div id="start-screen" class="card">
+        <p>Klar til at tilføje produkter til Supabase?</p>
+        <button class="btn-primary" onclick="initScanner()">📷 Åbn Scanner</button>
     </div>
 
     <div id="scanner-container" class="hidden">
-        <div id="reader"></div>
-        <button onclick="stopCamera()" class="cancel" style="background: #555;">Stop Kamera</button>
+        <div id="interactive" class="viewport"></div>
+        <p>Centrer stregkoden i kameraet</p>
+        <button class="btn-cancel" onclick="stopScanner()">Annuller</button>
     </div>
 
-    <div id="result-container" class="hidden">
-        <div class="input-group">
-            <h2>Stregkode fundet!</h2>
-            <input type="text" id="barcode-input" readonly style="background: #eee; color: #555;">
-            <input type="text" id="name-input" placeholder="Indtast produktnavn">
-            <button onclick="saveProduct()" id="save-btn">Gem Produkt</button>
-            <button onclick="resetScanner()" class="cancel">Annuller / Scan Igen</button>
-            <p id="status"></p>
-        </div>
+    <div id="result-screen" class="hidden card">
+        <h2>Vare fundet!</h2>
+        <input type="text" id="barcode-res" readonly style="background: #eee;">
+        <input type="text" id="name-input" placeholder="Produktnavn (f.eks. Cola)">
+        <button class="btn-primary" id="save-btn" onclick="saveToSupabase()">💾 Gem i Supabase</button>
+        <button class="btn-cancel" onclick="resetApp()">Scan en til</button>
+        <p id="status-msg"></p>
     </div>
 
     <script>
-       // --- INDSÆT DINE NØGLER HER ---
-const SUPABASE_URL = 'DIN_SUPABASE_URL_HER';
-const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY_HER';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // --- DIN KONFIGURATION ---
+        const SUPABASE_URL = 'DIN_SUPABASE_URL';
+        const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let html5QrCode;
+        let isScanning = false;
 
-async function startCameraClick() {
-    const errorDisplay = document.getElementById('error-msg');
-    errorDisplay.innerText = "Prøver at starte...";
+        function initScanner() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('scanner-container').classList.remove('hidden');
 
-    try {
-        // Tjek om browseren overhovedet understøtter kamera-api
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error("Din browser understøtter ikke kamera-adgang. Prøv Safari.");
+            // Quagga indstillinger inspireret af din kode
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#interactive'),
+                    constraints: {
+                        facingMode: "environment", // Brug bagkamera
+                        aspectRatio: { min: 1, max: 2 }
+                    },
+                },
+                decoder: {
+                    readers: ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
+                },
+                locate: true // Hjælper med at finde stregkoden på iPhone 13 Pro
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    alert("Kamera fejl: " + err);
+                    return;
+                }
+                Quagga.start();
+                isScanning = true;
+            });
+
+            Quagga.onDetected(function(result) {
+                if (!isScanning) return;
+                const code = result.codeResult.code;
+                
+                // Giv visuel/lyd feedback
+                if (navigator.vibrate) navigator.vibrate(100);
+                
+                onFound(code);
+            });
         }
 
-        document.getElementById('start-screen').classList.add('hidden');
-        document.getElementById('scanner-container').classList.remove('hidden');
-        document.getElementById('reader').style.display = "block";
+        function onFound(code) {
+            isScanning = false;
+            Quagga.stop();
+            
+            document.getElementById('scanner-container').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('barcode-res').value = code;
+            document.getElementById('name-input').focus();
+        }
 
-        html5QrCode = new Html5Qrcode("reader");
+        async function saveToSupabase() {
+            const barcode = document.getElementById('barcode-res').value;
+            const name = document.getElementById('name-input').value;
+            const btn = document.getElementById('save-btn');
+            const status = document.getElementById('status-msg');
 
-        // Specifikke indstillinger til iPhone 13 Pro Max for at undgå fokus-problemer
-        const config = { 
-            fps: 15, 
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.0 
-        };
+            if (!name) return alert("Skriv et navn");
 
-        // Vi tvinger den til at bruge det bagudvendte kamera
-        await html5QrCode.start(
-            { facingMode: { exact: "environment" } }, // Prøv først tvunget bagkamera
-            config,
-            onScanSuccess
-        );
-        
-        errorDisplay.innerText = ""; // Ryd fejl hvis det lykkes
-    } catch (err) {
-        console.error(err);
-        // Hvis "exact: environment" fejler (sker på nogle browsere), så prøv uden "exact"
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
-        } catch (secondErr) {
+            btn.disabled = true;
+            btn.innerText = "Gemmer...";
+
+            const { error } = await supabase
+                .from('items') // Sørg for at din tabel hedder 'items' eller ret det her
+                .upsert({ barcode: barcode, name: name });
+
+            if (error) {
+                status.innerText = "Fejl: " + error.message;
+                status.style.color = "red";
+            } else {
+                status.innerText = "Gemt med succes!";
+                status.style.color = "green";
+                setTimeout(resetApp, 1500);
+            }
+            btn.disabled = false;
+            btn.innerText = "Gem i Supabase";
+        }
+
+        function stopScanner() {
+            Quagga.stop();
+            resetApp();
+        }
+
+        function resetApp() {
+            isScanning = false;
             document.getElementById('start-screen').classList.remove('hidden');
             document.getElementById('scanner-container').classList.add('hidden');
-            errorDisplay.innerText = "Fejl: " + secondErr.message;
-            alert("Kamera-fejl: " + secondErr.message);
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('name-input').value = "";
+            document.getElementById('status-msg').innerText = "";
         }
-    }
-}
-
-function onScanSuccess(decodedText) {
-    // Stop scanningen med det samme så den ikke "dobbelt-scanner"
-    html5QrCode.pause(true); 
-    
-    document.getElementById('scanner-container').classList.add('hidden');
-    document.getElementById('result-container').classList.remove('hidden');
-    
-    document.getElementById('barcode-input').value = decodedText;
-    document.getElementById('name-input').focus();
-}
+    </script>
+</body>
+</html>
