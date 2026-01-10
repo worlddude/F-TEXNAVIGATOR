@@ -56,101 +56,65 @@
     </div>
 
     <script>
-        // --- INDSÆT DINE NØGLER HER ---
-        const SUPABASE_URL = 'DIN_SUPABASE_URL_HER';
-        const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY_HER';
-        // ------------------------------
+       // --- INDSÆT DINE NØGLER HER ---
+const SUPABASE_URL = 'DIN_SUPABASE_URL_HER';
+const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY_HER';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let html5QrCode;
-        let isScanning = false;
+let html5QrCode;
 
-        // Denne funktion kører KUN når du trykker på knappen
-        function startCameraClick() {
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('scanner-container').classList.remove('hidden');
-            document.getElementById('reader').style.display = "block";
+async function startCameraClick() {
+    const errorDisplay = document.getElementById('error-msg');
+    errorDisplay.innerText = "Prøver at starte...";
 
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
-            // Vi prøver at tvinge bag-kameraet
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanError)
-            .catch(err => {
-                // Hvis det fejler, vis fejlbesked
-                document.getElementById('scanner-container').classList.add('hidden');
-                document.getElementById('start-screen').classList.remove('hidden');
-                document.getElementById('error-msg').innerText = "Kunne ikke starte: " + err;
-                alert("Husk at trykke 'Tillad' til kameraet! Tjek evt. Indstillinger -> Safari -> Kamera.");
-            });
-            
-            isScanning = true;
+    try {
+        // Tjek om browseren overhovedet understøtter kamera-api
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Din browser understøtter ikke kamera-adgang. Prøv Safari.");
         }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            if (!isScanning) return;
-            isScanning = false;
-            
-            // Stop scanning men behold kamera objektet klar
-            html5QrCode.pause(); 
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('scanner-container').classList.remove('hidden');
+        document.getElementById('reader').style.display = "block";
 
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('result-container').classList.remove('hidden');
-            
-            document.getElementById('barcode-input').value = decodedText;
-            document.getElementById('name-input').focus();
-        }
+        html5QrCode = new Html5Qrcode("reader");
 
-        function onScanError(errorMessage) {
-            // Ignorer scanningsfejl (sker hele tiden når den leder efter stregkoder)
-        }
+        // Specifikke indstillinger til iPhone 13 Pro Max for at undgå fokus-problemer
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.0 
+        };
 
-        async function saveProduct() {
-            const barcode = document.getElementById('barcode-input').value;
-            const name = document.getElementById('name-input').value;
-            const statusMsg = document.getElementById('status');
-            const saveBtn = document.getElementById('save-btn');
-
-            if (!name) { alert("Husk navn!"); return; }
-
-            saveBtn.disabled = true;
-            saveBtn.innerText = "Gemmer...";
-
-            const { data, error } = await supabase
-                .from('products')
-                .insert([{ barcode: barcode, name: name }]);
-
-            if (error) {
-                statusMsg.innerText = "Fejl: " + error.message;
-                statusMsg.style.color = "red";
-            } else {
-                statusMsg.innerText = "Gemt!";
-                statusMsg.style.color = "green";
-                setTimeout(resetScanner, 1000);
-            }
-            saveBtn.disabled = false;
-            saveBtn.innerText = "Gem Produkt";
-        }
-
-        function resetScanner() {
-            document.getElementById('name-input').value = "";
-            document.getElementById('status').innerText = "";
-            document.getElementById('result-container').classList.add('hidden');
-            document.getElementById('scanner-container').classList.remove('hidden');
-            
-            isScanning = true;
-            html5QrCode.resume();
-        }
+        // Vi tvinger den til at bruge det bagudvendte kamera
+        await html5QrCode.start(
+            { facingMode: { exact: "environment" } }, // Prøv først tvunget bagkamera
+            config,
+            onScanSuccess
+        );
         
-        function stopCamera() {
-             if(html5QrCode) {
-                 html5QrCode.stop().then(() => {
-                     document.getElementById('scanner-container').classList.add('hidden');
-                     document.getElementById('start-screen').classList.remove('hidden');
-                 });
-             }
+        errorDisplay.innerText = ""; // Ryd fejl hvis det lykkes
+    } catch (err) {
+        console.error(err);
+        // Hvis "exact: environment" fejler (sker på nogle browsere), så prøv uden "exact"
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+        } catch (secondErr) {
+            document.getElementById('start-screen').classList.remove('hidden');
+            document.getElementById('scanner-container').classList.add('hidden');
+            errorDisplay.innerText = "Fejl: " + secondErr.message;
+            alert("Kamera-fejl: " + secondErr.message);
         }
-    </script>
-</body>
-</html>
+    }
+}
+
+function onScanSuccess(decodedText) {
+    // Stop scanningen med det samme så den ikke "dobbelt-scanner"
+    html5QrCode.pause(true); 
+    
+    document.getElementById('scanner-container').classList.add('hidden');
+    document.getElementById('result-container').classList.remove('hidden');
+    
+    document.getElementById('barcode-input').value = decodedText;
+    document.getElementById('name-input').focus();
+}
