@@ -3,226 +3,200 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Barcode scanner → Supabase</title>
-  <meta name="description" content="Web-app der scanner stregkoder og gemmer dem i Supabase" />
+  <title>Stregkode-scanner</title>
   <style>
     :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#111}
-    body{display:flex;flex-direction:column;gap:12px;max-width:900px;margin:18px auto;padding:12px}
-    video{width:100%;height:auto;border-radius:12px;background:#000}
+    body{display:flex;flex-direction:column;gap:12px;max-width:780px;margin:16px auto;padding:12px}
+    header{display:flex;justify-content:space-between;align-items:center}
+    h1{font-size:18px;margin:0}
+    video{width:100%;height:auto;border-radius:10px;background:#000}
     .controls{display:flex;gap:8px;flex-wrap:wrap}
-    button{padding:10px 14px;border-radius:8px;border:1px solid #ddd;background:#f7f7f7}
-    .status{padding:8px;border-radius:8px;background:#eef;height:44px;display:flex;align-items:center}
-    .panel{display:grid;grid-template-columns:1fr 320px;gap:12px}
+    button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fafafa}
+    .status{padding:8px;border-radius:8px;background:#f0f6ff;min-height:40px;display:flex;align-items:center}
+    .panel{display:grid;grid-template-columns:1fr 300px;gap:12px;margin-top:8px}
     .panel .right{border-left:1px solid #eee;padding-left:12px}
-    label{display:block;margin-top:8px;font-size:14px}
-    input,textarea{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
-    ul{padding-left:18px}
-    small{color:#666}
-    @media (max-width:800px){.panel{grid-template-columns:1fr}}
+    label{display:block;margin-top:8px;font-size:13px}
+    input,select{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
+    ul{padding-left:18px;margin-top:8px}
+    @media (max-width:760px){.panel{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <h1>Stregkode-scanner → Supabase</h1>
-  <p>Dette er en enkelt-fil web-app der scanner stregkoder via telefonens kamera og indsætter rækker i en Supabase-tabel. Husk at erstatte <code>SUPABASE_URL</code> og <code>SUPABASE_ANON_KEY</code> i koden med dine egne værdier.</p>
+  <header>
+    <h1>Stregkode-scanner</h1>
+    <div class="controls">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="saveBtn" disabled>Gem</button>
+      <button id="clearList">Ryd</button>
+    </div>
+  </header>
 
-  <div class="controls">
-    <button id="startBtn">Start scanning (kamera)</button>
-    <button id="stopBtn" disabled>Stop scanning</button>
-    <button id="saveBtn" disabled>Gem til Supabase</button>
-    <button id="clearList">Ryd liste</button>
-    <small id="hint">Husk at GitHub Pages kører over HTTPS — kameraet kræver HTTPS.</small>
-  </div>
-
-  <div class="status" id="status">Status: klar</div>
+  <div class="status" id="status">Klar</div>
 
   <div class="panel">
     <div class="left">
       <video id="video" playsinline muted></video>
       <canvas id="canvas" style="display:none"></canvas>
     </div>
+
     <div class="right">
-      <div>
-        <label>Sidst scannede stregkode</label>
-        <input id="barcodeInput" placeholder="Ingen endnu" readonly />
+      <label>Stregkode</label>
+      <input id="barcodeInput" readonly />
 
-        <label>Produktnavn (valgfri)</label>
-        <input id="nameInput" placeholder="Skriv navn eller hent automatisk" />
+      <label>Produktnavn</label>
+      <input id="nameInput" placeholder="fx Formalet kaffe" />
 
-        <label>Seneste gemte produkter</label>
-        <ul id="list"></ul>
-      </div>
+      <label>Kategori</label>
+      <input id="categoryInput" placeholder="fx Kaffe & Te" />
 
-      <div style="margin-top:10px">
-        <small>Instruktioner:</small>
-        <ul>
-          <li>Åbn siden i Safari/Chrome på din iPhone (GitHub Pages leverer HTTPS).</li>
-          <li>Tillad kamera når browseren spørger.</li>
-          <li>Hold kameraet over stregkoden — den scannes automatisk.</li>
-        </ul>
-      </div>
+      <label>Hylde / Række</label>
+      <input id="shelfInput" placeholder="fx Hylde 3" />
+
+      <label>Oprettelsesdato</label>
+      <input id="dateInput" readonly />
+
+      <label>Seneste</label>
+      <ul id="list"></ul>
     </div>
   </div>
 
-  <!-- ZXing browser UMD (fallback hvis BarcodeDetector ikke findes) -->
+  <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
 
   <script>
-    // === KONFIGURATION: Erstat disse med din Supabase info ===
+    // ---------- KONFIGURATION: Erstat disse med dine egne værdier ----------
     const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co'; // <-- ændr
     const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // <-- ændr
-    const SUPABASE_TABLE = 'products'; // tabelnavn
+    const SUPABASE_TABLE = 'products';
+    // ----------------------------------------------------------------------
 
-    // === UI references ===
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const saveBtn = document.getElementById('saveBtn');
+    const clearListBtn = document.getElementById('clearList');
     const barcodeInput = document.getElementById('barcodeInput');
     const nameInput = document.getElementById('nameInput');
+    const categoryInput = document.getElementById('categoryInput');
+    const shelfInput = document.getElementById('shelfInput');
+    const dateInput = document.getElementById('dateInput');
     const listEl = document.getElementById('list');
     const statusEl = document.getElementById('status');
 
     let stream = null;
-    let codeReader = null; // ZXing reader controls
-    let controls = null; // for stopping ZXing continuous reader
+    let codeReader = null;
+    let controls = null;
     let lastScanned = null;
     let recent = [];
 
-    function setStatus(text){ statusEl.textContent = 'Status: ' + text }
+    function setStatus(txt){ statusEl.textContent = txt }
 
     startBtn.addEventListener('click', startScanning);
     stopBtn.addEventListener('click', stopScanning);
     saveBtn.addEventListener('click', saveCurrentProduct);
-    document.getElementById('clearList').addEventListener('click', ()=>{ recent=[]; renderList(); });
+    clearListBtn.addEventListener('click', ()=>{ recent=[]; renderList(); });
 
     async function startScanning(){
-      setStatus('Forsøger at starte kamera... (tillad hvis din browser spørger)');
+      setStatus('Starter kamera — tillad venligst adgang');
       startBtn.disabled = true;
       try{
-        // Bed om camera permission med environment/back kamera og rimelig opløsning
         const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         await video.play();
-        setStatus('Kamera kører — scanner...');
         stopBtn.disabled = false;
+        setStatus('Scanner...');
 
-        // Foretrukne flow: brug den native BarcodeDetector API hvis den findes (hurtigere)
+        // Brug native BarcodeDetector hvis tilgængelig
         if('BarcodeDetector' in window){
           try{
             const formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
             const detector = new BarcodeDetector({formats});
-            // Scan løbende ved at tegne video til canvas og køre detect()
             const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-
-            const loop = async () => {
+            const loop = async ()=>{
               if(!stream) return;
               try{
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
                 ctx.drawImage(video,0,0,canvas.width,canvas.height);
                 const barcodes = await detector.detect(canvas);
                 if(barcodes && barcodes.length){
-                  // vi tager første resultat
-                  const code = barcodes[0].rawValue || barcodes[0].raw_text || barcodes[0].rawData || '';
+                  const code = barcodes[0].rawValue || barcodes[0].raw_text || '';
                   if(code) handleBarcode(code);
                 }
-              }catch(e){ /* ignore occasional frame errors */ }
+              }catch(e){}
               requestAnimationFrame(loop);
             }
             requestAnimationFrame(loop);
-            // note: vi stopper kameraet med stopScanning()
             return;
-          }catch(e){ console.warn('BarcodeDetector fejlede — fallback til ZXing', e); }
+          }catch(e){ console.warn('BarcodeDetector fejl — fallback', e); }
         }
 
-        // Fallback: brug ZXing library (UMD bundlet og tilgængelig som ZXingBrowser)
+        // Fallback: ZXing
         if(window.ZXingBrowser){
           codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-          // forsøg at vælge "back" camera hvis muligt
           try{
             const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-            let deviceId = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId || devices[0]?.deviceId;
-            controls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err, ctrl) => {
-              if(result){ handleBarcode(result.text); }
-              // fejl kan ignoreres
+            const back = devices.find(d=>/back|rear|environment/i.test(d.label));
+            const deviceId = back?.deviceId || devices[0]?.deviceId;
+            controls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err, ctrl)=>{
+              if(result) handleBarcode(result.text);
             });
-            // controls stopper man med controls.stop()
             return;
-          }catch(e){ console.error('ZXing decodeFromVideoDevice fejlede', e); }
+          }catch(e){ console.error('ZXing fejl', e); }
         }
 
-        setStatus('Kan ikke starte nogen scanner på denne enhed.');
+        setStatus('Ingen scanner tilgængelig');
         startBtn.disabled = false;
       }catch(err){
         console.error(err);
-        setStatus('Fejl ved adgang til kamera — tjek tilladelser (og at siden kører over HTTPS).');
+        setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
         startBtn.disabled = false;
       }
     }
 
     async function handleBarcode(code){
-      // slå stregkoden op i offentligt register (Open Food Facts først)
-      lookupProduct(code).catch(()=>{});
-
-      // Debounce: hvis det er samme kode inden for kort tid, ignorer
-      if(lastScanned && lastScanned.code === code && (Date.now() - lastScanned.time) < 1500) return;
+      if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) return;
       lastScanned = {code, time: Date.now()};
       barcodeInput.value = code;
-      // sæt et forslag til navn (brug evt. OpenFoodFacts/API senere)
-      nameInput.placeholder = 'Tilføj et navn eller tryk "Gem"';
+      dateInput.value = new Date().toLocaleString();
       saveBtn.disabled = false;
-      setStatus('Stregkode scannet: ' + code);
+      setStatus('Scannet: ' + code + ' — henter info...');
 
-      // vis i listen (midlertidigt)
-      recent.unshift({code, name: '', ts: new Date().toISOString()});
-      if(recent.length>30) recent.pop();
-      renderList();
-    }
-
-    async function lookupProduct(barcode){
-      setStatus('Slår produkt op...');
-      // 1) Open Food Facts (gratis, ingen API-key, god dækning i DK/EU)
+      // Først: check lokal cache (recent eller Supabase) - her kun recent
+      // Slå op i Open Food Facts
       try{
-        const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+        const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
         if(offRes.ok){
           const offJson = await offRes.json();
           if(offJson.status === 1 && offJson.product){
             const p = offJson.product;
             const name = p.product_name_da || p.product_name || '';
-            if(name){ nameInput.value = name; }
-            setStatus('Produkt fundet i Open Food Facts ✔');
+            const category = (p.categories_tags && p.categories_tags[0]) ? p.categories_tags[0].replace('en:','') : '';
+            if(name) nameInput.value = name;
+            if(category) categoryInput.value = category.replace(/-/g,' ');
+            setStatus('Fundet i Open Food Facts');
+            recent.unshift({code, name: nameInput.value || '', category: categoryInput.value||'', shelf: '', ts: new Date().toISOString()});
+            renderList();
             return;
           }
         }
-      }catch(e){ /* ignorér */ }
-
-      // 2) Fallback: BarcodeLookup (kræver API key – client-side er kun demo!)
-      // ADVARSEL: læg IKKE en rigtig API-key i frontend i produktion
-      // const BARCODELOOKUP_KEY = 'DIN_API_KEY';
-      // try{
-      //   const blRes = await fetch(`https://api.barcodelookup.com/v3/products?barcode=${barcode}&key=${BARCODELOOKUP_KEY}`);
-      //   if(blRes.ok){
-      //     const blJson = await blRes.json();
-      //     if(blJson.products && blJson.products.length){
-      //       nameInput.value = blJson.products[0].product_name || '';
-      //       setStatus('Produkt fundet via BarcodeLookup ✔');
-      //       return;
-      //     }
-      //   }
-      // }catch(e){}
+      }catch(e){ console.warn('OFF fejl', e); }
 
       setStatus('Ingen info fundet — udfyld manuelt');
+      recent.unshift({code, name:'', category:'', shelf:'', ts:new Date().toISOString()});
+      renderList();
     }
 
     function renderList(){
       listEl.innerHTML = '';
-      recent.forEach(r => {
+      recent.slice(0,30).forEach(r=>{
         const li = document.createElement('li');
-        li.textContent = `${r.code} ${r.name?'- '+r.name:''} (${new Date(r.ts).toLocaleString()})`;
+        const name = r.name || '(ingen navn)';
+        const cat = r.category? ' — '+r.category : '';
+        li.textContent = `${r.code} ${cat} — ${name} (${new Date(r.ts).toLocaleString()})`;
         listEl.appendChild(li);
       });
     }
@@ -230,13 +204,14 @@
     async function saveCurrentProduct(){
       const barcode = barcodeInput.value.trim();
       const name = nameInput.value.trim() || null;
-      if(!barcode){ alert('Ingen stregkode at gemme'); return; }
-      saveBtn.disabled = true; setStatus('Gemmer i Supabase...');
+      const category = categoryInput.value.trim() || null;
+      const shelf = shelfInput.value.trim() || null;
+      if(!barcode){ alert('Ingen stregkode'); return; }
+      saveBtn.disabled = true; setStatus('Gemmer...');
 
       try{
-        // Tilføj via Supabase REST API
         const url = `${SUPABASE_URL.replace(/\/+$/,'')}/rest/v1/${SUPABASE_TABLE}`;
-        const body = { barcode, name };
+        const body = { barcode, name, category, shelf, created_at: new Date().toISOString() };
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -249,12 +224,14 @@
         });
         if(!res.ok){
           const text = await res.text();
-          throw new Error(`Supabase svar: ${res.status} ${text}`);
+          throw new Error(`Supabase fejl: ${res.status} ${text}`);
         }
         const json = await res.json();
-        setStatus('Produkt gemt ✔');
-        // opdater lokal liste (brug data fra respons hvis ønsket)
-        recent[0].name = name || '';
+        setStatus('Gemte i Supabase ✔');
+        // opdater lokal liste
+        if(recent.length) recent[0].name = name || recent[0].name;
+        if(recent.length) recent[0].category = category || recent[0].category;
+        if(recent.length) recent[0].shelf = shelf || recent[0].shelf;
         renderList();
       }catch(e){
         console.error(e);
@@ -264,25 +241,15 @@
     }
 
     function stopScanning(){
-      setStatus('Stopper...');
-      // stop ZXing controls
-      try{ if(controls && typeof controls.stop === 'function'){ controls.stop(); controls = null; } }catch(e){}
-      // stop stream tracks
-      if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-        stream = null;
-      }
-      // hvis codeReader fra ZXing kører, stop den
-      try{ if(codeReader && typeof codeReader.reset === 'function') codeReader.reset(); }catch(e){}
-
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      setStatus('Stoppet');
+      setStatus('Stopper');
+      try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      try{ if(codeReader && typeof codeReader.reset==='function') codeReader.reset(); }catch(e){}
+      startBtn.disabled = false; stopBtn.disabled = true; setStatus('Stoppet');
     }
 
-    // før unload: stop kamera
-    window.addEventListener('beforeunload', stopScanning);
-
+    // stop kamera før unload
+    window.addEventListener('pagehide', stopScanning);
   </script>
 </body>
 </html>
