@@ -164,7 +164,10 @@
       }
     }
 
-    function handleBarcode(code){
+    async function handleBarcode(code){
+      // slå stregkoden op i offentligt register (Open Food Facts først)
+      lookupProduct(code).catch(()=>{});
+
       // Debounce: hvis det er samme kode inden for kort tid, ignorer
       if(lastScanned && lastScanned.code === code && (Date.now() - lastScanned.time) < 1500) return;
       lastScanned = {code, time: Date.now()};
@@ -178,6 +181,41 @@
       recent.unshift({code, name: '', ts: new Date().toISOString()});
       if(recent.length>30) recent.pop();
       renderList();
+    }
+
+    async function lookupProduct(barcode){
+      setStatus('Slår produkt op...');
+      // 1) Open Food Facts (gratis, ingen API-key, god dækning i DK/EU)
+      try{
+        const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+        if(offRes.ok){
+          const offJson = await offRes.json();
+          if(offJson.status === 1 && offJson.product){
+            const p = offJson.product;
+            const name = p.product_name_da || p.product_name || '';
+            if(name){ nameInput.value = name; }
+            setStatus('Produkt fundet i Open Food Facts ✔');
+            return;
+          }
+        }
+      }catch(e){ /* ignorér */ }
+
+      // 2) Fallback: BarcodeLookup (kræver API key – client-side er kun demo!)
+      // ADVARSEL: læg IKKE en rigtig API-key i frontend i produktion
+      // const BARCODELOOKUP_KEY = 'DIN_API_KEY';
+      // try{
+      //   const blRes = await fetch(`https://api.barcodelookup.com/v3/products?barcode=${barcode}&key=${BARCODELOOKUP_KEY}`);
+      //   if(blRes.ok){
+      //     const blJson = await blRes.json();
+      //     if(blJson.products && blJson.products.length){
+      //       nameInput.value = blJson.products[0].product_name || '';
+      //       setStatus('Produkt fundet via BarcodeLookup ✔');
+      //       return;
+      //     }
+      //   }
+      // }catch(e){}
+
+      setStatus('Ingen info fundet — udfyld manuelt');
     }
 
     function renderList(){
