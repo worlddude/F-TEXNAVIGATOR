@@ -5,251 +5,222 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Stregkode-scanner</title>
   <style>
-    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#111}
-    body{display:flex;flex-direction:column;gap:12px;max-width:780px;margin:16px auto;padding:12px}
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111}
+    body{max-width:780px;margin:16px auto;padding:12px;display:flex;flex-direction:column;gap:12px}
     header{display:flex;justify-content:space-between;align-items:center}
     h1{font-size:18px;margin:0}
-    video{width:100%;height:auto;border-radius:10px;background:#000}
+    video{width:100%;border-radius:10px;background:#000}
+    button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#f6f6f6}
+    button.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+    button.toggle{margin-left:6px;font-size:12px}
+    button.toggle.active{background:#2563eb;color:#fff;border-color:#2563eb}
     .controls{display:flex;gap:8px;flex-wrap:wrap}
-    button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fafafa}
-    .status{padding:8px;border-radius:8px;background:#f0f6ff;min-height:40px;display:flex;align-items:center}
-    .panel{display:grid;grid-template-columns:1fr 300px;gap:12px;margin-top:8px}
-    .panel .right{border-left:1px solid #eee;padding-left:12px}
-    label{display:block;margin-top:8px;font-size:13px}
-    input,select{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
+    .status{padding:8px;border-radius:8px;background:#eef3ff;min-height:38px}
+    .panel{display:grid;grid-template-columns:1fr 300px;gap:12px}
+    .right{border-left:1px solid #eee;padding-left:12px}
+    label{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:13px}
+    input{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
     ul{padding-left:18px;margin-top:8px}
     @media (max-width:760px){.panel{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Stregkode-scanner</h1>
-    <div class="controls">
-      <button id="startBtn">Start</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <button id="saveBtn" disabled>Gem</button>
-      <button id="clearList">Ryd</button>
-    </div>
-  </header>
+<header>
+  <h1>Stregkode-scanner</h1>
+  <div class="controls">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <button id="saveBtn" class="primary" disabled>Gem</button>
+  </div>
+</header>
 
-  <div class="status" id="status">Klar</div>
+<div class="status" id="status">Klar</div>
 
-  <div class="panel">
-    <div class="left">
-      <video id="video" playsinline muted></video>
-      <canvas id="canvas" style="display:none"></canvas>
-    </div>
-
-    <div class="right">
-      <label>Stregkode</label>
-      <input id="barcodeInput" readonly />
-
-      <label>Produktnavn</label>
-      <input id="nameInput" placeholder="fx Formalet kaffe" />
-
-      <label>Kategori</label>
-      <input id="categoryInput" placeholder="fx Kaffe & Te" />
-
-      <label>Hylde / Række</label>
-      <input id="shelfInput" placeholder="fx Hylde 3" />
-
-      <label>Oprettelsesdato</label>
-      <input id="dateInput" readonly />
-
-      <label>Seneste</label>
-      <ul id="list"></ul>
-    </div>
+<div class="panel">
+  <div>
+    <video id="video" playsinline muted></video>
+    <canvas id="canvas" style="display:none"></canvas>
   </div>
 
-  <!-- ZXing fallback -->
-  <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+  <div class="right">
+    <label>Stregkode</label>
+    <input id="barcodeInput" readonly />
 
-  <script>
-    // ---------- KONFIGURATION: Erstat disse med dine egne værdier ----------
-    const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co'; // <-- ændr
-    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // <-- ændr
-    const SUPABASE_TABLE = 'products';
-    // ----------------------------------------------------------------------
+    <label>Produktnavn</label>
+    <input id="nameInput" />
 
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const clearListBtn = document.getElementById('clearList');
-    const barcodeInput = document.getElementById('barcodeInput');
-    const nameInput = document.getElementById('nameInput');
-    const categoryInput = document.getElementById('categoryInput');
-    const shelfInput = document.getElementById('shelfInput');
-    const dateInput = document.getElementById('dateInput');
-    const listEl = document.getElementById('list');
-    const statusEl = document.getElementById('status');
+    <label>Kategori</label>
+    <input id="categoryInput" />
 
-    let stream = null;
-    let codeReader = null;
-    let controls = null;
-    let lastScanned = null;
-    let recent = [];
+    <label>
+      Hylde
+      <button id="lockShelf" class="toggle">Gem værdi</button>
+    </label>
+    <input id="shelfInput" placeholder="fx 3" />
 
-    function setStatus(txt){ statusEl.textContent = txt }
+    <label>
+      Række
+      <button id="lockRow" class="toggle">Gem værdi</button>
+    </label>
+    <input id="rowInput" placeholder="fx B" />
 
-    startBtn.addEventListener('click', startScanning);
-    stopBtn.addEventListener('click', stopScanning);
-    saveBtn.addEventListener('click', saveCurrentProduct);
-    clearListBtn.addEventListener('click', ()=>{ recent=[]; renderList(); });
+    <label>Oprettelsesdato</label>
+    <input id="dateInput" readonly />
 
-    async function startScanning(){
-      setStatus('Starter kamera — tillad venligst adgang');
-      startBtn.disabled = true;
-      try{
-        const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
-        await video.play();
-        stopBtn.disabled = false;
-        setStatus('Scanner...');
+    <label>Lokalt scannede</label>
+    <ul id="list"></ul>
+  </div>
+</div>
 
-        // Brug native BarcodeDetector hvis tilgængelig
-        if('BarcodeDetector' in window){
-          try{
-            const formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
-            const detector = new BarcodeDetector({formats});
-            const ctx = canvas.getContext('2d');
-            const loop = async ()=>{
-              if(!stream) return;
-              try{
-                canvas.width = video.videoWidth || 640;
-                canvas.height = video.videoHeight || 480;
-                ctx.drawImage(video,0,0,canvas.width,canvas.height);
-                const barcodes = await detector.detect(canvas);
-                if(barcodes && barcodes.length){
-                  const code = barcodes[0].rawValue || barcodes[0].raw_text || '';
-                  if(code) handleBarcode(code);
-                }
-              }catch(e){}
-              requestAnimationFrame(loop);
-            }
-            requestAnimationFrame(loop);
-            return;
-          }catch(e){ console.warn('BarcodeDetector fejl — fallback', e); }
-        }
+<script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+<script>
+const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_TABLE = 'products';
 
-        // Fallback: ZXing
-        if(window.ZXingBrowser){
-          codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-          try{
-            const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-            const back = devices.find(d=>/back|rear|environment/i.test(d.label));
-            const deviceId = back?.deviceId || devices[0]?.deviceId;
-            controls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err, ctrl)=>{
-              if(result) handleBarcode(result.text);
-            });
-            return;
-          }catch(e){ console.error('ZXing fejl', e); }
-        }
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const saveBtn = document.getElementById('saveBtn');
+const barcodeInput = document.getElementById('barcodeInput');
+const nameInput = document.getElementById('nameInput');
+const categoryInput = document.getElementById('categoryInput');
+const shelfInput = document.getElementById('shelfInput');
+const rowInput = document.getElementById('rowInput');
+const dateInput = document.getElementById('dateInput');
+const listEl = document.getElementById('list');
+const statusEl = document.getElementById('status');
+const lockShelfBtn = document.getElementById('lockShelf');
+const lockRowBtn = document.getElementById('lockRow');
 
-        setStatus('Ingen scanner tilgængelig');
-        startBtn.disabled = false;
-      }catch(err){
-        console.error(err);
-        setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
-        startBtn.disabled = false;
-      }
+let stream=null, reader=null, controls=null;
+let lastScanned=null;
+let localProducts=[];
+let lockShelf=false, lockRow=false;
+let savedShelf=null, savedRow=null;
+
+function setStatus(t){statusEl.textContent=t}
+
+lockShelfBtn.onclick=()=>{
+  lockShelf=!lockShelf;
+  lockShelfBtn.classList.toggle('active',lockShelf);
+  savedShelf = lockShelf ? shelfInput.value : null;
+};
+lockRowBtn.onclick=()=>{
+  lockRow=!lockRow;
+  lockRowBtn.classList.toggle('active',lockRow);
+  savedRow = lockRow ? rowInput.value : null;
+};
+
+startBtn.onclick=startScanning;
+stopBtn.onclick=stopScanning;
+saveBtn.onclick=saveProduct;
+
+async function startScanning(){
+  startBtn.disabled=true;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    video.srcObject=stream; await video.play();
+    stopBtn.disabled=false; setStatus('Scanner...');
+
+    if('BarcodeDetector'in window){
+      const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128']});
+      const ctx=canvas.getContext('2d');
+      (async function loop(){
+        if(!stream) return;
+        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const codes=await detector.detect(canvas);
+        if(codes[0]) handleBarcode(codes[0].rawValue);
+        requestAnimationFrame(loop);
+      })();
+      return;
     }
 
-    async function handleBarcode(code){
-      if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) return;
-      lastScanned = {code, time: Date.now()};
-      barcodeInput.value = code;
-      dateInput.value = new Date().toLocaleString();
-      saveBtn.disabled = false;
-      setStatus('Scannet: ' + code + ' — henter info...');
+    reader=new ZXingBrowser.BrowserMultiFormatReader();
+    const devices=await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+    controls=await reader.decodeFromVideoDevice(devices[0].deviceId,video,(res)=>{
+      if(res) handleBarcode(res.text);
+    });
+  }catch(e){setStatus('Kamera-fejl');startBtn.disabled=false}
+}
 
-      // Først: check lokal cache (recent eller Supabase) - her kun recent
-      // Slå op i Open Food Facts
-      try{
-        const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-        if(offRes.ok){
-          const offJson = await offRes.json();
-          if(offJson.status === 1 && offJson.product){
-            const p = offJson.product;
-            const name = p.product_name_da || p.product_name || '';
-            const category = (p.categories_tags && p.categories_tags[0]) ? p.categories_tags[0].replace('en:','') : '';
-            if(name) nameInput.value = name;
-            if(category) categoryInput.value = category.replace(/-/g,' ');
-            setStatus('Fundet i Open Food Facts');
-            recent.unshift({code, name: nameInput.value || '', category: categoryInput.value||'', shelf: '', ts: new Date().toISOString()});
-            renderList();
-            return;
-          }
-        }
-      }catch(e){ console.warn('OFF fejl', e); }
+async function handleBarcode(code){
+  if(lastScanned&&lastScanned.code===code&&Date.now()-lastScanned.time<1500) return;
+  lastScanned={code,time:Date.now()};
+  barcodeInput.value=code;
+  dateInput.value=new Date().toLocaleString();
+  saveBtn.disabled=false;
 
-      setStatus('Ingen info fundet — udfyld manuelt');
-      recent.unshift({code, name:'', category:'', shelf:'', ts:new Date().toISOString()});
-      renderList();
+  if(lockShelf && savedShelf) shelfInput.value=savedShelf;
+  if(lockRow && savedRow) rowInput.value=savedRow;
+
+  try{
+    const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+    const j=await r.json();
+    if(j.status===1){
+      nameInput.value=j.product.product_name_da||j.product.product_name||'';
+      categoryInput.value=(j.product.categories_tags?.[0]||'').replace('en:','').replace(/-/g,' ');
+      setStatus('Produkt fundet');
+      return;
     }
+  }catch{}
+  setStatus('Ingen info fundet');
+}
 
-    function renderList(){
-      listEl.innerHTML = '';
-      recent.slice(0,30).forEach(r=>{
-        const li = document.createElement('li');
-        const name = r.name || '(ingen navn)';
-        const cat = r.category? ' — '+r.category : '';
-        li.textContent = `${r.code} ${cat} — ${name} (${new Date(r.ts).toLocaleString()})`;
-        listEl.appendChild(li);
-      });
+function renderList(){
+  listEl.innerHTML='';
+  localProducts.forEach(p=>{
+    const li=document.createElement('li');
+    li.textContent=`${p.barcode} | H${p.shelf||'-'} R${p.row||'-'} | ${p.name||''}`;
+    listEl.appendChild(li);
+  });
+}
+
+async function saveProduct(){
+  const p={
+    barcode:barcodeInput.value,
+    name:nameInput.value||null,
+    category:categoryInput.value||null,
+    shelf:shelfInput.value||null,
+    row:rowInput.value||null,
+    created_at:new Date().toISOString()
+  };
+  localProducts.push(p);
+  renderList();
+  setStatus('Gemt lokalt');
+
+  if(localProducts.length>=10){
+    if(confirm('Du har 10+ produkter lokalt. Vil du uploade til Supabase nu?')){
+      await uploadAll();
     }
+  }
+}
 
-    async function saveCurrentProduct(){
-      const barcode = barcodeInput.value.trim();
-      const name = nameInput.value.trim() || null;
-      const category = categoryInput.value.trim() || null;
-      const shelf = shelfInput.value.trim() || null;
-      if(!barcode){ alert('Ingen stregkode'); return; }
-      saveBtn.disabled = true; setStatus('Gemmer...');
+async function uploadAll(){
+  setStatus('Uploader...');
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_ANON_KEY,
+      'Authorization':'Bearer '+SUPABASE_ANON_KEY
+    },
+    body:JSON.stringify(localProducts)
+  });
+  if(res.ok){
+    localProducts=[]; renderList(); setStatus('Upload færdig ✔');
+  }else{
+    setStatus('Upload-fejl');
+  }
+}
 
-      try{
-        const url = `${SUPABASE_URL.replace(/\/+$/,'')}/rest/v1/${SUPABASE_TABLE}`;
-        const body = { barcode, name, category, shelf, created_at: new Date().toISOString() };
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(body)
-        });
-        if(!res.ok){
-          const text = await res.text();
-          throw new Error(`Supabase fejl: ${res.status} ${text}`);
-        }
-        const json = await res.json();
-        setStatus('Gemte i Supabase ✔');
-        // opdater lokal liste
-        if(recent.length) recent[0].name = name || recent[0].name;
-        if(recent.length) recent[0].category = category || recent[0].category;
-        if(recent.length) recent[0].shelf = shelf || recent[0].shelf;
-        renderList();
-      }catch(e){
-        console.error(e);
-        alert('Fejl ved gem: ' + e.message);
-        setStatus('Fejl ved gem');
-      }finally{ saveBtn.disabled = false; }
-    }
-
-    function stopScanning(){
-      setStatus('Stopper');
-      try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
-      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-      try{ if(codeReader && typeof codeReader.reset==='function') codeReader.reset(); }catch(e){}
-      startBtn.disabled = false; stopBtn.disabled = true; setStatus('Stoppet');
-    }
-
-    // stop kamera før unload
-    window.addEventListener('pagehide', stopScanning);
-  </script>
+function stopScanning(){
+  if(controls) controls.stop();
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  startBtn.disabled=false; stopBtn.disabled=true; setStatus('Stoppet');
+}
+</script>
 </body>
 </html>
