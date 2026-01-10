@@ -1,109 +1,250 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="da">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>Supabase Scanner</title>
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <style>
-        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #000; color: #fff; }
-        #interactive.viewport { width: 100%; height: 60vh; background: #222; position: relative; }
-        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
-        canvas.drawingBuffer { position: absolute; left: 0; top: 0; }
-        .ui-container { flex: 1; padding: 20px; background: #fff; color: #000; border-radius: 20px 20px 0 0; }
-        .btn { width: 100%; padding: 15px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        #status { text-align: center; color: #2563eb; font-weight: bold; margin-bottom: 10px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Barcode scanner → Supabase</title>
+  <meta name="description" content="Web-app der scanner stregkoder og gemmer dem i Supabase" />
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#111}
+    body{display:flex;flex-direction:column;gap:12px;max-width:900px;margin:18px auto;padding:12px}
+    video{width:100%;height:auto;border-radius:12px;background:#000}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:10px 14px;border-radius:8px;border:1px solid #ddd;background:#f7f7f7}
+    .status{padding:8px;border-radius:8px;background:#eef;height:44px;display:flex;align-items:center}
+    .panel{display:grid;grid-template-columns:1fr 320px;gap:12px}
+    .panel .right{border-left:1px solid #eee;padding-left:12px}
+    label{display:block;margin-top:8px;font-size:14px}
+    input,textarea{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
+    ul{padding-left:18px}
+    small{color:#666}
+    @media (max-width:800px){.panel{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
+  <h1>Stregkode-scanner → Supabase</h1>
+  <p>Dette er en enkelt-fil web-app der scanner stregkoder via telefonens kamera og indsætter rækker i en Supabase-tabel. Husk at erstatte <code>SUPABASE_URL</code> og <code>SUPABASE_ANON_KEY</code> i koden med dine egne værdier.</p>
 
-    <div id="interactive" class="viewport"></div>
+  <div class="controls">
+    <button id="startBtn">Start scanning (kamera)</button>
+    <button id="stopBtn" disabled>Stop scanning</button>
+    <button id="saveBtn" disabled>Gem til Supabase</button>
+    <button id="clearList">Ryd liste</button>
+    <small id="hint">Husk at GitHub Pages kører over HTTPS — kameraet kræver HTTPS.</small>
+  </div>
 
-    <div class="ui-container">
-        <div id="status">Klar til scan...</div>
-        
-        <div id="addForm">
-            <input type="text" id="barcodeInput" placeholder="Stregkode" readonly>
-            <input type="text" id="nameInput" placeholder="Varens navn">
-            <button class="btn" id="saveBtn">💾 Gem i Supabase</button>
-        </div>
-        <p style="color: #666; font-size: 12px; text-align: center; margin-top: 10px;">
-            Hvis kameraet ikke starter: Tjek Chrome indstillinger for kamera-adgang.
-        </p>
+  <div class="status" id="status">Status: klar</div>
+
+  <div class="panel">
+    <div class="left">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas" style="display:none"></canvas>
     </div>
+    <div class="right">
+      <div>
+        <label>Sidst scannede stregkode</label>
+        <input id="barcodeInput" placeholder="Ingen endnu" readonly />
 
-<script>
-    // 1. Opsætning med dine nøgler fra din fil
-    const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co/'; 
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); [cite: 4]
+        <label>Produktnavn (valgfri)</label>
+        <input id="nameInput" placeholder="Skriv navn eller hent automatisk" />
 
-    const status = document.getElementById('status');
+        <label>Seneste gemte produkter</label>
+        <ul id="list"></ul>
+      </div>
+
+      <div style="margin-top:10px">
+        <small>Instruktioner:</small>
+        <ul>
+          <li>Åbn siden i Safari/Chrome på din iPhone (GitHub Pages leverer HTTPS).</li>
+          <li>Tillad kamera når browseren spørger.</li>
+          <li>Hold kameraet over stregkoden — den scannes automatisk.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZXing browser UMD (fallback hvis BarcodeDetector ikke findes) -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+
+  <script>
+    // === KONFIGURATION: Erstat disse med din Supabase info ===
+    const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co'; // <-- ændr
+    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // <-- ændr
+    const SUPABASE_TABLE = 'products'; // tabelnavn
+
+    // === UI references ===
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const saveBtn = document.getElementById('saveBtn');
     const barcodeInput = document.getElementById('barcodeInput');
     const nameInput = document.getElementById('nameInput');
+    const listEl = document.getElementById('list');
+    const statusEl = document.getElementById('status');
 
-    // 2. Start scanner med præcis samme config som din fungerende fil
-    function startScanner() {
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#interactive'),
-                constraints: {
-                    facingMode: "environment" // Tvinger bagkamera 
+    let stream = null;
+    let codeReader = null; // ZXing reader controls
+    let controls = null; // for stopping ZXing continuous reader
+    let lastScanned = null;
+    let recent = [];
+
+    function setStatus(text){ statusEl.textContent = 'Status: ' + text }
+
+    startBtn.addEventListener('click', startScanning);
+    stopBtn.addEventListener('click', stopScanning);
+    saveBtn.addEventListener('click', saveCurrentProduct);
+    document.getElementById('clearList').addEventListener('click', ()=>{ recent=[]; renderList(); });
+
+    async function startScanning(){
+      setStatus('Forsøger at starte kamera... (tillad hvis din browser spørger)');
+      startBtn.disabled = true;
+      try{
+        // Bed om camera permission med environment/back kamera og rimelig opløsning
+        const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        await video.play();
+        setStatus('Kamera kører — scanner...');
+        stopBtn.disabled = false;
+
+        // Foretrukne flow: brug den native BarcodeDetector API hvis den findes (hurtigere)
+        if('BarcodeDetector' in window){
+          try{
+            const formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
+            const detector = new BarcodeDetector({formats});
+            // Scan løbende ved at tegne video til canvas og køre detect()
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+
+            const loop = async () => {
+              if(!stream) return;
+              try{
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video,0,0,canvas.width,canvas.height);
+                const barcodes = await detector.detect(canvas);
+                if(barcodes && barcodes.length){
+                  // vi tager første resultat
+                  const code = barcodes[0].rawValue || barcodes[0].raw_text || barcodes[0].rawData || '';
+                  if(code) handleBarcode(code);
                 }
-            },
-            decoder: {
-                readers: ['ean_reader', 'upc_reader', 'code_128_reader'] [cite: 14]
-            },
-            locate: true [cite: 14]
-        }, (err) => {
-            if (err) {
-                status.innerText = "Fejl: " + err;
-                console.error(err);
-                return;
+              }catch(e){ /* ignore occasional frame errors */ }
+              requestAnimationFrame(loop);
             }
-            Quagga.start();
-        });
+            requestAnimationFrame(loop);
+            // note: vi stopper kameraet med stopScanning()
+            return;
+          }catch(e){ console.warn('BarcodeDetector fejlede — fallback til ZXing', e); }
+        }
 
-        Quagga.onDetected((result) => {
-            const code = result.codeResult.code; [cite: 14]
-            barcodeInput.value = code;
-            status.innerText = "KODE FUNDET!";
-            status.style.color = "green";
-            if (navigator.vibrate) navigator.vibrate(200);
-            nameInput.focus();
-        });
+        // Fallback: brug ZXing library (UMD bundlet og tilgængelig som ZXingBrowser)
+        if(window.ZXingBrowser){
+          codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+          // forsøg at vælge "back" camera hvis muligt
+          try{
+            const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+            let deviceId = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId || devices[0]?.deviceId;
+            controls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err, ctrl) => {
+              if(result){ handleBarcode(result.text); }
+              // fejl kan ignoreres
+            });
+            // controls stopper man med controls.stop()
+            return;
+          }catch(e){ console.error('ZXing decodeFromVideoDevice fejlede', e); }
+        }
+
+        setStatus('Kan ikke starte nogen scanner på denne enhed.');
+        startBtn.disabled = false;
+      }catch(err){
+        console.error(err);
+        setStatus('Fejl ved adgang til kamera — tjek tilladelser (og at siden kører over HTTPS).');
+        startBtn.disabled = false;
+      }
     }
 
-    // 3. Gem funktion
-    document.getElementById('saveBtn').addEventListener('click', async () => {
-        const barcode = barcodeInput.value;
-        const name = nameInput.value;
+    function handleBarcode(code){
+      // Debounce: hvis det er samme kode inden for kort tid, ignorer
+      if(lastScanned && lastScanned.code === code && (Date.now() - lastScanned.time) < 1500) return;
+      lastScanned = {code, time: Date.now()};
+      barcodeInput.value = code;
+      // sæt et forslag til navn (brug evt. OpenFoodFacts/API senere)
+      nameInput.placeholder = 'Tilføj et navn eller tryk "Gem"';
+      saveBtn.disabled = false;
+      setStatus('Stregkode scannet: ' + code);
 
-        if (!name || !barcode) return alert("Scan en kode og skriv et navn");
+      // vis i listen (midlertidigt)
+      recent.unshift({code, name: '', ts: new Date().toISOString()});
+      if(recent.length>30) recent.pop();
+      renderList();
+    }
 
-        status.innerText = "Gemmer...";
+    function renderList(){
+      listEl.innerHTML = '';
+      recent.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = `${r.code} ${r.name?'- '+r.name:''} (${new Date(r.ts).toLocaleString()})`;
+        listEl.appendChild(li);
+      });
+    }
 
-        const { error } = await supabaseClient
-            .from('items') // Sørg for at tabellen hedder 'items' som i din SQL [cite: 13]
-            .upsert({ barcode: barcode, name: name }); [cite: 13]
+    async function saveCurrentProduct(){
+      const barcode = barcodeInput.value.trim();
+      const name = nameInput.value.trim() || null;
+      if(!barcode){ alert('Ingen stregkode at gemme'); return; }
+      saveBtn.disabled = true; setStatus('Gemmer i Supabase...');
 
-        if (error) {
-            alert("Fejl: " + error.message);
-        } else {
-            alert("Vare gemt!");
-            barcodeInput.value = "";
-            nameInput.value = "";
-            status.innerText = "Klar til næste scan...";
-            status.style.color = "#2563eb";
+      try{
+        // Tilføj via Supabase REST API
+        const url = `${SUPABASE_URL.replace(/\/+$/,'')}/rest/v1/${SUPABASE_TABLE}`;
+        const body = { barcode, name };
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(body)
+        });
+        if(!res.ok){
+          const text = await res.text();
+          throw new Error(`Supabase svar: ${res.status} ${text}`);
         }
-    });
+        const json = await res.json();
+        setStatus('Produkt gemt ✔');
+        // opdater lokal liste (brug data fra respons hvis ønsket)
+        recent[0].name = name || '';
+        renderList();
+      }catch(e){
+        console.error(e);
+        alert('Fejl ved gem: ' + e.message);
+        setStatus('Fejl ved gem');
+      }finally{ saveBtn.disabled = false; }
+    }
 
-    // Start ved load
-    window.addEventListener('load', startScanner);
-</script>
+    function stopScanning(){
+      setStatus('Stopper...');
+      // stop ZXing controls
+      try{ if(controls && typeof controls.stop === 'function'){ controls.stop(); controls = null; } }catch(e){}
+      // stop stream tracks
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+      }
+      // hvis codeReader fra ZXing kører, stop den
+      try{ if(codeReader && typeof codeReader.reset === 'function') codeReader.reset(); }catch(e){}
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus('Stoppet');
+    }
+
+    // før unload: stop kamera
+    window.addEventListener('beforeunload', stopScanning);
+
+  </script>
 </body>
 </html>
