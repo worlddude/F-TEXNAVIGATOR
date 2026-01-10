@@ -250,58 +250,9 @@ async function handleBarcode(code){
       brandInput.value = (j.product.brands || brandInput.value || '');
       categoryInput.value = (j.product.categories_tags?.[0]||categoryInput.value||'').replace('en:','').replace(/-/g,' ');
       // image (front)
-
-
-
-      
-      // ------ billede: vælg den bedst mulige url fra Open Food Facts -------
-const tryGetSelectedImage = (prod) => {
-  try{
-    const sel = prod.selected_images;
-    if(sel && sel.front){
-      const front = sel.front;
-      // 1) præferér 'display' størrelser (kan være organiseret per sprog)
-      const display = front.display || front['display'];
-      if(display){
-        // prøv dansk, engelsk, fransk, så fallback til første sprog
-        const langs = ['da','en','fr'];
-        for(const lg of langs){ if(display[lg]) return display[lg]; }
-        const keys = Object.keys(display);
-        if(keys.length) return display[keys[0]];
-      }
-      // 2) fallback til almindelige felter i front-objektet
-      if(front.image_url) return front.image_url;
-      if(front.url) return front.url;
-    }
-  }catch(e){}
-  return null;
-};
-
-openfoodImageUrl = tryGetSelectedImage(j.product)
-  || j.product.image_front_1000_url
-  || j.product.image_front_url
-  || j.product.image_front_small_url
-  || j.product.image_front_thumb_url
-  || null;
-
-if(openfoodImageUrl){
-  // heuristik: hvis URL indeholder et OpenFoodFacts-størrelsessuffiks som ".62.100.jpg"
-  // forsøger vi at fjerne det for at hente en større original (kan virke for mange OF URLs).
-  try{
-    const maybeBigger = openfoodImageUrl.replace(/\.(\d+)\.(\d+)(\.[a-z]{3,4})$/, '$3');
-    if(maybeBigger && maybeBigger !== openfoodImageUrl && /^https?:\/\//.test(maybeBigger)){
-      openfoodImageUrl = maybeBigger;
-    }
-  }catch(e){}
-  imagePreview.src = openfoodImageUrl;
-  imagePreview.style.display = 'block';
-} else {
-  // hvis intet billede fundet i Open Food Facts => alert + status
-  setStatus('Der blev ikke fundet et billede i Open Food Facts for dette produkt. Du kan tage et billede med 📸.');
-}
-setStatus('Produkt fundet — udfyldt forslag');
-// -------------------------------------------------------------------
-  
+      openfoodImageUrl = j.product.image_front_small_url || j.product.image_front_url || null;
+      if(openfoodImageUrl){ imagePreview.src = openfoodImageUrl; imagePreview.style.display='block'; }
+      setStatus('Produkt fundet — udfyldt forslag');
     } else setStatus('Ingen info fundet'); }
   }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
 
