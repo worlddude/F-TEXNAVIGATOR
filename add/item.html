@@ -3,149 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stregkode Scanner</title>
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <title>Scanner v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f4f9; text-align: center; overflow-x: hidden; }
-        .header { background: #2563eb; color: white; padding: 15px; font-weight: bold; }
-        
-        /* Kamera-containeren skal være præcis som i din fungerende kode */
-        #interactive.viewport { width: 100%; height: 300px; position: relative; overflow: hidden; background: #000; }
-        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
-        canvas.drawingBuffer { position: absolute; left: 0; top: 0; }
-
-        .hidden { display: none; }
-        .card { background: white; margin: 20px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-cancel { background: #666; color: white; margin-top: 10px; }
-        #status-msg { margin-top: 10px; font-weight: bold; }
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #111; color: white; text-align: center; }
+        #video { width: 100%; max-width: 500px; border-radius: 15px; background: #000; display: none; }
+        .btn { background: #2563eb; color: white; padding: 20px; border: none; border-radius: 10px; font-size: 20px; width: 100%; cursor: pointer; }
+        .input-card { background: #222; padding: 20px; border-radius: 15px; margin-top: 20px; display: none; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
+        #status { color: #ff3e3e; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="header">STREGKODE SCANNER</div>
+    <h1>Hurtig Scan</h1>
+    
+    <button id="startBtn" class="btn" onclick="activateCamera()">📷 ÅBN SCANNER</button>
+    
+    <video id="video" playsinline></video>
+    <p id="status"></p>
 
-    <div id="start-screen" class="card">
-        <p>Klar til at tilføje produkter til Supabase?</p>
-        <button class="btn-primary" onclick="initScanner()">📷 Åbn Scanner</button>
-    </div>
-
-    <div id="scanner-container" class="hidden">
-        <div id="interactive" class="viewport"></div>
-        <p>Centrer stregkoden i kameraet</p>
-        <button class="btn-cancel" onclick="stopScanner()">Annuller</button>
-    </div>
-
-    <div id="result-screen" class="hidden card">
-        <h2>Vare fundet!</h2>
-        <input type="text" id="barcode-res" readonly style="background: #eee;">
-        <input type="text" id="name-input" placeholder="Produktnavn (f.eks. Cola)">
-        <button class="btn-primary" id="save-btn" onclick="saveToSupabase()">💾 Gem i Supabase</button>
-        <button class="btn-cancel" onclick="resetApp()">Scan en til</button>
-        <p id="status-msg"></p>
+    <div id="inputCard" class="input-card">
+        <h2>Vare Fundet</h2>
+        <input type="text" id="barcodeField" readonly>
+        <input type="text" id="nameField" placeholder="Hvad er det?">
+        <button class="btn" onclick="uploadData()">GEM I SUPABASE</button>
     </div>
 
     <script>
-        // --- DIN KONFIGURATION ---
-        const SUPABASE_URL = 'DIN_SUPABASE_URL';
-        const SUPABASE_KEY = 'DIN_SUPABASE_ANON_KEY';
+        const SUPABASE_URL = 'DIN_URL';
+        const SUPABASE_KEY = 'DIN_KEY';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let isScanning = false;
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+        let scannerActive = false;
 
-        function initScanner() {
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('scanner-container').classList.remove('hidden');
-
-            // Quagga indstillinger inspireret af din kode
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#interactive'),
-                    constraints: {
-                        facingMode: "environment", // Brug bagkamera
-                        aspectRatio: { min: 1, max: 2 }
-                    },
-                },
-                decoder: {
-                    readers: ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
-                },
-                locate: true // Hjælper med at finde stregkoden på iPhone 13 Pro
-            }, function(err) {
-                if (err) {
-                    console.error(err);
-                    alert("Kamera fejl: " + err);
-                    return;
-                }
-                Quagga.start();
-                isScanning = true;
-            });
-
-            Quagga.onDetected(function(result) {
-                if (!isScanning) return;
-                const code = result.codeResult.code;
-                
-                // Giv visuel/lyd feedback
-                if (navigator.vibrate) navigator.vibrate(100);
-                
-                onFound(code);
-            });
-        }
-
-        function onFound(code) {
-            isScanning = false;
-            Quagga.stop();
+        async function activateCamera() {
+            status.innerText = "Anmoder om adgang...";
             
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('result-screen').classList.remove('hidden');
-            document.getElementById('barcode-res').value = code;
-            document.getElementById('name-input').focus();
+            try {
+                // Her tvinger vi Chrome til at spørge om lov
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.style.display = "block";
+                video.play();
+                
+                document.getElementById('startBtn').style.display = "none";
+                scannerActive = true;
+                status.innerText = "Scanner kører...";
+                
+                // Start selve genkendelsen
+                scanFrame();
+            } catch (err) {
+                status.innerText = "FEJL: " + err.message;
+                console.error(err);
+                alert("Du skal give Chrome lov til at bruge kameraet i dine iPhone-indstillinger!");
+            }
         }
 
-        async function saveToSupabase() {
-            const barcode = document.getElementById('barcode-res').value;
-            const name = document.getElementById('name-input').value;
-            const btn = document.getElementById('save-btn');
-            const status = document.getElementById('status-msg');
+        async function scanFrame() {
+            if (!scannerActive) return;
 
-            if (!name) return alert("Skriv et navn");
+            // Tjek om browseren har BarcodeDetector (Nyere Chrome/Safari)
+            if ('BarcodeDetector' in window) {
+                const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] });
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes.length > 0) {
+                        foundCode(barcodes[0].rawValue);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Detector fejl", e);
+                }
+            }
+            
+            // Hvis BarcodeDetector ikke er klar endnu, prøv igen om 100ms
+            requestAnimationFrame(scanFrame);
+        }
 
-            btn.disabled = true;
-            btn.innerText = "Gemmer...";
+        function foundCode(code) {
+            scannerActive = false;
+            // Stop kamera-strømmen helt
+            video.srcObject.getTracks().forEach(track => track.stop());
+            video.style.display = "none";
+            
+            document.getElementById('barcodeField').value = code;
+            document.getElementById('inputCard').style.display = "block";
+            document.getElementById('nameField').focus();
+            
+            // Vibration feedback
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+
+        async function uploadData() {
+            const barcode = document.getElementById('barcodeField').value;
+            const name = document.getElementById('nameField').value;
+            
+            if (!name) return alert("Skriv et navn, mand!");
 
             const { error } = await supabase
-                .from('items') // Sørg for at din tabel hedder 'items' eller ret det her
-                .upsert({ barcode: barcode, name: name });
+                .from('items') // Sørg for at din tabel hedder 'items' [cite: 13]
+                .insert([{ barcode, name }]);
 
             if (error) {
-                status.innerText = "Fejl: " + error.message;
-                status.style.color = "red";
+                alert("Fejl: " + error.message);
             } else {
-                status.innerText = "Gemt med succes!";
-                status.style.color = "green";
-                setTimeout(resetApp, 1500);
+                alert("Varen er gemt!");
+                location.reload(); // Genstart appen
             }
-            btn.disabled = false;
-            btn.innerText = "Gem i Supabase";
-        }
-
-        function stopScanner() {
-            Quagga.stop();
-            resetApp();
-        }
-
-        function resetApp() {
-            isScanning = false;
-            document.getElementById('start-screen').classList.remove('hidden');
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('result-screen').classList.add('hidden');
-            document.getElementById('name-input').value = "";
-            document.getElementById('status-msg').innerText = "";
         }
     </script>
 </body>
