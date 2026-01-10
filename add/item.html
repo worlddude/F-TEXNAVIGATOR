@@ -17,7 +17,9 @@
     .controls{display:flex;gap:8px;flex-wrap:wrap}
     .status{padding:8px;border-radius:8px;background:#eef3ff;min-height:38px}
     .panel{display:grid;grid-template-columns:1fr 300px;gap:12px}
-    .right{border-left:1px solid #eee;padding-left:12px}
+    .right{border-left:1px solid #eee;padding-left:12px;display:flex;flex-direction:column}
+    .fields{flex:1}
+    .bottom{margin-top:8px}
     label{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:13px}
     input{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
     ul{padding-left:18px;margin-top:8px}
@@ -30,7 +32,6 @@
   <div class="controls">
     <button id="startBtn">Start</button>
     <button id="stopBtn" disabled>Stop</button>
-    <button id="saveBtn" class="primary" disabled>Gem</button>
   </div>
 </header>
 
@@ -43,40 +44,51 @@
   </div>
 
   <div class="right">
-    <label>Stregkode</label>
-    <input id="barcodeInput" readonly />
+    <div class="fields">
+      <label>Stregkode</label>
+      <input id="barcodeInput" readonly />
 
-    <label>Produktnavn</label>
-    <input id="nameInput" />
+      <label>Produktnavn</label>
+      <input id="nameInput" />
 
-    <label>Kategori</label>
-    <input id="categoryInput" />
+      <label>Brand / Producent</label>
+      <input id="brandInput" placeholder="fx REMA 1000" />
 
-    <label>
-      Hylde
-      <button id="lockShelf" class="toggle">Gem værdi</button>
-    </label>
-    <input id="shelfInput" placeholder="fx 3" />
+      <label>Kategori</label>
+      <input id="categoryInput" />
 
-    <label>
-      Række
-      <button id="lockRow" class="toggle">Gem værdi</button>
-    </label>
-    <input id="rowInput" placeholder="fx B" />
+      <label>
+        Hylde
+        <button id="lockShelf" class="toggle">Gem værdi</button>
+      </label>
+      <input id="shelfInput" placeholder="fx 3" />
 
-    <label>Oprettelsesdato</label>
-    <input id="dateInput" readonly />
+      <label>
+        Række
+        <button id="lockRow" class="toggle">Gem værdi</button>
+      </label>
+      <input id="rowInput" placeholder="fx B" />
 
-    <label>Lokalt scannede</label>
-    <ul id="list"></ul>
+      <label>Oprettelsesdato</label>
+      <input id="dateInput" readonly />
+
+      <label>Lokalt scannede</label>
+      <ul id="list"></ul>
+    </div>
+
+    <div class="bottom">
+      <button id="saveBtn" class="primary" disabled style="width:100%">Gem produkt</button>
+    </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
 <script>
+// --- KONFIGURATION ---
 const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 const SUPABASE_TABLE = 'products';
+// ---------------------
 
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -85,6 +97,7 @@ const stopBtn = document.getElementById('stopBtn');
 const saveBtn = document.getElementById('saveBtn');
 const barcodeInput = document.getElementById('barcodeInput');
 const nameInput = document.getElementById('nameInput');
+const brandInput = document.getElementById('brandInput');
 const categoryInput = document.getElementById('categoryInput');
 const shelfInput = document.getElementById('shelfInput');
 const rowInput = document.getElementById('rowInput');
@@ -102,6 +115,7 @@ let savedShelf=null, savedRow=null;
 
 function setStatus(t){statusEl.textContent=t}
 
+// toggle lås
 lockShelfBtn.onclick=()=>{
   lockShelf=!lockShelf;
   lockShelfBtn.classList.toggle('active',lockShelf);
@@ -113,150 +127,144 @@ lockRowBtn.onclick=()=>{
   savedRow = lockRow ? rowInput.value : null;
 };
 
+// start/stop
 startBtn.onclick=startScanning;
 stopBtn.onclick=stopScanning;
-saveBtn.onclick=saveProduct;
+saveBtn.onclick=manualSave;
 
 async function startScanning(){
-  // stop evt. tidligere ting
-  try{ if(controls && typeof controls.stop === 'function') controls.stop(); }catch(e){}
-  try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; } }catch(e){}
+  // stop tidligere streams
+  try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+  try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
 
-  startBtn.disabled = true;
+  startBtn.disabled=true;
   setStatus('Starter kamera — tillad venligst adgang');
 
-  // Hjælpefunktion: hent et back-kamera deviceId hvis muligt
+  // find bagkamera deviceId hvis muligt
   async function findBackDeviceId(){
-    try{
-      // Sørg for at vi har tilladelse så labels udfyldes
-      const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
-      tmp.getTracks().forEach(t=>t.stop());
-    }catch(e){
-      // Ignorer fejl her — vi prøver andre ting senere
-    }
-
+    try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-
-    // Forsøg at finde enhed med 'back|rear|environment' i label
-    const back = videoDevices.find(d => /back|rear|environment/i.test(d.label));
-    if(back) return back.deviceId;
-
-    // Hvis ikke, returner sidste video-enhed (ofte bagkamera på mange mobiler)
-    return videoDevices.length ? videoDevices[videoDevices.length - 1].deviceId : null;
+    const videoDevices = devices.filter(d=>d.kind==='videoinput');
+    const back = videoDevices.find(d=>/back|rear|environment/i.test(d.label));
+    return back ? back.deviceId : (videoDevices.length ? videoDevices[videoDevices.length-1].deviceId : null);
   }
 
   try{
-    let deviceId = null;
+    let deviceId=null;
     try{ deviceId = await findBackDeviceId(); }catch(e){ deviceId = null; }
 
-    // Hvis vi fik et deviceId, brug det. Ellers prøv facingMode fallback.
     if(deviceId){
       stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
     }else{
-      // Fallback: prøv at bede om environment (kan stadig fejle på nogle browsere)
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
     }
 
-    video.srcObject = stream;
-    await video.play();
-    stopBtn.disabled = false;
-    setStatus('Scanner...');
+    video.srcObject = stream; await video.play(); stopBtn.disabled=false; setStatus('Scanner...');
 
-    // Start BarcodeDetector eller ZXing som før
+    // native detector
     if('BarcodeDetector' in window){
       try{
-        const formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
-        const detector = new BarcodeDetector({ formats });
+        const detector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
         const ctx = canvas.getContext('2d');
-        const loop = async () => {
+        (async function loop(){
           if(!stream) return;
           try{
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+            canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
             ctx.drawImage(video,0,0,canvas.width,canvas.height);
-            const barcodes = await detector.detect(canvas);
-            if(barcodes && barcodes.length){
-              const code = barcodes[0].rawValue || barcodes[0].raw_text || '';
-              if(code) handleBarcode(code);
-            }
+            const codes = await detector.detect(canvas);
+            if(codes && codes.length){ const code = codes[0].rawValue || codes[0].raw_text || ''; if(code) await handleBarcode(code); }
           }catch(e){}
           requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
+        })();
         return;
-      }catch(e){ console.warn('BarcodeDetector fejl – fallback til ZXing', e); }
+      }catch(e){ console.warn('BarcodeDetector fejl — fallback', e); }
     }
 
     // ZXing fallback
     if(window.ZXingBrowser){
-      try{
-        reader = new ZXingBrowser.BrowserMultiFormatReader();
-        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-        // Prøv at bruge samme deviceId hvis muligt, ellers fall back
-        let chosen = devices.find(d => d.deviceId === deviceId) || devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
-        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, (result, err) => {
-          if(result) handleBarcode(result.text);
-        });
-        return;
-      }catch(e){ console.warn('ZXing decode fejl', e); }
+      reader = new ZXingBrowser.BrowserMultiFormatReader();
+      const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+      const chosen = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0];
+      controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl)=>{ if(result) await handleBarcode(result.text); });
     }
+  }catch(e){ console.error(e); setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS'); startBtn.disabled=false; }
+}
 
-    setStatus('Ingen scanner tilgængelig på denne enhed');
-    startBtn.disabled = false;
-  }catch(err){
-    console.error(err);
-    setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
-    startBtn.disabled = false;
+async function handleBarcode(code){
+  // debounce
+  if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) return;
+  lastScanned = {code, time: Date.now()};
+
+  barcodeInput.value = code;
+  dateInput.value = new Date().toLocaleString();
+
+  // genbrug låste værdier
+  if(lockShelf && savedShelf) shelfInput.value = savedShelf;
+  if(lockRow && savedRow) rowInput.value = savedRow;
+
+  // foreslå navn / brand / kategori via Open Food Facts
+  try{
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+    if(r.ok){ const j = await r.json(); if(j.status===1){
+      nameInput.value = j.product.product_name_da || j.product.product_name || nameInput.value || '';
+      brandInput.value = (j.product.brands || brandInput.value || '');
+      categoryInput.value = (j.product.categories_tags?.[0]||categoryInput.value||'').replace('en:','').replace(/-/g,' ');
+      setStatus('Produkt fundet — udfyldt forslag');
+    } else setStatus('Ingen info fundet'); }
+  }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
+
+  // når en ny stregkode scannes: auto-save hvis alle felter udfyldte
+  const missing = requiredMissing();
+  if(missing.length===0){
+    // automatisk gem
+    await saveProduct();
+  }else{
+    // vis fejl/meddelelse
+    setStatus('Manglende felter: ' + missing.join(', '));
+    // aktiver gem-knappen så brugeren nemt kan gemme manuelt
+    saveBtn.disabled = false;
+    // opret en lokal post i listen uden upload (indikerer ikke gemt til supabase)
+    // men vi gør ikke automatisk push til localProducts før brugeren trykker Gem
   }
 }
 
-
-async function handleBarcode(code){
-  if(lastScanned&&lastScanned.code===code&&Date.now()-lastScanned.time<1500) return;
-  lastScanned={code,time:Date.now()};
-  barcodeInput.value=code;
-  dateInput.value=new Date().toLocaleString();
-  saveBtn.disabled=false;
-
-  if(lockShelf && savedShelf) shelfInput.value=savedShelf;
-  if(lockRow && savedRow) rowInput.value=savedRow;
-
-  try{
-    const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-    const j=await r.json();
-    if(j.status===1){
-      nameInput.value=j.product.product_name_da||j.product.product_name||'';
-      categoryInput.value=(j.product.categories_tags?.[0]||'').replace('en:','').replace(/-/g,' ');
-      setStatus('Produkt fundet');
-      return;
-    }
-  }catch{}
-  setStatus('Ingen info fundet');
-}
-
-function renderList(){
-  listEl.innerHTML='';
-  localProducts.forEach(p=>{
-    const li=document.createElement('li');
-    li.textContent=`${p.barcode} | H${p.shelf||'-'} R${p.row||'-'} | ${p.name||''}`;
-    listEl.appendChild(li);
-  });
+function requiredMissing(){
+  const need = [];
+  if(!barcodeInput.value) need.push('barcode');
+  if(!nameInput.value) need.push('name');
+  if(!brandInput.value) need.push('brand');
+  if(!categoryInput.value) need.push('category');
+  if(!shelfInput.value) need.push('shelf');
+  if(!rowInput.value) need.push('row');
+  return need;
 }
 
 async function saveProduct(){
-  const p={
-    barcode:barcodeInput.value,
-    name:nameInput.value||null,
-    category:categoryInput.value||null,
-    shelf:shelfInput.value||null,
-    row:rowInput.value||null,
-    created_at:new Date().toISOString()
+  // used internally by auto-save; validate first
+  const missing = requiredMissing();
+  if(missing.length){
+    setStatus('Fejl: manglende felter - ' + missing.join(', '));
+    alert('Fejl: Udfyld felterne: ' + missing.join(', '));
+    return;
+  }
+
+  const p = {
+    barcode: barcodeInput.value,
+    name: nameInput.value,
+    brand: brandInput.value,
+    category: categoryInput.value,
+    shelf: shelfInput.value,
+    row: rowInput.value,
+    created_at: new Date().toISOString()
   };
+
+  // push til lokal buffer
   localProducts.push(p);
   renderList();
-  setStatus('Gemt lokalt');
+  setStatus('Produkt gemt lokalt');
+  saveBtn.disabled = true;
 
+  // hvis >=10, spørg om upload
   if(localProducts.length>=10){
     if(confirm('Du har 10+ produkter lokalt. Vil du uploade til Supabase nu?')){
       await uploadAll();
@@ -264,29 +272,52 @@ async function saveProduct(){
   }
 }
 
+// manual save handler (knap)
+async function manualSave(){
+  await saveProduct();
+}
+
 async function uploadAll(){
+  if(localProducts.length===0){ setStatus('Ingen produkter at uploade'); return; }
   setStatus('Uploader...');
-  const res=await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'apikey':SUPABASE_ANON_KEY,
-      'Authorization':'Bearer '+SUPABASE_ANON_KEY
-    },
-    body:JSON.stringify(localProducts)
+  try{
+    const res = await fetch(`${SUPABASE_URL.replace(/\/+$/,'')}/rest/v1/${SUPABASE_TABLE}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify(localProducts)
+    });
+    if(!res.ok){ const text = await res.text(); throw new Error('Supabase svar: '+res.status+' '+text); }
+    localProducts = [];
+    renderList();
+    setStatus('Upload færdig ✔');
+  }catch(e){ console.error(e); setStatus('Upload-fejl: ' + e.message); alert('Upload-fejl: ' + e.message); }
+}
+
+function renderList(){
+  listEl.innerHTML='';
+  localProducts.slice().reverse().forEach(p=>{
+    const li=document.createElement('li');
+    li.textContent = `${p.barcode} | ${p.brand||'-'} | H${p.shelf||'-'} R${p.row||'-'} | ${p.name||''}`;
+    listEl.appendChild(li);
   });
-  if(res.ok){
-    localProducts=[]; renderList(); setStatus('Upload færdig ✔');
-  }else{
-    setStatus('Upload-fejl');
-  }
 }
 
 function stopScanning(){
-  if(controls) controls.stop();
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   startBtn.disabled=false; stopBtn.disabled=true; setStatus('Stoppet');
 }
+
+// ekstra: når brugeren manuelt ændrer låste værdier, opdater saved values
+shelfInput.addEventListener('input', ()=>{ if(lockShelf) savedShelf = shelfInput.value; });
+rowInput.addEventListener('input', ()=>{ if(lockRow) savedRow = rowInput.value; });
+
+// cleanup on pagehide
+window.addEventListener('pagehide', stopScanning);
 </script>
 </body>
 </html>
