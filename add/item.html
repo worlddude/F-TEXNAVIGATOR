@@ -424,7 +424,7 @@
     await new Promise(resolve => {
       canvas.toBlob(async (blob) => {
         if(!blob){
-          setStatus('Kunne ikke lave billede');
+          setStatus('Kunne ikke lave billed');
           return resolve();
         }
         const filename = `product-${Date.now()}-${Math.random().toString(36).slice(2,9)}.jpg`;
