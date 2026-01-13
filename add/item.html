@@ -3,174 +3,260 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Stregkode-scanner</title>
+  <title>Stregkode-scanner — demo</title>
   <style>
-    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111}
-    body{max-width:780px;margin:16px auto;padding:12px;display:flex;flex-direction:column;gap:12px}
-    header{display:flex;justify-content:space-between;align-items:center}
-    h1{font-size:18px;margin:0}
-    .video-wrap{position:relative}
-    video{width:100%;border-radius:10px;background:#000}
-    #photoBtn{position:absolute;top:10px;right:10px;padding:8px;border-radius:8px;border:1px solid rgba(0,0,5,0.15);background:#fff}
-    button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#f6f6f6}
-    button.primary{background:#2563eb;color:#fff;border-color:#2563eb}
-    button.toggle{margin-left:6px;font-size:12px}
-    button.toggle.active{background:#2563eb;color:#fff;border-color:#2563eb}
-    .controls{display:flex;gap:8px;flex-wrap:wrap}
-    .status{padding:8px;border-radius:8px;background:#eef3ff;min-height:38px}
-    .panel{display:grid;grid-template-columns:1fr 320px;gap:12px}
-    .right{border-left:1px solid #eee;padding-left:12px;display:flex;flex-direction:column}
-    .fields{flex:1}
-    .bottom{margin-top:8px}
-    label{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:13px}
-    input{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
-    ul{padding-left:18px;margin-top:8px}
-    img.preview{display:block;width:64px;height:64px;object-fit:cover;border-radius:8px;margin-top:8px}
-    @media (max-width:760px){.panel{grid-template-columns:1fr}}
+    :root{
+      --bg:#f6f7f9; --card:#ffffff; --muted:#6b7280;
+      --accent:#3b82f6; --accent-dark:#2563eb; --radius:14px;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      color: #111;
+    }
+    html,body{height:100%;margin:0;background:var(--bg)}
+    .app{max-width:420px;margin:20px auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 20px rgba(16,24,40,0.06);padding:14px}
+    h1{font-size:18px;margin:0 0 6px 0}
+    .center{display:flex;align-items:center;justify-content:center}
+    /* big camera area */
+    .stage{height:520px;border-radius:12px;overflow:hidden;position:relative;background:#0f1724;color:#fff}
+    video, .preview-img{width:100%;height:100%;object-fit:cover;display:block}
+    /* overlay UI */
+    .overlay{position:absolute;inset:0;pointer-events:none}
+    .topbar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;pointer-events:auto}
+    .chip{background:rgba(255,255,255,0.12);padding:8px 12px;border-radius:999px;font-weight:600}
+    .bottom{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:auto}
+    .btn{padding:12px 18px;border-radius:40px;border:0;background:linear-gradient(180deg,var(--accent),var(--accent-dark));color:#fff;font-weight:600;box-shadow:0 6px 18px rgba(59,130,246,0.25)}
+    .btn.ghost{background:rgba(255,255,255,0.12)}
+    /* scan frame */
+    .scan-frame{position:absolute;left:8%;top:12%;width:84%;height:42%;border-radius:12px;border:3px solid rgba(164,243,235,0.85);box-sizing:border-box;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .scan-label{position:absolute;top:calc(12% - 26px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:8px 14px;border-radius:999px;font-weight:700}
+    /* small messages */
+    .message{position:absolute;left:12px;bottom:120px;background:rgba(255,255,255,0.95);color:#111;padding:10px 12px;border-radius:10px;pointer-events:auto;box-shadow:0 8px 20px rgba(2,6,23,0.08)}
+    /* pages */
+    .page{display:none}
+    .page.active{display:block}
+    /* info/editor page */
+    .form-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type="text"], input[type="number"]{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(16,24,40,0.06);font-size:15px}
+    .field-actions{display:flex;gap:6px}
+    .icon-btn{width:38px;height:38px;border-radius:8px;border:1px solid rgba(16,24,40,0.06);background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+    .small{font-size:13px;color:var(--muted)}
+    .two-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .bottom-actions{display:flex;gap:8px;margin-top:12px}
+    .save{flex:1;background:linear-gradient(180deg,var(--accent),var(--accent-dark));color:#fff;border-radius:12px;padding:12px 14px;border:0;font-weight:700;cursor:pointer}
+    .secondary{background:transparent;border-radius:12px;padding:12px 14px;border:1px solid rgba(16,24,40,0.06);cursor:pointer}
+    /* small list */
+    ul.local-list{margin:0;padding-left:14px;color:var(--muted);font-size:13px;max-height:120px;overflow:auto}
+    /* responsive */
+    @media (max-width:420px){.stage{height:520px}}
   </style>
 </head>
 <body>
-<header>
-  <h1>Stregkode-scanner</h1>
-  <div class="controls">
-    <button id="startBtn">Start</button>
-    <button id="stopBtn" disabled>Stop</button>
-  </div>
-</header>
+  <div class="app">
+    <div class="card">
+      <h1>Stregkode-scanner</h1>
+      <div id="status" class="small" style="margin-bottom:8px">Klar</div>
 
-<div class="status" id="status">Klar</div>
-
-<div class="panel">
-  <div>
-    <div class="video-wrap">
-      <video id="video" playsinline muted></video>
-      <button id="photoBtn" title="Tag billede">📸</button>
-    </div>
-    <canvas id="canvas" style="display:none"></canvas>
-  </div>
-
-  <div class="right">
-    <div class="fields">
-      <label>Stregkode</label>
-      <input id="barcodeInput" readonly />
-
-      <label>Produktnavn</label>
-      <input id="nameInput" />
-
-      <label>Brand / Producent</label>
-      <input id="brandInput" placeholder="fx REMA 1000" />
-
-      <label>Søgeord</label>
-      <input id="categoryInput" />
-
-      <label>
-        Hylde
-        <button id="lockShelf" class="toggle">Gem værdi</button>
-      </label>
-      <input id="shelfInput" placeholder="fx 3" />
-
-      <label>
-        Række
-        <button id="lockRow" class="toggle">Gem værdi</button>
-      </label>
-      <input id="rowInput" placeholder="fx B" />
-
-      <label>Oprettelsesdato</label>
-      <input id="dateInput" readonly />
-
-      <!-- Gem-knap + preview -->
-      <div class="bottom">
-        <button id="saveBtn" class="primary" disabled style="width:100%">Gem produkt</button>
-        <div id="imageArea">
-          <small>Billede:</small>
-          <img id="imagePreview" class="preview" src="" alt="Ingen" style="display:none" />
+      <!-- Page: Start kamera -->
+      <div id="page-start" class="page active">
+        <div class="card center" style="padding:28px;border-radius:12px;background:#0f1724;color:#fff">
+          <div style="text-align:center">
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" style="margin-bottom:10px"><path d="M12 5v14" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M5 12h14" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <div style="font-weight:700;font-size:16px;margin-bottom:12px">Kamera ikke aktiv</div>
+            <div class="small" style="opacity:0.9;margin-bottom:20px">Tryk for at starte kameraet og scanne stregkoder</div>
+            <button id="startCameraBtn" class="btn">Start kamera</button>
+          </div>
         </div>
       </div>
 
-      <label>Lokalt scannede</label>
-      <ul id="list"></ul>
+      <!-- Page: Scan stregkode -->
+      <div id="page-scan" class="page">
+        <div class="stage card" style="padding:0;background:#061123;">
+          <video id="video" playsinline muted></video>
+          <div class="overlay">
+            <div class="topbar">
+              <div class="chip" id="chip-barcode">Hold kamera over stregkoden</div>
+              <div style="display:flex;gap:8px">
+                <button id="stopCameraBtn" class="icon-btn" title="Stop kamera" style="pointer-events:auto">
+                  <!-- stop icon -->
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2" stroke="#fff" stroke-width="1.4"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="scan-frame" aria-hidden="true"></div>
+            <div class="scan-label">Scan stregkode</div>
+
+            <div id="scanMessage" class="message" style="display:none">
+              <div id="scanStatus">Barcode fundet</div>
+              <div id="scanCode" style="font-weight:700;margin-top:4px"></div>
+            </div>
+
+            <div class="bottom">
+              <button id="btnHoldScan" class="btn ghost" style="background:linear-gradient(180deg,#4b5563,#374151);color:#fff;pointer-events:auto">Hold for at scanne</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page: Take photo -->
+      <div id="page-photo" class="page">
+        <div class="stage card" style="background:#0b1220;padding:0">
+          <img id="previewImg" class="preview-img" src="" alt="Forhåndsvisning" />
+          <div class="overlay">
+            <div class="topbar">
+              <div class="chip">Billede</div>
+            </div>
+            <div class="bottom">
+              <button id="retakeBtn" class="btn ghost" style="margin-right:8px">Tag om</button>
+              <button id="acceptPhotoBtn" class="btn">Tag billede</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page: Edit info -->
+      <div id="page-edit" class="page">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="flex:0 0 88px">
+            <img id="editImage" src="" alt="Produkt" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid rgba(16,24,40,0.04)"/>
+          </div>
+          <div style="flex:1">
+            <div style="font-weight:800" id="editBarcodeLabel">—</div>
+            <div class="small" id="editTimestamp">—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <label>Produktnavn</label>
+          <div class="form-row">
+            <input id="field_name" type="text" placeholder="Produktnavn" />
+            <div class="field-actions">
+              <button class="icon-btn" data-action="clear" data-field="field_name" title="Ryd">❌</button>
+              <button class="icon-btn" data-action="undo" data-field="field_name" title="Fortryd">↺</button>
+            </div>
+          </div>
+
+          <label>Producent / Brand</label>
+          <div class="form-row">
+            <input id="field_brand" type="text" placeholder="Brand" />
+            <div class="field-actions">
+              <button class="icon-btn" data-action="clear" data-field="field_brand">❌</button>
+              <button class="icon-btn" data-action="undo" data-field="field_brand">↺</button>
+            </div>
+          </div>
+
+          <label>Søgeord</label>
+          <div class="form-row">
+            <input id="field_category" type="text" placeholder="fx ketchup" />
+            <div class="field-actions">
+              <button class="icon-btn" data-action="clear" data-field="field_category">❌</button>
+              <button class="icon-btn" data-action="undo" data-field="field_category">↺</button>
+            </div>
+          </div>
+
+          <div class="two-cols" style="margin-top:10px">
+            <div>
+              <label>Hylde</label>
+              <input id="field_shelf" type="text" />
+            </div>
+            <div>
+              <label>Højdeniveau</label>
+              <input id="field_height" type="number" />
+            </div>
+          </div>
+
+          <div class="bottom-actions">
+            <button id="saveProductBtn" class="save">Gem produkt</button>
+            <button id="backToScanBtn" class="secondary">Tilbage</button>
+          </div>
+
+          <div style="margin-top:12px">
+            <div class="small" style="margin-bottom:6px">Lokalt scannede (sidste)</div>
+            <ul id="localList" class="local-list"></ul>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
 
-<!-- ZXing fallback og Supabase JS -->
-<script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
-<script>
-// --- KONFIGURATION ---
-const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
-const SUPABASE_TABLE = 'products';
-const SUPABASE_BUCKET = 'product-images'; // <--- opret denne bucket i Supabase Storage
-// ---------------------
+  <!-- libs -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+  /*************************************************************************
+   * Config: re-used from your previous working file (you provided this)  *
+   * Keep these constants the same as in your project.                    *
+   *************************************************************************/
+  const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+  const SUPABASE_TABLE = 'products';
+  const SUPABASE_BUCKET = 'product-images';
+  const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const saveBtn = document.getElementById('saveBtn');
-const photoBtn = document.getElementById('photoBtn');
-const barcodeInput = document.getElementById('barcodeInput');
-const nameInput = document.getElementById('nameInput');
-const brandInput = document.getElementById('brandInput');
-const categoryInput = document.getElementById('categoryInput');
-const shelfInput = document.getElementById('shelfInput');
-const rowInput = document.getElementById('rowInput');
-const dateInput = document.getElementById('dateInput');
-const listEl = document.getElementById('list');
-const statusEl = document.getElementById('status');
-const lockShelfBtn = document.getElementById('lockShelf');
-const lockRowBtn = document.getElementById('lockRow');
-const imagePreview = document.getElementById('imagePreview');
+  // Elements
+  const pageStart = document.getElementById('page-start');
+  const pageScan  = document.getElementById('page-scan');
+  const pagePhoto = document.getElementById('page-photo');
+  const pageEdit  = document.getElementById('page-edit');
+  const statusEl  = document.getElementById('status');
+  const video = document.getElementById('video');
+  const previewImg = document.getElementById('previewImg');
+  const editImage = document.getElementById('editImage');
+  const editBarcodeLabel = document.getElementById('editBarcodeLabel');
+  const editTimestamp = document.getElementById('editTimestamp');
+  const chipBarcode = document.getElementById('chip-barcode');
+  const scanMessage = document.getElementById('scanMessage');
+  const scanStatus = document.getElementById('scanStatus');
+  const scanCode = document.getElementById('scanCode');
+  const localList = document.getElementById('localList');
 
-let stream=null, reader=null, controls=null;
-let lastScanned=null;
-let localProducts=[];
-let lockShelf=false, lockRow=false;
-let savedShelf=null, savedRow=null;
-let inactivityTimer = null;
-let lastUploadedImageUrl = null; // url for image uploaded by user
-let openfoodImageUrl = null; // url from Open Food Facts
+  // buttons
+  const startCameraBtn = document.getElementById('startCameraBtn');
+  const stopCameraBtn = document.getElementById('stopCameraBtn');
+  const btnHoldScan = document.getElementById('btnHoldScan');
+  const acceptPhotoBtn = document.getElementById('acceptPhotoBtn');
+  const retakeBtn = document.getElementById('retakeBtn');
+  const backToScanBtn = document.getElementById('backToScanBtn');
+  const saveProductBtn = document.getElementById('saveProductBtn');
 
-function setStatus(t){statusEl.textContent=t}
+  // edit inputs
+  const field_name = document.getElementById('field_name');
+  const field_brand = document.getElementById('field_brand');
+  const field_category = document.getElementById('field_category');
+  const field_shelf = document.getElementById('field_shelf');
+  const field_height = document.getElementById('field_height');
 
-// toggle lås
-lockShelfBtn.onclick=()=>{
-  lockShelf=!lockShelf;
-  lockShelfBtn.classList.toggle('active',lockShelf);
-  savedShelf = lockShelf ? shelfInput.value : null;
-};
-lockRowBtn.onclick=()=>{
-  lockRow=!lockRow;
-  lockRowBtn.classList.toggle('active',lockRow);
-  savedRow = lockRow ? rowInput.value : null;
-};
+  // internal
+  let stream = null;
+  let reader = null, controls = null;
+  let lastScanned = null;
+  let currentBarcode = '';
+  let lastUploadedImageUrl = null;
+  let openfoodImageUrl = null;
+  let localProducts = [];
+  let canvas = document.createElement('canvas'); // drawing for BarcodeDetector fallback if needed
 
-// start/stop
-startBtn.onclick=startScanning;
-stopBtn.onclick=stopScanning;
-saveBtn.onclick=manualSave;
-photoBtn.onclick=takePhotoAndUpload;
+  // per-field undo history (stores last value)
+  const history = {
+    field_name: [],
+    field_brand: [],
+    field_category: []
+  };
 
-function resetInactivityTimer(){
-  if(inactivityTimer) clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(()=>{
-    setStatus('Ingen scanning i 60s — stopper kamera');
-    stopScanning();
-  }, 60000);
-}
+  // simple show/hide page
+  function showPage(id){
+    [pageStart,pageScan,pagePhoto,pageEdit].forEach(p => p.classList.remove('active'));
+    id.classList.add('active');
+  }
 
-async function startScanning(){
-  // stop tidligere streams
-  try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
-  try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
+  function setStatus(text){ statusEl.textContent = text; }
 
-  startBtn.disabled=true;
-  setStatus('Starter kamera — tillad venligst adgang');
-
-  // find bagkamera deviceId hvis muligt
+  /***********************
+   * Camera & scanning
+   ***********************/
   async function findBackDeviceId(){
     try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -179,23 +265,43 @@ async function startScanning(){
     return back ? back.deviceId : (videoDevices.length ? videoDevices[videoDevices.length-1].deviceId : null);
   }
 
-  try{
-    let deviceId=null;
-    try{ deviceId = await findBackDeviceId(); }catch(e){ deviceId = null; }
-
-    if(deviceId){
-      stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
-    }else{
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+  async function startCamera(){
+    showPage(pageScan);
+    setStatus('Starter kamera — tillad adgang');
+    try{
+      const deviceId = await findBackDeviceId();
+      if(deviceId){
+        stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+      }
+      video.srcObject = stream; await video.play();
+      setStatus('Scanner...');
+      runDetectionLoop();
+    }catch(e){
+      console.error(e);
+      setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
+      showPage(pageStart);
     }
+  }
 
-    video.srcObject = stream; await video.play(); stopBtn.disabled=false; setStatus('Scanner...');
-    resetInactivityTimer();
+  function stopCamera(){
+    try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    showPage(pageStart);
+    setStatus('Kamera stoppet');
+  }
 
-    // native detector
+  // detection loop using BarcodeDetector if available, otherwise ZXing fallback
+  async function runDetectionLoop(){
+    // reset UI
+    scanMessage.style.display = 'none';
+    chipBarcode.textContent = 'Hold kamera over stregkoden';
+
+    // use native BarcodeDetector if present
     if('BarcodeDetector' in window){
       try{
-        const detector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']});
+        const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
         const ctx = canvas.getContext('2d');
         (async function loop(){
           if(!stream) return;
@@ -203,196 +309,274 @@ async function startScanning(){
             canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
             ctx.drawImage(video,0,0,canvas.width,canvas.height);
             const codes = await detector.detect(canvas);
-            if(codes && codes.length){ const code = codes[0].rawValue || codes[0].raw_text || ''; if(code) await handleBarcode(code); }
+            if(codes && codes.length){
+              const code = codes[0].rawValue || codes[0].raw_text || '';
+              if(code) await handleBarcode(code);
+            }
           }catch(e){}
           requestAnimationFrame(loop);
         })();
         return;
-      }catch(e){ console.warn('BarcodeDetector fejl — fallback', e); }
+      }catch(e){
+        console.warn('BarcodeDetector fejl — fallback', e);
+      }
     }
 
     // ZXing fallback
     if(window.ZXingBrowser){
       reader = new ZXingBrowser.BrowserMultiFormatReader();
       const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-      const chosen = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0];
-      controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl)=>{ if(result) await handleBarcode(result.text); });
-    }
-  }catch(e){ console.error(e); setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS'); startBtn.disabled=false; }
-}
-
-async function handleBarcode(code){
-  if(barcodeInput.value && barcodeInput.value === code){
-    setStatus('Intet billed fundet tag selv et!');
-    resetInactivityTimer();
-    return;
-  }
-
-  if(lastScanned && lastScanned.code===code && (Date.now()-lastScanned.time)<1500) { resetInactivityTimer(); return; }
-  lastScanned = {code, time: Date.now()};
-
-  barcodeInput.value = code;
-  dateInput.value = new Date().toLocaleString();
-
-  if(lockShelf && savedShelf) shelfInput.value = savedShelf;
-  if(lockRow && savedRow) rowInput.value = savedRow;
-
-  // reset previous image urls
-  lastUploadedImageUrl = null;
-  openfoodImageUrl = null;
-  imagePreview.style.display = 'none';
-  imagePreview.src = '';
-
-  try{
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-    if(r.ok){ const j = await r.json(); if(j.status===1){
-      nameInput.value = j.product.product_name_da || j.product.product_name || nameInput.value || '';
-      brandInput.value = (j.product.brands || brandInput.value || '');
-      categoryInput.value = (j.product.categories_tags?.[0]||categoryInput.value||'').replace('en:','').replace(/-/g,' ');
-      // image (front)
-      openfoodImageUrl = j.product.image_front_small_url || j.product.image_front_url || null;
-      if(openfoodImageUrl){ imagePreview.src = openfoodImageUrl; imagePreview.style.display='block'; }
-      setStatus('Produkt fundet — udfyldt forslag');
-    } else setStatus('Ingen info fundet'); }
-  }catch(e){ console.warn('OFF fejl', e); setStatus('Ingen info fundet'); }
-
-  saveBtn.disabled = false;
-  resetInactivityTimer();
-}
-
-function requiredMissing(){
-  const need = [];
-  if(!barcodeInput.value) need.push('barcode');
-  if(!nameInput.value) need.push('name');
-  if(!brandInput.value) need.push('brand');
-  if(!categoryInput.value) need.push('category');
-  if(!shelfInput.value) need.push('shelf');
-  if(!rowInput.value) need.push('row');
-  return need;
-}
-
-async function saveProduct(){
-  const missing = requiredMissing();
-  if(missing.length){
-    setStatus('Fejl: manglende felter - ' + missing.join(', '));
-    alert('Fejl: Udfyld felterne: ' + missing.join(', '));
-    return;
-  }
-
-  const imageUrlToSave = lastUploadedImageUrl || openfoodImageUrl || null;
-
-  const p = {
-    barcode: barcodeInput.value,
-    name: nameInput.value,
-    brand: brandInput.value,
-    category: categoryInput.value,
-    shelf: shelfInput.value,
-    row: rowInput.value,
-    image_url: imageUrlToSave,
-    created_at: new Date().toISOString()
-  };
-
-  localProducts.push(p);
-  renderList();
-  setStatus('Produkt gemt lokalt');
-
-  // ryd inputs – men behold låste værdier og preview
-  barcodeInput.value = '';
-  nameInput.value = '';
-  brandInput.value = '';
-  categoryInput.value = '';
-  dateInput.value = '';
-
-  if(!lockShelf) shelfInput.value = '';
-  if(!lockRow) rowInput.value = '';
-
-  // don't clear preview if user uploaded their own picture; keep it until next scan
-  if(!lastUploadedImageUrl){ imagePreview.style.display='none'; imagePreview.src=''; }
-
-  saveBtn.disabled = true;
-
-  if(localProducts.length>=2){
-    if(confirm('Du har 20+ produkter lokalt. Vil du uploade til Supabase nu?')){
-      await uploadAll();
+      const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0]);
+      controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl) => {
+        if(result && result.text) await handleBarcode(result.text);
+      });
+    } else {
+      setStatus('Ingen barcode-detektor tilgængelig');
     }
   }
-}
 
-async function manualSave(){ await saveProduct(); }
+  async function handleBarcode(code){
+    // debounce same code
+    if(currentBarcode === code && Date.now() - (lastScanned?.time || 0) < 1500) return;
+    lastScanned = { code, time: Date.now() };
+    currentBarcode = code;
+    scanStatus.textContent = 'Barcode scannet!';
+    scanCode.textContent = code;
+    scanMessage.style.display = 'block';
+    chipBarcode.textContent = `Stregkode: ${code}`;
 
-async function uploadAll(){
-  if(localProducts.length===0){ setStatus('Ingen produkter at uploade'); return; }
-  setStatus('Uploader...');
-  try{
-    const res = await fetch(`${SUPABASE_URL.replace(/\/+$/,'')}/rest/v1/${SUPABASE_TABLE}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify(localProducts)
-    });
-    if(!res.ok){ const text = await res.text(); throw new Error('Supabase svar: '+res.status+' '+text); }
-    localProducts = [];
-    renderList();
-    setStatus('Upload færdig ✔');
-  }catch(e){ console.error(e); setStatus('Upload-fejl: ' + e.message); alert('Upload-fejl: ' + e.message); }
-}
+    // fill edit header
+    editBarcodeLabel.textContent = code;
+    editTimestamp.textContent = new Date().toLocaleString();
 
-function renderList(){
-  listEl.innerHTML='';
-  localProducts.slice().reverse().forEach(p=>{
-    const li=document.createElement('li');
-    li.textContent = `${p.barcode} | ${p.brand||'-'} | H${p.shelf||'-'} R${p.row||'-'} | ${p.name||''}`;
-    listEl.appendChild(li);
-  });
-}
+    // clear previous images
+    lastUploadedImageUrl = null;
+    openfoodImageUrl = null;
+    editImage.src = '';
 
-async function takePhotoAndUpload(){
-  if(!stream){ alert('Kamera er ikke startet'); return; }
-  // tegn video til canvas i passende størrelse
-  const w = video.videoWidth || 1280;
-  const h = video.videoHeight || 720;
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, w, h);
-
-  // konverter til blob
-  canvas.toBlob(async (blob) => {
-    if(!blob){ alert('Kunne ikke tage billede'); return; }
-    const filename = `product-${Date.now()}-${Math.random().toString(36).slice(2,9)}.jpg`;
-    const path = `${filename}`;
-
-    setStatus('Uploader billede...');
+    // query OpenFoodFacts (keep this working part from your code)
     try{
-      const { data, error } = await supabaseClient.storage.from(SUPABASE_BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
-      if(error){ throw error; }
-      // få public url
-      const { data: urlData, error: urlErr } = supabaseClient.storage.from(SUPABASE_BUCKET).getPublicUrl(path);
-      if(urlErr) throw urlErr;
-      const publicUrl = urlData.publicUrl || urlData.publicURL || (urlData?.publicUrl);
-      lastUploadedImageUrl = publicUrl;
-      imagePreview.src = publicUrl;
-      imagePreview.style.display = 'block';
-      setStatus('Billede uploadet');
-    }catch(e){ console.error(e); setStatus('Upload-fejl: '+e.message); alert('Upload-fejl: '+e.message); }
-  }, 'image/jpeg', 0.85);
-}
+      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+      if(r.ok){
+        const j = await r.json();
+        if(j.status === 1){
+          // prefer danish name if available
+          field_name.value = j.product.product_name_da || j.product.product_name || field_name.value || '';
+          field_brand.value = (j.product.brands || field_brand.value || '');
+          field_category.value = (j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' ');
+          openfoodImageUrl = j.product.image_front_small_url || j.product.image_front_url || null;
+          if(openfoodImageUrl) {
+            editImage.src = openfoodImageUrl;
+            previewImg.src = openfoodImageUrl;
+            previewImg.style.display = 'block';
+          }
+          setStatus('Produktforslag hentet fra OpenFoodFacts');
+        } else {
+          setStatus('Ingen info i OpenFoodFacts');
+        }
+      }
+    }catch(e){
+      console.warn('OFF fejl', e);
+      setStatus('OFF: kunne ikke hente info');
+    }
 
-function stopScanning(){
-  try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  if(inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
-  startBtn.disabled=false; stopBtn.disabled=true; setStatus('Stoppet');
-}
+    // after barcode found we show a "continue" button (user can hold to scan or press)
+    // show photo page next:
+    await new Promise(r => setTimeout(r, 600)); // tiny delay to let user see message
+    // auto-navigate to photo capture page (you can change to wait for user)
+    showPage(pagePhoto);
+    // capture still frame for preview automatically
+    takeSnapshotForPreview();
+  }
 
-// ekstra: når brugeren manuelt ændrer låste værdier, opdater saved values
-shelfInput.addEventListener('input', ()=>{ if(lockShelf) savedShelf = shelfInput.value; });
-rowInput.addEventListener('input', ()=>{ if(lockRow) savedRow = rowInput.value; });
+  /*************************
+   * photo capture + upload
+   *************************/
+  async function takeSnapshotForPreview(){
+    if(!stream) {
+      // fallback: if using uploaded image from OFF, keep it
+      if(openfoodImageUrl){
+        previewImg.src = openfoodImageUrl;
+        editImage.src = openfoodImageUrl;
+      }
+      return;
+    }
+    // draw current frame to canvas and show in preview
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // convert to dataURL for preview
+    previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
+    editImage.src = previewImg.src;
+  }
 
-// cleanup on pagehide
-window.addEventListener('pagehide', stopScanning);
-</script>
+  // when user accepts photo: upload to Supabase storage and show edit page
+  async function acceptPhotoAndUpload(){
+    // draw current frame (if stream), else previewImg already has image
+    if(stream){
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
+    // convert to blob
+    await new Promise(resolve => {
+      canvas.toBlob(async (blob) => {
+        if(!blob){
+          setStatus('Kunne ikke lave billede');
+          return resolve();
+        }
+        const filename = `product-${Date.now()}-${Math.random().toString(36).slice(2,9)}.jpg`;
+        setStatus('Uploader billede...');
+        try{
+          const { data, error } = await supabase.storage.from(SUPABASE_BUCKET).upload(filename, blob, { contentType: 'image/jpeg' });
+          if(error) throw error;
+          const { data: urlData, error: urlErr } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(filename);
+          if(urlErr) throw urlErr;
+          lastUploadedImageUrl = urlData.publicUrl || urlData.publicURL || urlData?.publicUrl;
+          editImage.src = lastUploadedImageUrl;
+          previewImg.src = lastUploadedImageUrl;
+          setStatus('Billede uploadet');
+        }catch(e){
+          console.error(e);
+          setStatus('Upload-fejl: ' + (e.message || e));
+        }
+        resolve();
+      }, 'image/jpeg', 0.85);
+    });
+
+    // stop camera to save resources
+    stopCamera(); // this will show start page, but we want to go to edit — so restart UI below
+    showPage(pageEdit);
+    setStatus('Rediger produktinfo');
+  }
+
+  /*************************
+   * UI events
+   *************************/
+  startCameraBtn.addEventListener('click', startCamera);
+  stopCameraBtn.addEventListener('click', stopCamera);
+
+  btnHoldScan.addEventListener('click', async () => {
+    setStatus('Holder scanning — prøver at scanne nu');
+    // quick snapshot-based detection attempt (draw once, try BarcodeDetector)
+    try{
+      canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      if('BarcodeDetector' in window){
+        const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+        const codes = await detector.detect(canvas);
+        if(codes && codes.length) return handleBarcode(codes[0].rawValue || codes[0].raw_text || '');
+      }
+      // ZXing fallback decode from canvas (not all ZXing builds have this convenience but attempt)
+      if(window.ZXingBrowser && ZXingBrowser.DecodeHintType){
+        // attempt with the reader loop in runDetectionLoop anyway
+        setStatus('Scanner (fallback)... Vent et øjeblik');
+      } else {
+        setStatus('Kunne ikke scanne direkte — prøv at holde kamera over koden');
+      }
+    }catch(e){ console.warn(e); setStatus('Fejl under scanning'); }
+  });
+
+  // photo page controls
+  acceptPhotoBtn.addEventListener('click', acceptPhotoAndUpload);
+  retakeBtn.addEventListener('click', () => {
+    // reopen camera to let user retake
+    startCamera();
+    showPage(pageScan);
+  });
+
+  // when user navigates back to scan from edit
+  backToScanBtn.addEventListener('click', () => {
+    // restart camera to scan more
+    startCamera();
+    showPage(pageScan);
+  });
+
+  // save product: collects fields, stores locally and optionally uploads to Supabase via REST (same as your working function)
+  saveProductBtn.addEventListener('click', async () => {
+    const barcode = editBarcodeLabel.textContent;
+    const name = field_name.value.trim();
+    const brand = field_brand.value.trim();
+    const category = field_category.value.trim();
+    const shelf = field_shelf.value.trim();
+    const height = field_height.value ? Number(field_height.value) : null;
+    if(!barcode || !name || !brand || !category || !shelf){
+      alert('Udfyld de nødvendige felter: stregkode, navn, brand, søgeord, hylde');
+      return;
+    }
+    const p = {
+      barcode, name, brand, category, shelf, height,
+      image_url: lastUploadedImageUrl || openfoodImageUrl || null,
+      created_at: new Date().toISOString()
+    };
+    localProducts.push(p);
+    renderLocalList();
+    setStatus('Produkt gemt lokalt');
+
+    // clear UI for next scan but keep lastUploadedImageUrl for review
+    // reset fields but keep the image
+    field_name.value = '';
+    field_brand.value = '';
+    field_category.value = '';
+    field_shelf.value = '';
+    field_height.value = '';
+    editBarcodeLabel.textContent = '—';
+    editTimestamp.textContent = '—';
+    editImage.src = '';
+
+    // return to start (so user can start camera again)
+    showPage(pageStart);
+  });
+
+  function renderLocalList(){
+    localList.innerHTML = '';
+    [...localProducts].reverse().slice(0,20).forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `${p.barcode} • ${p.brand || '-'} • H:${p.shelf || '-'} • ${p.name || '-'}`;
+      localList.appendChild(li);
+    });
+  }
+
+  /*************************
+   * field clear + undo
+   *************************/
+  document.querySelectorAll('.icon-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = btn.dataset.action;
+      const fieldId = btn.dataset.field;
+      if(!fieldId) return;
+      const el = document.getElementById(fieldId);
+      if(action === 'clear'){
+        // push current value to history then clear
+        history[fieldId].push(el.value);
+        el.value = '';
+      } else if(action === 'undo'){
+        const prev = history[fieldId].pop();
+        if(prev !== undefined) el.value = prev;
+      }
+    });
+  });
+
+  /*************************
+   * helper: on unload stop camera
+   *************************/
+  window.addEventListener('pagehide', () => {
+    try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  });
+
+  // small auto-play for preview when preview image is present
+  previewImg.addEventListener('load', () => {
+    // nothing needed but you could add adjustments here
+  });
+
+  // make sure pages are in initial state
+  showPage(pageStart);
+  setStatus('Klar — tryk Start kamera');
+
+  </script>
 </body>
 </html>
