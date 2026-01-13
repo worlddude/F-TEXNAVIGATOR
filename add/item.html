@@ -84,8 +84,8 @@
               </div>
             </div>
 
-            <div class="scan-frame" aria-hidden="true"></div>
-            <div class="scan-label">Scan stregkode</div>
+            <!--<div class="scan-frame" aria-hidden="true"></div>
+            <div class="scan-label">Scan stregkode</div> -->
 
             <div id="scanMessage" class="message" style="display:none">
               <div id="scanStatus">Barcode fundet</div>
@@ -384,9 +384,14 @@
     // show photo page next:
     await new Promise(r => setTimeout(r, 600)); // tiny delay to let user see message
     // auto-navigate to photo capture page (you can change to wait for user)
+    if (controls && typeof controls.stop === 'function') {
+      controls.stop();
+      controls = null;
+    }
+    
+    setStatus('Stregkode scannet — tag billede');
     showPage(pagePhoto);
-    // capture still frame for preview automatically
-    takeSnapshotForPreview();
+
   }
 
   /*************************
