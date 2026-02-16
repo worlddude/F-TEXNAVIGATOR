@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Stregkode-scanner — simplified</title>
+  <title>Stregkode-scanner + Supabase</title>
   <style>
     :root{
       --bg:#f6f7f9; --card:#fff; --muted:#6b7280;
@@ -62,20 +62,18 @@
             <div class="topbar">
               <div class="chip" id="chip-barcode">Hold kamera over stregkoden</div>
               <div style="display:flex;gap:8px">
+                <div id="barcodeTop" class="chip" style="display:none;pointer-events:none"></div>
                 <button id="stopCameraBtn" class="chip" title="Stop kamera" style="pointer-events:auto;background:rgba(255,255,255,0.08)">Stop</button>
               </div>
             </div>
 
             <div id="scanMessage" class="message" style="display:none">
-              <div id="scanStatus">Barcode scannet!</div>
-              <div id="scanCode" style="font-weight:700;margin-top:4px"></div>
-              <div style="margin-top:8px">
-                <button id="takePhotoBtn" class="btn" style="pointer-events:auto;margin-top:8px">Tag billede</button>
-              </div>
+              <div id="scanStatus">Barcode fundet!</div>
+              <!-- note: barcode itself is NOT shown here per request -->
             </div>
 
-            <div class="bottom">
-              <button id="btnHoldScan" class="btn ghost" style="pointer-events:auto">Hold for at scanne</button>
+            <div id="bottomArea" class="bottom">
+              <!-- bottom button area is dynamically filled when code is scanned -->
             </div>
           </div>
         </div>
@@ -130,7 +128,7 @@
         </div>
 
         <div class="bottom-actions">
-          <button id="saveProductBtn" class="save">Gem produkt lokalt</button>
+          <button id="saveProductBtn" class="save">Gem produkt i Supabase</button>
           <button id="backToScanBtn" class="secondary">Tilbage</button>
         </div>
 
@@ -143,11 +141,23 @@
     </div>
   </div>
 
-  <!-- ZXing fallback -->
+  <!-- libs -->
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
 
   <script>
-    // Elements
+    /*******************************
+     * --- KONFIGURER SUPABASE ----
+     * Udskift disse med dine værdier
+     *******************************/
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /*******************************
+     * Elements & state
+     *******************************/
     const pageStart = document.getElementById('page-start');
     const pageScan = document.getElementById('page-scan');
     const pagePhoto = document.getElementById('page-photo');
@@ -161,13 +171,12 @@
     const chipBarcode = document.getElementById('chip-barcode');
     const scanMessage = document.getElementById('scanMessage');
     const scanStatus = document.getElementById('scanStatus');
-    const scanCode = document.getElementById('scanCode');
-    const localList = document.getElementById('localList');
+    const bottomArea = document.getElementById('bottomArea');
+    const barcodeTop = document.getElementById('barcodeTop');
 
     const startCameraBtn = document.getElementById('startCameraBtn');
     const stopCameraBtn = document.getElementById('stopCameraBtn');
-    const btnHoldScan = document.getElementById('btnHoldScan');
-    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const takePhotoBtnFromScan = null; // dynamic
     const acceptPhotoBtn = document.getElementById('acceptPhotoBtn');
     const retakeBtn = document.getElementById('retakeBtn');
     const backToScanBtn = document.getElementById('backToScanBtn');
@@ -178,14 +187,17 @@
     const field_category = document.getElementById('field_category');
     const field_shelf = document.getElementById('field_shelf');
 
-    // internal
+    const localList = document.getElementById('localList');
+
+    // internal state
     let stream = null;
     let reader = null, controls = null;
     let canvas = document.createElement('canvas');
     let lastScanned = null;
     let currentBarcode = '';
-    let openfoodData = null; // store OFF data for autofill (but we won't use OFF image)
+    let openfoodData = null;
     let localProducts = [];
+    let detectionPaused = false; // <-- important: pause detection but keep camera stream
 
     function showPage(el){
       [pageStart,pageScan,pagePhoto,pageEdit].forEach(p=>p.classList.remove('active'));
@@ -193,6 +205,9 @@
     }
     function setStatus(txt){ statusEl.textContent = txt; }
 
+    /*******************************
+     * Camera helpers
+     *******************************/
     async function findBackDeviceId(){
       try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -204,6 +219,7 @@
     async function startCamera(){
       showPage(pageScan);
       setStatus('Starter kamera — tillad adgang');
+      detectionPaused = false;
       try{
         const deviceId = await findBackDeviceId();
         if(deviceId){
@@ -214,6 +230,8 @@
         video.srcObject = stream;
         await video.play();
         setStatus('Scanner efter stregkoder...');
+        // clear bottom area (no hold button initially)
+        clearBottomButton();
         runDetectionLoop();
       }catch(e){
         console.error(e);
@@ -223,15 +241,25 @@
     }
 
     function stopCamera(){
+      // do not stop simply because a barcode was found — user must stop or accept/retake
       try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
       if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      detectionPaused = true;
+      clearBottomButton();
+      barcodeTop.style.display = 'none';
       showPage(pageStart);
       setStatus('Kamera stoppet');
     }
 
+    /*******************************
+     * Detection loop (native BarcodeDetector or ZXing fallback)
+     * We respect detectionPaused: we DO NOT stop camera; we only ignore detections.
+     *******************************/
     async function runDetectionLoop(){
       scanMessage.style.display = 'none';
       chipBarcode.textContent = 'Hold kamera over stregkoden';
+      barcodeTop.style.display = 'none';
+      detectionPaused = false;
 
       if('BarcodeDetector' in window){
         try{
@@ -240,12 +268,14 @@
           (async function loop(){
             if(!stream) return;
             try{
-              canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
-              ctx.drawImage(video,0,0,canvas.width,canvas.height);
-              const codes = await detector.detect(canvas);
-              if(codes && codes.length){
-                const code = codes[0].rawValue || codes[0].raw_text || '';
-                if(code) await handleBarcode(code);
+              if(!detectionPaused){
+                canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+                ctx.drawImage(video,0,0,canvas.width,canvas.height);
+                const codes = await detector.detect(canvas);
+                if(codes && codes.length){
+                  const code = codes[0].rawValue || codes[0].raw_text || '';
+                  if(code) await handleBarcode(code);
+                }
               }
             }catch(e){}
             requestAnimationFrame(loop);
@@ -256,48 +286,61 @@
         }
       }
 
-      // ZXing fallback
+      // ZXing fallback: ignore detections while detectionPaused === true
       if(window.ZXingBrowser){
         reader = new ZXingBrowser.BrowserMultiFormatReader();
         const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
         const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0]);
         controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl) => {
-          if(result && result.text) await handleBarcode(result.text);
+          try{
+            if(detectionPaused) return; // ignore while paused
+            if(result && result.text) await handleBarcode(result.text);
+          }catch(e){}
         });
       } else {
         setStatus('Ingen barcode-detektor tilgængelig');
       }
     }
 
+    /*******************************
+     * When barcode is found
+     *******************************/
     async function handleBarcode(code){
-      // debounce rapid repeats
-      if(currentBarcode === code && Date.now() - (lastScanned?.time || 0) < 1500) return;
+      // debounce same code quickly
+      if(currentBarcode === code && Date.now() - (lastScanned?.time || 0) < 1200) return;
       lastScanned = { code, time: Date.now() };
       currentBarcode = code;
 
-      // show message and option to take photo (do not auto-navigate)
-      scanStatus.textContent = 'Barcode scannet!';
-      scanCode.textContent = code;
+      // pause detection (but keep stream running)
+      detectionPaused = true;
+
+      // show small message (no barcode here)
+      scanStatus.textContent = 'Stregkode fundet — tag et billede';
       scanMessage.style.display = 'block';
-      chipBarcode.textContent = `Stregkode: ${code}`;
+
+      // show code up top beside stop button
+      barcodeTop.textContent = code;
+      barcodeTop.style.display = 'inline-flex';
+
+      // show bottom "Tag billede" button (in same position as previous hold-knap)
+      showBottomPhotoButton();
 
       // fill edit header values
       editBarcodeLabel.textContent = code;
       editTimestamp.textContent = new Date().toLocaleString();
 
-      // clear previous OFF data and preview
+      // clear previous OFF data & preview
       openfoodData = null;
       editPreview.src = '';
       previewImg.src = '';
 
-      // Try to fetch info from OpenFoodFacts (only to autofill fields name/brand)
+      // Fetch OpenFoodFacts to autofill name/brand (but DO NOT use their image)
       try{
         const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
         if(r.ok){
           const j = await r.json();
           if(j.status === 1){
             openfoodData = j.product;
-            // autofill name and brand when moving to edit (but do NOT set or replace image)
             field_name.value = j.product.product_name_da || j.product.product_name || field_name.value || '';
             field_brand.value = (j.product.brands || field_brand.value || '');
             field_category.value = (j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' ');
@@ -310,101 +353,132 @@
         console.warn('OFF fejl', e);
         setStatus('OFF: kunne ikke hente info');
       }
-
-      // Stop continuous ZXing controls to avoid double scans while user decides
-      try{ if(controls && typeof controls.stop==='function') controls.stop(); controls = null; }catch(e){}
     }
 
-    // one-shot "hold to scan" attempt
-    btnHoldScan.addEventListener('click', async () => {
-      setStatus('Holder scanning — prøver at scanne nu');
-      try{
-        canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        if('BarcodeDetector' in window){
-          const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
-          const codes = await detector.detect(canvas);
-          if(codes && codes.length) return handleBarcode(codes[0].rawValue || codes[0].raw_text || '');
-        }
-        setStatus('Kunne ikke scanne direkte — prøv igen');
-      }catch(e){ console.warn(e); setStatus('Fejl under scanning'); }
-    });
+    /*******************************
+     * Bottom area helpers (dynamisk Tag billede knap)
+     *******************************/
+    function clearBottomButton(){
+      bottomArea.innerHTML = '';
+    }
 
-    // Take photo button (shown when barcode scanned)
-    takePhotoBtn.addEventListener('click', async () => {
-      setStatus('Tager billede — hold øje');
+    function showBottomPhotoButton(){
+      clearBottomButton();
+      const btn = document.createElement('button');
+      btn.id = 'dynamicTakePhoto';
+      btn.className = 'btn ghost';
+      btn.style.pointerEvents = 'auto';
+      btn.textContent = 'Tag billede';
+      btn.addEventListener('click', () => {
+        // take snapshot for preview (but keep stream on until user accepts/retake)
+        takeSnapshotForPreview();
+      });
+      bottomArea.appendChild(btn);
+    }
+
+    /*******************************
+     * Snapshot & preview
+     *******************************/
+    function takeSnapshotForPreview(){
       if(!stream){
         setStatus('Intet kamera aktivt');
         return;
       }
-      // draw frame to canvas and show preview
+      setStatus('Tager billede...');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
-      // show preview page (user can accept or retake)
+      // navigate to preview page (camera still running)
       showPage(pagePhoto);
       setStatus('Forhåndsvisning — godkend eller tag om');
-    });
+    }
 
-    // Accept preview: go to edit page (we do NOT upload anywhere)
+    // accept -> go to edit page and stop camera to save resources
     acceptPhotoBtn.addEventListener('click', () => {
       editPreview.src = previewImg.src || '';
-      // fill barcode label & timestamp (already set in handleBarcode, but ensure)
       editBarcodeLabel.textContent = currentBarcode || editBarcodeLabel.textContent || '—';
       editTimestamp.textContent = new Date().toLocaleString();
+      // stop the stream now (the user decided)
+      try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
+      detectionPaused = true;
+      clearBottomButton();
       showPage(pageEdit);
       setStatus('Rediger produktinfo');
-      // Keep camera off to save resources
-      try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
     });
 
-    // retake: restart camera and go back to scan
+    // retake: go back to scan and restart detection (camera may already be active)
     retakeBtn.addEventListener('click', async () => {
-      // re-open camera
-      await startCamera();
-      scanMessage.style.display = 'none';
-      setStatus('Scanner efter stregkoder...');
+      // if camera is stopped, start it again; otherwise just resume detection
+      if(!stream){
+        await startCamera();
+      } else {
+        detectionPaused = false;
+        scanMessage.style.display = 'none';
+        barcodeTop.style.display = 'none';
+        clearBottomButton();
+        setStatus('Scanner efter stregkoder...');
+      }
+      showPage(pageScan);
     });
 
-    backToScanBtn.addEventListener('click', async () => {
-      // restart camera for next scan
-      await startCamera();
-    });
-
-    // Save product locally
-    saveProductBtn.addEventListener('click', () => {
+    /*******************************
+     * Save product to Supabase
+     *******************************/
+    saveProductBtn.addEventListener('click', async () => {
       const barcode = editBarcodeLabel.textContent;
       const name = field_name.value.trim();
       const brand = field_brand.value.trim();
       const category = field_category.value.trim();
       const shelf = field_shelf.value.trim();
+      const image_preview = editPreview.src || null;
 
       if(!barcode || !name || !brand){
         alert('Udfyld venligst stregkode, navn og brand.');
         return;
       }
-      const p = {
-        barcode, name, brand, category, shelf,
-        image_preview: editPreview.src || null,
-        created_at: new Date().toISOString()
+
+      const productData = {
+        barcode,
+        name,
+        brand,
+        category,
+        shelf,
+        image_preview
       };
-      localProducts.push(p);
-      renderLocalList();
-      setStatus('Produkt gemt lokalt');
 
-      // reset fields for next scan
-      field_name.value = '';
-      field_brand.value = '';
-      field_category.value = '';
-      field_shelf.value = '';
-      editBarcodeLabel.textContent = '—';
-      editTimestamp.textContent = '—';
-      editPreview.src = '';
+      setStatus('Gemmer til Supabase...');
+      try{
+        const { data, error } = await supabase
+          .from('products')
+          .insert([productData]);
 
-      showPage(pageStart);
+        if(error){
+          console.error('Supabase insert error:', error);
+          setStatus('Fejl ved gemning: ' + (error.message || 'ukendt fejl'));
+          return;
+        }
+
+        setStatus('Produkt gemt i Supabase ✅');
+        // also keep a local copy for quick list
+        localProducts.push(Object.assign({ created_at: new Date().toISOString() }, productData));
+        renderLocalList();
+
+        // reset UI
+        field_name.value = '';
+        field_brand.value = '';
+        field_category.value = '';
+        field_shelf.value = '';
+        editPreview.src = '';
+        editBarcodeLabel.textContent = '—';
+        editTimestamp.textContent = '—';
+        currentBarcode = '';
+        showPage(pageStart);
+      }catch(e){
+        console.error(e);
+        setStatus('Fejl ved gemning: ' + (e.message || e));
+      }
     });
 
     function renderLocalList(){
@@ -416,17 +490,26 @@
       });
     }
 
-    // Basic start/stop buttons
+    /*******************************
+     * One-shot "hold to scan" removed — user uses Tag billede when barcode found
+     *******************************/
+
+    // Start/Stop buttons
     startCameraBtn.addEventListener('click', startCamera);
     stopCameraBtn.addEventListener('click', stopCamera);
+    backToScanBtn.addEventListener('click', async () => {
+      // go back to scanning: restart camera
+      await startCamera();
+    });
 
-    // on page hide, stop camera
+    // stop camera on page hide
     window.addEventListener('pagehide', () => {
       try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
       if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      detectionPaused = true;
     });
 
-    // initial UI
+    // initial state
     showPage(pageStart);
     setStatus('Klar — tryk Start kamera');
   </script>
