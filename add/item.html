@@ -127,6 +127,12 @@
           <input id="field_shelf" type="text" placeholder="fx 42" />
         </div>
 
+        <div>
+          <label>Række</label>
+          <input id="field_row" type="text" placeholder="fx A" />
+        </div>
+      </div>
+
         <div class="bottom-actions">
           <button id="saveProductBtn" class="save">Gem produkt i Supabase</button>
           <button id="backToScanBtn" class="secondary">Tilbage</button>
@@ -186,6 +192,7 @@
     const field_brand = document.getElementById('field_brand');
     const field_category = document.getElementById('field_category');
     const field_shelf = document.getElementById('field_shelf');
+    const field_row = document.getElementbyid('field_row');
 
     const localList = document.getElementById('localList');
 
@@ -432,7 +439,9 @@
       const brand = field_brand.value.trim();
       const category = field_category.value.trim();
       const shelf = field_shelf.value.trim();
+      const row = field_row.value.trim();
       const image_preview = editPreview.src || null;
+      
 
       if(!barcode || !name || !brand){
         alert('Udfyld venligst stregkode, navn og brand.');
@@ -445,6 +454,7 @@
         brand,
         category,
         shelf,
+        row,
         image_preview
       };
 
