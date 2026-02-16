@@ -122,17 +122,18 @@
           <input id="field_category" type="text" placeholder="fx ketchup" />
         </div>
 
-        <label>Placering (hylde)</label>
-        <div class="form-row">
-          <input id="field_shelf" type="text" placeholder="fx 42" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>Hylde</label>
+            <input id="field_shelf" type="text" placeholder="fx 42" />
+          </div>
+        
+          <div>
+            <label>Række</label>
+            <input id="field_row" type="text" placeholder="fx A" />
+          </div>
         </div>
-
-        <div>
-          <label>Række</label>
-          <input id="field_row" type="text" placeholder="fx A" />
-        </div>
-      </div>
-
+      
         <div class="bottom-actions">
           <button id="saveProductBtn" class="save">Gem produkt i Supabase</button>
           <button id="backToScanBtn" class="secondary">Tilbage</button>
