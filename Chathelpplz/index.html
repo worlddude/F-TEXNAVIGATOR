@@ -1,278 +1,600 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Timeline</title>
-<style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    color: white;
-    background: url("1.jpg") center/cover no-repeat fixed;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timeline</title>
+  <style>
+    :root {
+      --bg: rgba(255, 255, 255, 0.05);
+      --bg-strong: rgba(255, 255, 255, 0.08);
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.78);
+      --faint: rgba(255, 255, 255, 0.18);
+      --accent: #ff6b3d;
+      --accent-soft: rgba(255, 107, 61, 0.14);
+      --line: rgba(255, 255, 255, 0.10);
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.72);
-    z-index: -1;
-  }
+    * {
+      box-sizing: border-box;
+    }
 
-  .container {
-    max-width: 850px;
-    margin: 50px auto;
-    padding: 30px;
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(12px);
-    border-radius: 20px;
-  }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: url("1.jpg") center/cover no-repeat fixed;
+      min-height: 100vh;
+    }
 
-  .timeline {
-    position: relative;
-    padding-left: 35px;
-  }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: -1;
+    }
 
-  .timeline::before {
-    content: "";
-    position: absolute;
-    left: 8px;
-    top: 0;
-    width: 3px;
-    height: 100%;
-    background: rgba(255,255,255,0.2);
-  }
+    .container {
+      max-width: 980px;
+      margin: 48px auto;
+      padding: 30px;
+      background: var(--bg);
+      backdrop-filter: blur(12px);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
 
-  .event {
-    position: relative;
-    margin-bottom: 42px;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: 0.5s;
-  }
+    h1 {
+      margin: 0 0 22px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
 
-  .event.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    .timeline {
+      position: relative;
+      padding-left: 40px;
+    }
 
-  .marker-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 12px;
-  }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 6px;
+      width: 3px;
+      height: calc(100% - 6px);
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+    }
 
-  .dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #ff6b3d;
-    box-shadow: 0 0 0 6px rgba(255,107,61,0.14);
-    flex: 0 0 16px;
-  }
+    .event {
+      position: relative;
+      margin-bottom: 28px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
 
-  .date {
-    font-size: 16px;
-    color: #ff6b3d;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+    .event:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
 
-  .content {
-    margin-left: 30px;
-  }
+    .event.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
-  .title {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 10px;
-    line-height: 1.15;
-  }
+    .marker-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
 
-  .desc {
-    font-size: 16px;
-    line-height: 1.7;
-    opacity: 0.88;
-  }
+    .dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px var(--accent-soft);
+      flex: 0 0 16px;
+    }
 
-  .video {
-    margin-top: 16px;
-    cursor: pointer;
-  }
+    .date {
+      font-size: 21px;
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
 
-  .video-thumb {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.08);
-  }
+    .content {
+      margin-left: 30px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
 
-  .video-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
+    .text-block {
+      min-width: 0;
+    }
 
-  .video-info {
-    margin-top: 8px;
-    font-size: 13px;
-    color: rgba(255,255,255,0.8);
-  }
+    .title {
+      font-size: clamp(1.4rem, 2.2vw, 2rem);
+      font-weight: 800;
+      margin-bottom: 10px;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
 
-  .video-title {
-    font-weight: 700;
-    font-size: 14px;
-    margin-bottom: 3px;
-  }
+    .desc {
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--muted);
+      margin-bottom: 14px;
+      white-space: pre-wrap;
+    }
 
-  .video-views {
-    opacity: 0.7;
-  }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
 
-  .modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.82);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-  }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1;
+    }
 
-  .modal.open {
-    display: flex;
-  }
+    .video {
+      cursor: pointer;
+      display: block;
+      text-decoration: none;
+      color: inherit;
+    }
 
-  .modal iframe {
-    width: min(900px, 95vw);
-    aspect-ratio: 16 / 9;
-    border: 0;
-    border-radius: 14px;
-    background: black;
-  }
-</style>
+    .video-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 14px;
+      background: var(--bg-strong);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+    }
+
+    .video-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.35s ease;
+    }
+
+    .video:hover .video-thumb img {
+      transform: scale(1.03);
+    }
+
+    .video-info {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .video-title {
+      font-weight: 800;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .channel-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .channel-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex: 0 0 34px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .channel-name {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.84);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .video-stats {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.72);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      line-height: 1.45;
+    }
+
+    .video-stats span + span::before {
+      content: "•";
+      margin-right: 10px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .video-card {
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal iframe {
+      width: min(980px, 95vw);
+      aspect-ratio: 16 / 9;
+      border: 0;
+      border-radius: 16px;
+      background: black;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .empty-state {
+      padding: 18px 0;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 15px;
+    }
+
+    @media (max-width: 820px) {
+      .container {
+        margin: 18px;
+        padding: 18px;
+      }
+
+      .timeline {
+        padding-left: 30px;
+      }
+
+      .content {
+        margin-left: 22px;
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Verdensrekorder</h1>
+    <div class="timeline" id="timeline"></div>
+  </div>
 
-<div class="container">
-  <h1>Verdensrekorder</h1>
-  <div class="timeline" id="timeline"></div>
-</div>
+  <div class="modal" id="modal" aria-hidden="true">
+    <iframe id="frame" src="" allowfullscreen title="YouTube video"></iframe>
+  </div>
 
-<div class="modal" id="modal" onclick="closeModal()">
-  <iframe id="frame" src="" allowfullscreen></iframe>
-</div>
+  <script>
+    const API_KEY = "DIN_YOUTUBE_API_KEY_HER";
 
-<script>
-  const API_KEY = "DIN_YOUTUBE_API_KEY_HER";
+    const data = [
+      {
+        title: "JONAS VINGEGAARD VINDER OL",
+        desc: "Jonas vierf bla bla bla bl a bla bla bl vls bls sdækf dæsfkdsfdskfædsk fdæsf kdæfldkfældskfæsd fkædl kdælfk dsælfks dælfsdk fæsdk fæsldfk dæfkdælfsdkæf",
+        video: "l4hT0LWsujk"
+      },
+      {
+        title: "NY VERDENSREKORD",
+        desc: "En ny rekord bliver sat og overrasker hele verden.",
+        video: "YJb2Wx-p92o"
+      }
+    ];
 
-  const data = [
-    {
-      title: "JONAS VINGEGAARD VINDER OL",
-      desc: "Jonas vierf bla bla bla bl a bla bla bl vls bls sdækf dæsfkdsfdskfædsk fdæsf kdæfldkfældskfæsd fkædl kdælfk dsælfks dælfsdk fæsdk fæsldfk dæfkdælfsdkæf",
-      video: "l4hT0LWsujk",
-      videoTitle: "Jonas vinder OL",
-      views: "2.3M views"
-    },
-    {
-      title: "NY VERDENSREKORD",
-      desc: "En ny rekord bliver sat og overrasker hele verden.",
-      video: "YJb2Wx-p92o",
-      videoTitle: "Ny rekord sat!",
-      views: "1.1M views"
-    }
-  ];
+    const videoCache = new Map();
+    const channelCache = new Map();
 
-  async function fetchUploadDate(videoId) {
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const publishedAt = json.items?.[0]?.snippet?.publishedAt;
-      if (!publishedAt) return { raw: null, formatted: "Ukendt dato" };
-
-      const date = new Date(publishedAt);
-      const formatted = new Intl.DateTimeFormat("da-DK", {
+    function formatDateDa(dateString) {
+      if (!dateString) return "Ukendt dato";
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat("da-DK", {
         day: "numeric",
         month: "long",
         year: "numeric"
       }).format(date);
-
-      return { raw: publishedAt, formatted };
-    } catch (err) {
-      return { raw: null, formatted: "Ukendt dato" };
     }
-  }
 
-  async function buildTimeline() {
-    const enriched = await Promise.all(
-      data.map(async item => {
-        const uploadDate = await fetchUploadDate(item.video);
-        return { ...item, uploadDate };
-      })
-    );
+    function formatNumberDa(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return "0";
+      return new Intl.NumberFormat("da-DK").format(num);
+    }
 
-    // nyeste øverst
-    enriched.sort((a, b) => {
-      const da = a.uploadDate.raw ? new Date(a.uploadDate.raw).getTime() : 0;
-      const db = b.uploadDate.raw ? new Date(b.uploadDate.raw).getTime() : 0;
-      return db - da;
-    });
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json?.error?.message || `Request failed: ${res.status}`);
+      }
+      return json;
+    }
 
-    const timeline = document.getElementById("timeline");
-    timeline.innerHTML = "";
+    async function fetchChannelData(channelId) {
+      if (!channelId) {
+        return {
+          channelTitle: "Ukendt kanal",
+          channelThumb: ""
+        };
+      }
 
-    enriched.forEach(item => {
-      const el = document.createElement("div");
-      el.className = "event";
-      el.innerHTML = `
-        <div class="marker-row">
-          <div class="dot"></div>
-          <div class="date">${item.uploadDate.formatted}</div>
-        </div>
+      if (channelCache.has(channelId)) return channelCache.get(channelId);
 
-        <div class="content">
-          <div class="title">${item.title}</div>
-          <div class="desc">${item.desc}</div>
+      const promise = (async () => {
+        try {
+          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${encodeURIComponent(channelId)}&key=${encodeURIComponent(API_KEY)}`;
+          const json = await fetchJSON(url);
+          const item = json.items?.[0];
+          const snippet = item?.snippet;
 
-          <div class="video" onclick="openVideo('${item.video}')">
-            <div class="video-thumb">
-              <img src="https://img.youtube.com/vi/${item.video}/hqdefault.jpg" alt="${item.videoTitle}">
-            </div>
-            <div class="video-info">
-              <div class="video-title">${item.videoTitle}</div>
-              <div class="video-views">${item.views}</div>
-            </div>
-          </div>
-        </div>
-      `;
-      timeline.appendChild(el);
-    });
+          return {
+            channelTitle: snippet?.title || "Ukendt kanal",
+            channelThumb: snippet?.thumbnails?.default?.url || snippet?.thumbnails?.medium?.url || snippet?.thumbnails?.high?.url || ""
+          };
+        } catch (err) {
+          return {
+            channelTitle: "Ukendt kanal",
+            channelThumb: ""
+          };
+        }
+      })();
 
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) entry.target.classList.add("show");
+      channelCache.set(channelId, promise);
+      return promise;
+    }
+
+    async function fetchVideoData(videoId) {
+      if (videoCache.has(videoId)) return videoCache.get(videoId);
+
+      const promise = (async () => {
+        try {
+          const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(API_KEY)}`;
+          const json = await fetchJSON(url);
+          const item = json.items?.[0];
+
+          if (!item) return null;
+
+          const snippet = item.snippet || {};
+          const stats = item.statistics || {};
+          const channelData = await fetchChannelData(snippet.channelId);
+
+          return {
+            videoId,
+            title: snippet.title || "Ukendt titel",
+            channelTitle: channelData.channelTitle || snippet.channelTitle || "Ukendt kanal",
+            channelThumb: channelData.channelThumb || "",
+            publishedAt: snippet.publishedAt || null,
+            formattedDate: formatDateDa(snippet.publishedAt),
+            viewCount: stats.viewCount ?? null,
+            likeCount: stats.likeCount ?? null,
+            formattedViews: stats.viewCount != null ? `${formatNumberDa(stats.viewCount)} visninger` : "Visninger ukendt",
+            formattedLikes: stats.likeCount != null ? `${formatNumberDa(stats.likeCount)} likes` : "Likes skjult"
+          };
+        } catch (err) {
+          return null;
+        }
+      })();
+
+      videoCache.set(videoId, promise);
+      return promise;
+    }
+
+    function createStatPill(text) {
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.textContent = text;
+      return pill;
+    }
+
+    function createVideoCard(item) {
+      const video = document.createElement("button");
+      video.type = "button";
+      video.className = "video";
+      video.addEventListener("click", () => openVideo(item.video));
+
+      const card = document.createElement("div");
+      card.className = "video-card";
+
+      const thumb = document.createElement("div");
+      thumb.className = "video-thumb";
+
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.alt = item.videoData?.title || item.video;
+      img.src = `https://img.youtube.com/vi/${item.video}/hqdefault.jpg`;
+      thumb.appendChild(img);
+
+      const info = document.createElement("div");
+      info.className = "video-info";
+
+      const videoTitle = document.createElement("div");
+      videoTitle.className = "video-title";
+      videoTitle.textContent = item.videoData?.title || "Ukendt titel";
+
+      const channelRow = document.createElement("div");
+      channelRow.className = "channel-row";
+
+      const avatar = document.createElement("img");
+      avatar.className = "channel-avatar";
+      avatar.alt = item.videoData?.channelTitle || "Kanal";
+      avatar.src = item.videoData?.channelThumb || "https://via.placeholder.com/68?text=YT";
+
+      const channelName = document.createElement("div");
+      channelName.className = "channel-name";
+      channelName.textContent = item.videoData?.channelTitle || "Ukendt kanal";
+
+      channelRow.appendChild(avatar);
+      channelRow.appendChild(channelName);
+
+      const stats = document.createElement("div");
+      stats.className = "video-stats";
+      const views = document.createElement("span");
+      views.textContent = item.videoData?.formattedViews || "Visninger ukendt";
+      const likes = document.createElement("span");
+      likes.textContent = item.videoData?.formattedLikes || "Likes skjult";
+      stats.appendChild(views);
+      stats.appendChild(likes);
+
+      info.appendChild(videoTitle);
+      info.appendChild(channelRow);
+      info.appendChild(stats);
+
+      card.appendChild(thumb);
+      card.appendChild(info);
+      video.appendChild(card);
+
+      return video;
+    }
+
+    async function buildTimeline() {
+      const timeline = document.getElementById("timeline");
+      timeline.innerHTML = `<div class="empty-state">Indlæser videoer...</div>`;
+
+      const enriched = await Promise.all(
+        data.map(async item => {
+          const videoData = await fetchVideoData(item.video);
+          return { ...item, videoData };
+        })
+      );
+
+      enriched.sort((a, b) => {
+        const da = a.videoData?.publishedAt ? new Date(a.videoData.publishedAt).getTime() : 0;
+        const db = b.videoData?.publishedAt ? new Date(b.videoData.publishedAt).getTime() : 0;
+        return db - da;
       });
-    }, { threshold: 0.15 });
 
-    document.querySelectorAll(".event").forEach(e => observer.observe(e));
-  }
+      timeline.innerHTML = "";
 
-  function openVideo(id) {
-    document.getElementById("modal").classList.add("open");
-    document.getElementById("frame").src = `https://www.youtube.com/embed/${id}`;
-  }
+      if (!enriched.length) {
+        timeline.innerHTML = `<div class="empty-state">Ingen videoer at vise.</div>`;
+        return;
+      }
 
-  function closeModal() {
-    document.getElementById("modal").classList.remove("open");
-    document.getElementById("frame").src = "";
-  }
+      enriched.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "event";
 
-  buildTimeline();
-</script>
+        const markerRow = document.createElement("div");
+        markerRow.className = "marker-row";
+
+        const dot = document.createElement("div");
+        dot.className = "dot";
+
+        const date = document.createElement("div");
+        date.className = "date";
+        date.textContent = item.videoData?.formattedDate || "Ukendt dato";
+
+        markerRow.appendChild(dot);
+        markerRow.appendChild(date);
+
+        const content = document.createElement("div");
+        content.className = "content";
+
+        const textBlock = document.createElement("div");
+        textBlock.className = "text-block";
+
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = item.title;
+
+        const desc = document.createElement("div");
+        desc.className = "desc";
+        desc.textContent = item.desc;
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "meta-row";
+        metaRow.appendChild(createStatPill(item.videoData?.formattedViews || "Visninger ukendt"));
+        metaRow.appendChild(createStatPill(item.videoData?.formattedLikes || "Likes skjult"));
+        metaRow.appendChild(createStatPill(item.videoData?.channelTitle || "Ukendt kanal"));
+
+        textBlock.appendChild(title);
+        textBlock.appendChild(desc);
+        textBlock.appendChild(metaRow);
+
+        const videoBlock = createVideoCard(item);
+
+        content.appendChild(textBlock);
+        content.appendChild(videoBlock);
+
+        el.appendChild(markerRow);
+        el.appendChild(content);
+        timeline.appendChild(el);
+      });
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add("show");
+        });
+      }, { threshold: 0.15 });
+
+      document.querySelectorAll(".event").forEach(e => observer.observe(e));
+    }
+
+    function openVideo(id) {
+      const modal = document.getElementById("modal");
+      const frame = document.getElementById("frame");
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      frame.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+    }
+
+    function closeModal() {
+      const modal = document.getElementById("modal");
+      const frame = document.getElementById("frame");
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      frame.src = "";
+    }
+
+    document.getElementById("modal").addEventListener("click", closeModal);
+    document.getElementById("frame").addEventListener("click", event => event.stopPropagation());
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeModal();
+    });
+
+    buildTimeline();
+  </script>
 </body>
 </html>
