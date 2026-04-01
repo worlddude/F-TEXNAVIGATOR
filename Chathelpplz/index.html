@@ -1,43 +1,40 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Timeline</title>
-
 <style>
-body {
+  body {
     margin: 0;
     font-family: Arial, sans-serif;
     color: white;
-    background: url("1.jpg") center/cover no-repeat;
-}
+    background: url("1.jpg") center/cover no-repeat fixed;
+  }
 
-/* overlay */
-body::before {
+  body::before {
     content: "";
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.72);
     z-index: -1;
-}
+  }
 
-.container {
-    max-width: 800px;
+  .container {
+    max-width: 850px;
     margin: 50px auto;
     padding: 30px;
     background: rgba(255,255,255,0.05);
     backdrop-filter: blur(12px);
     border-radius: 20px;
-}
+  }
 
-/* timeline line */
-.timeline {
+  .timeline {
     position: relative;
-    padding-left: 30px;
-}
+    padding-left: 35px;
+  }
 
-.timeline::before {
+  .timeline::before {
     content: "";
     position: absolute;
     left: 8px;
@@ -45,164 +42,237 @@ body::before {
     width: 3px;
     height: 100%;
     background: rgba(255,255,255,0.2);
-}
+  }
 
-/* event */
-.event {
+  .event {
     position: relative;
-    margin-bottom: 40px;
+    margin-bottom: 42px;
     opacity: 0;
     transform: translateY(20px);
     transition: 0.5s;
-}
+  }
 
-.event.show {
+  .event.show {
     opacity: 1;
     transform: translateY(0);
-}
+  }
 
-/* dot */
-.dot {
-    position: absolute;
-    left: -2px;
-    top: 5px;
+  .marker-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .dot {
     width: 16px;
     height: 16px;
-    background: #ff6b3d;
     border-radius: 50%;
-}
+    background: #ff6b3d;
+    box-shadow: 0 0 0 6px rgba(255,107,61,0.14);
+    flex: 0 0 16px;
+  }
 
-/* date next to dot */
-.date {
-    margin-left: 25px;
+  .date {
     font-size: 16px;
     color: #ff6b3d;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .content {
+    margin-left: 30px;
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: 800;
     margin-bottom: 10px;
-}
+    line-height: 1.15;
+  }
 
-/* content */
-.content {
-    margin-left: 25px;
-}
-
-.title {
-    font-size: 26px;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.desc {
+  .desc {
     font-size: 16px;
-    opacity: 0.85;
-    line-height: 1.6;
-}
+    line-height: 1.7;
+    opacity: 0.88;
+  }
 
-/* video */
-.video {
-    margin-top: 15px;
+  .video {
+    margin-top: 16px;
     cursor: pointer;
-}
+  }
 
-.video img {
+  .video-thumb {
     width: 100%;
-    border-radius: 10px;
-}
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+  }
 
-/* modal */
-.modal {
+  .video-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .video-info {
+    margin-top: 8px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+  }
+
+  .video-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+
+  .video-views {
+    opacity: 0.7;
+  }
+
+  .modal {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.82);
     display: none;
     justify-content: center;
     align-items: center;
-}
+    padding: 20px;
+  }
 
-iframe {
-    width: 90%;
-    max-width: 800px;
-    height: 450px;
-}
+  .modal.open {
+    display: flex;
+  }
 
+  .modal iframe {
+    width: min(900px, 95vw);
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: 14px;
+    background: black;
+  }
 </style>
 </head>
-
 <body>
 
 <div class="container">
-    <h1>Verdensrekorder</h1>
-
-    <div class="timeline" id="timeline"></div>
+  <h1>Verdensrekorder</h1>
+  <div class="timeline" id="timeline"></div>
 </div>
 
 <div class="modal" id="modal" onclick="closeModal()">
-    <iframe id="frame" src=""></iframe>
+  <iframe id="frame" src="" allowfullscreen></iframe>
 </div>
 
 <script>
+  const API_KEY = "DIN_YOUTUBE_API_KEY_HER";
 
-const data = [
-{
-    date: "1 April 2026",
-    title: "JONAS VINGEGAARD VINDER OL",
-    desc: "Jonas vinder en vild rekord og slår alle konkurrenter. Dette er en af de største præstationer nogensinde.",
-    video: "OIX-6GW1iuM"
-},
-{
-    date: "12 Marts 2025",
-    title: "NY VERDENSREKORD",
-    desc: "En ny rekord bliver sat og overrasker hele verden.",
-    video: "49aCgBZOUBE"
-}
-];
+  const data = [
+    {
+      title: "JONAS VINGEGAARD VINDER OL",
+      desc: "Jonas vierf bla bla bla bl a bla bla bl vls bls sdækf dæsfkdsfdskfædsk fdæsf kdæfldkfældskfæsd fkædl kdælfk dsælfks dælfsdk fæsdk fæsldfk dæfkdælfsdkæf",
+      video: "dQw4w9WgXcQ",
+      videoTitle: "Jonas vinder OL",
+      views: "2.3M views"
+    },
+    {
+      title: "NY VERDENSREKORD",
+      desc: "En ny rekord bliver sat og overrasker hele verden.",
+      video: "3JZ_D3ELwOQ",
+      videoTitle: "Ny rekord sat!",
+      views: "1.1M views"
+    }
+  ];
 
-// nyeste øverst (kan også sorteres automatisk senere)
-data.reverse();
+  async function fetchUploadDate(videoId) {
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const publishedAt = json.items?.[0]?.snippet?.publishedAt;
+      if (!publishedAt) return { raw: null, formatted: "Ukendt dato" };
 
-const timeline = document.getElementById("timeline");
+      const date = new Date(publishedAt);
+      const formatted = new Intl.DateTimeFormat("da-DK", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).format(date);
 
-data.forEach(item => {
-    const el = document.createElement("div");
-    el.className = "event";
+      return { raw: publishedAt, formatted };
+    } catch (err) {
+      return { raw: null, formatted: "Ukendt dato" };
+    }
+  }
 
-    el.innerHTML = `
-        <div class="dot"></div>
-        <div class="date">${item.date}</div>
+  async function buildTimeline() {
+    const enriched = await Promise.all(
+      data.map(async item => {
+        const uploadDate = await fetchUploadDate(item.video);
+        return { ...item, uploadDate };
+      })
+    );
+
+    // nyeste øverst
+    enriched.sort((a, b) => {
+      const da = a.uploadDate.raw ? new Date(a.uploadDate.raw).getTime() : 0;
+      const db = b.uploadDate.raw ? new Date(b.uploadDate.raw).getTime() : 0;
+      return db - da;
+    });
+
+    const timeline = document.getElementById("timeline");
+    timeline.innerHTML = "";
+
+    enriched.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "event";
+      el.innerHTML = `
+        <div class="marker-row">
+          <div class="dot"></div>
+          <div class="date">${item.uploadDate.formatted}</div>
+        </div>
 
         <div class="content">
-            <div class="title">${item.title}</div>
-            <div class="desc">${item.desc}</div>
+          <div class="title">${item.title}</div>
+          <div class="desc">${item.desc}</div>
 
-            <div class="video" onclick="openVideo('${item.video}')">
-                <img src="https://img.youtube.com/vi/${item.video}/hqdefault.jpg">
+          <div class="video" onclick="openVideo('${item.video}')">
+            <div class="video-thumb">
+              <img src="https://img.youtube.com/vi/${item.video}/hqdefault.jpg" alt="${item.videoTitle}">
             </div>
+            <div class="video-info">
+              <div class="video-title">${item.videoTitle}</div>
+              <div class="video-views">${item.views}</div>
+            </div>
+          </div>
         </div>
-    `;
-
-    timeline.appendChild(el);
-});
-
-// scroll animation
-const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-        if(e.isIntersecting) e.target.classList.add("show");
+      `;
+      timeline.appendChild(el);
     });
-});
 
-document.querySelectorAll(".event").forEach(e => observer.observe(e));
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add("show");
+      });
+    }, { threshold: 0.15 });
 
-// modal
-function openVideo(id){
-    document.getElementById("modal").style.display = "flex";
+    document.querySelectorAll(".event").forEach(e => observer.observe(e));
+  }
+
+  function openVideo(id) {
+    document.getElementById("modal").classList.add("open");
     document.getElementById("frame").src = `https://www.youtube.com/embed/${id}`;
-}
+  }
 
-function closeModal(){
-    document.getElementById("modal").style.display = "none";
+  function closeModal() {
+    document.getElementById("modal").classList.remove("open");
     document.getElementById("frame").src = "";
-}
+  }
 
+  buildTimeline();
 </script>
-
 </body>
 </html>
