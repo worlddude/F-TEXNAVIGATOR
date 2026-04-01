@@ -1,214 +1,518 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Timeline UI</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verdensrekorder Timeline</title>
+  <style>
+    :root{
+      --bg-dark: rgba(10, 10, 12, 0.68);
+      --card: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(255, 255, 255, 0.13);
+      --border: rgba(255, 255, 255, 0.14);
+      --text: #f4f4f5;
+      --muted: rgba(244, 244, 245, 0.72);
+      --accent: #ff6b3d;
+      --shadow: 0 18px 50px rgba(0,0,0,0.45);
+    }
 
-<style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        color: white;
-
-        /* BAGGRUND */
-        background: url("1.jpg") no-repeat center center/cover;
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: url("1.jpg") center center / cover no-repeat fixed;
+      min-height: 100vh;
     }
 
-    /* DARK OVERLAY */
     body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: -1;
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.72));
+      z-index: -1;
     }
 
-    .container {
-        max-width: 900px;
-        margin: 50px auto;
-        padding: 30px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(15px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    .page {
+      width: min(1200px, calc(100% - 24px));
+      margin: 20px auto 40px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: rgba(20, 20, 22, 0.58);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
     }
 
-    h1 {
-        text-align: center;
-        margin-bottom: 40px;
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 40px);
+      line-height: 1.1;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 107, 61, 0.16);
+      border: 1px solid rgba(255, 107, 61, 0.35);
+      color: #ffd8cc;
+      white-space: nowrap;
+      font-size: 14px;
     }
 
     .timeline {
-        position: relative;
-        margin-left: 20px;
+      position: relative;
+      padding: 8px 0 10px;
+      margin-top: 6px;
     }
 
     .timeline::before {
-        content: "";
-        position: absolute;
-        left: 10px;
-        width: 3px;
-        height: 100%;
-        background: rgba(255,255,255,0.2);
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
     }
 
     .event {
-        position: relative;
-        margin-bottom: 40px;
-        padding-left: 40px;
-
-        opacity: 0;
-        transform: translateY(20px);
-        transition: 0.6s;
+      position: relative;
+      padding-left: 64px;
+      margin-bottom: 26px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
     }
 
     .event.show {
-        opacity: 1;
-        transform: translateY(0);
+      opacity: 1;
+      transform: translateY(0);
     }
 
-    .event::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 5px;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #ff6b3d;
-        box-shadow: 0 0 10px #ff6b3d;
+    .dot {
+      position: absolute;
+      left: 11px;
+      top: 26px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(255,107,61,0.15), 0 0 16px rgba(255,107,61,0.55);
+      z-index: 2;
     }
 
     .card {
-        background: rgba(255,255,255,0.07);
-        padding: 20px;
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        transition: 0.3s;
-        cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--card);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
     }
 
     .card:hover {
-        background: rgba(255,255,255,0.12);
-        transform: translateY(-5px);
+      transform: translateY(-4px);
+      background: var(--card-hover);
+      border-color: rgba(255,255,255,0.22);
+    }
+
+    .card-inner {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .thumb-wrap {
+      position: relative;
+      min-height: 140px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .play-badge {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 13px;
+      color: white;
+      backdrop-filter: blur(8px);
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
     }
 
     .date {
-        color: #ff6b3d;
-        font-size: 14px;
+      display: inline-flex;
+      align-self: flex-start;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 12px;
     }
 
     .title {
-        font-size: 20px;
-        font-weight: bold;
+      font-size: clamp(22px, 2.2vw, 32px);
+      line-height: 1.15;
+      margin: 0 0 10px;
+      letter-spacing: -0.02em;
     }
 
-    .thumbnail {
-        margin-top: 10px;
-        border-radius: 10px;
-        width: 100%;
+    .desc {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--muted);
+      margin: 0;
     }
 
-    /* MODAL */
+    .meta {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 13px;
+      color: rgba(244,244,245,0.78);
+    }
+
+    .pill {
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: rgba(244,244,245,0.55);
+      font-size: 13px;
+    }
+
+    /* Modal */
     .modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.8);
-        display: none;
-        justify-content: center;
-        align-items: center;
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,0.75);
+      z-index: 999;
+    }
+
+    .modal.open {
+      display: flex;
     }
 
     .modal-content {
-        background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 15px;
-        backdrop-filter: blur(15px);
-        max-width: 700px;
-        width: 90%;
+      width: min(980px, 100%);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      background: rgba(20, 20, 22, 0.86);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
-    iframe {
-        width: 100%;
-        height: 400px;
-        border-radius: 10px;
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .modal-header strong {
+      font-size: 18px;
     }
 
     .close {
-        float: right;
-        cursor: pointer;
-        font-size: 20px;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
     }
 
-</style>
-</head>
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 0;
+    }
 
+    .video-box {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      background: black;
+    }
+
+    .video-box iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .detail-box {
+      padding: 18px;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .detail-box h2 {
+      margin: 0 0 10px;
+      font-size: 26px;
+    }
+
+    .detail-box p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .detail-line {
+      padding: 10px 12px;
+      margin-top: 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.9);
+      font-size: 15px;
+    }
+
+    @media (max-width: 860px) {
+      .card-inner,
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-box {
+        border-left: 0;
+        border-top: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .timeline::before {
+        left: 12px;
+      }
+
+      .event {
+        padding-left: 44px;
+      }
+
+      .dot {
+        left: 3px;
+      }
+    }
+  </style>
+</head>
 <body>
 
-<div class="container">
-    <h1>Verdensrekorder Timeline</h1>
-
-    <div class="timeline">
-
-        <!-- EVENT -->
-        <div class="event" data-video="dQw4w9WgXcQ">
-            <div class="card">
-                <div class="date">2023</div>
-                <div class="title">Vild verdensrekord 🔥</div>
-                <img class="thumbnail" src="https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg">
-            </div>
-        </div>
-
-        <div class="event" data-video="3JZ_D3ELwOQ">
-            <div class="card">
-                <div class="date">2024</div>
-                <div class="title">Ny rekord sat</div>
-                <img class="thumbnail" src="https://img.youtube.com/vi/3JZ_D3ELwOQ/hqdefault.jpg">
-            </div>
-        </div>
-
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Verdensrekorder Timeline</h1>
+        <p>En tidslinje over rekorder — nyeste øverst.</p>
+      </div>
+      <div class="chip">Klik på et kort for detaljer</div>
     </div>
-</div>
 
-<!-- MODAL -->
-<div class="modal" id="modal">
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="modal" id="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeModal()">✖</span>
-        <iframe id="videoFrame" src="" allowfullscreen></iframe>
+      <div class="modal-header">
+        <strong id="modalTitle">Titel</strong>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="video-box">
+          <iframe id="videoFrame" src="" allowfullscreen></iframe>
+        </div>
+
+        <div class="detail-box">
+          <h2 id="modalHeading"></h2>
+          <p id="modalDesc"></p>
+          <div class="detail-line" id="modalDate"></div>
+          <div class="detail-line" id="modalType"></div>
+          <div class="detail-line" id="modalExtra"></div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-    // SCROLL ANIMATION
-    const events = document.querySelectorAll(".event");
+  <script>
+    const records = [
+      {
+        title: "Ny verdensrekord i push-ups",
+        date: "2025-02-14",
+        dateLabel: "14. februar 2025",
+        type: "Kategori: Styrke",
+        extra: "Vist i videoen som dagens hovedhistorie.",
+        description: "Denne rekord blev sat på selve dagen og vises med video og thumbnail i tidslinjen.",
+        videoId: "dQw4w9WgXcQ"
+      },
+      {
+        title: "Hurtigste løb med rekordforsøg",
+        date: "2024-11-03",
+        dateLabel: "3. november 2024",
+        type: "Kategori: Løb",
+        extra: "Et af de mest sete rekordklip fra perioden.",
+        description: "Rekorden blev registreret samme dag, så datoen står tydeligt på kortet.",
+        videoId: "3JZ_D3ELwOQ"
+      },
+      {
+        title: "Mest ekstreme balance-rekord",
+        date: "2024-06-27",
+        dateLabel: "27. juni 2024",
+        type: "Kategori: Balance",
+        extra: "Indholder video-preview og detaljer i modal.",
+        description: "Timelineen gør det nemt at hoppe direkte til YouTube-videoen og se mere om rekorden.",
+        videoId: "9bZkp7q19f0"
+      }
+    ];
 
-    window.addEventListener("scroll", () => {
-        events.forEach(e => {
-            const top = e.getBoundingClientRect().top;
-            if(top < window.innerHeight - 50){
-                e.classList.add("show");
-            }
-        });
-    });
-
-    // MODAL VIDEO
+    const timeline = document.getElementById("timeline");
     const modal = document.getElementById("modal");
-    const frame = document.getElementById("videoFrame");
+    const videoFrame = document.getElementById("videoFrame");
 
-    document.querySelectorAll(".card").forEach(card => {
+    const modalTitle = document.getElementById("modalTitle");
+    const modalHeading = document.getElementById("modalHeading");
+    const modalDesc = document.getElementById("modalDesc");
+    const modalDate = document.getElementById("modalDate");
+    const modalType = document.getElementById("modalType");
+    const modalExtra = document.getElementById("modalExtra");
+
+    // Nyeste øverst
+    records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    function renderTimeline() {
+      timeline.innerHTML = "";
+
+      records.forEach((record, index) => {
+        const event = document.createElement("div");
+        event.className = "event";
+        event.innerHTML = `
+          <div class="dot"></div>
+          <div class="card" data-index="${index}">
+            <div class="card-inner">
+              <div class="thumb-wrap">
+                <img src="https://img.youtube.com/vi/${record.videoId}/hqdefault.jpg" alt="${record.title}">
+                <div class="play-badge">▶ YouTube</div>
+              </div>
+
+              <div class="content">
+                <div class="date">📅 ${record.dateLabel}</div>
+                <h2 class="title">${record.title}</h2>
+                <p class="desc">${record.description}</p>
+                <div class="meta">
+                  <span class="pill">${record.type}</span>
+                  <span class="pill">Klik for detaljer</span>
+                </div>
+                <div class="hint">Åbn video og læs mere om rekorden</div>
+              </div>
+            </div>
+          </div>
+        `;
+        timeline.appendChild(event);
+      });
+
+      document.querySelectorAll(".card").forEach(card => {
         card.addEventListener("click", () => {
-            const videoId = card.parentElement.dataset.video;
-            frame.src = `https://www.youtube.com/embed/${videoId}`;
-            modal.style.display = "flex";
+          const record = records[Number(card.dataset.index)];
+          openModal(record);
         });
+      });
+    }
+
+    function openModal(record) {
+      modalTitle.textContent = record.dateLabel;
+      modalHeading.textContent = record.title;
+      modalDesc.textContent = record.description;
+      modalDate.textContent = `Dato: ${record.dateLabel}`;
+      modalType.textContent = record.type;
+      modalExtra.textContent = record.extra;
+      videoFrame.src = `https://www.youtube.com/embed/${record.videoId}`;
+      modal.classList.add("open");
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      videoFrame.src = "";
+    }
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
     });
 
-    function closeModal(){
-        modal.style.display = "none";
-        frame.src = "";
-    }
-</script>
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
 
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add("show");
+      });
+    }, { threshold: 0.15 });
+
+    renderTimeline();
+
+    document.querySelectorAll(".event").forEach(event => observer.observe(event));
+  </script>
 </body>
 </html>
