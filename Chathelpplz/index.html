@@ -606,12 +606,9 @@
 
         const metaRow = document.createElement("div");
         metaRow.className = "meta-row";
-        metaRow.appendChild(createStat(item.views || "Add views"));
-        metaRow.appendChild(createStat(item.likes || "Add likes"));
 
         thumbWrap.appendChild(img);
         thumbWrap.appendChild(playBadge);
-        meta.appendChild(metaRow);
         card.appendChild(thumbWrap);
         card.appendChild(meta);
         link.appendChild(card);
