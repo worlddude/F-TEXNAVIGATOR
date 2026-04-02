@@ -188,6 +188,7 @@
       margin: 0 0 10px;
       line-height: 1.08;
       text-transform: uppercase;
+      cursor: pointer;
     }
 
     .desc {
@@ -311,6 +312,26 @@
       display: none;
     }
 
+    .inline-video {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
+      opacity: 0;
+      margin-top: 12px;
+    }
+
+    .inline-video.open {
+      max-height: 500px;
+      opacity: 1;
+    }
+
+    .inline-video iframe {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border: none;
+      border-radius: 12px;
+    }
+
     .empty {
       padding: 18px 0;
       color: rgba(255,255,255,0.72);
@@ -343,10 +364,7 @@
 </head>
 <body>
   <main class="page">
-    <header class="header">
-      <h1>World Records</h1>
-      <p>A clean timeline layout for your videos. Add your own views and likes manually, while the thumbnail is pulled automatically from the video link.</p>
-    </header>
+    
 
     <aside class="controls" aria-label="Timeline size control">
       <div class="label">Timeline size</div>
@@ -465,12 +483,32 @@
         desc.className = "desc";
         desc.textContent = item.desc;
 
+        const inlineVideo = document.createElement("div");
+        inlineVideo.className = "inline-video";
+
+        const iframe = document.createElement("iframe");
+        iframe.src = "";
+        inlineVideo.appendChild(iframe);
+
+        title.addEventListener("click", () => {
+          const scale = Number(getComputedStyle(document.getElementById("timeline")).getPropertyValue("--timeline-scale"));
+          if (scale <= 0.41) {
+            if (!inlineVideo.classList.contains("open")) {
+              const id = getYouTubeId(item.videoUrl);
+              iframe.src = `https://www.youtube.com/embed/${id}`;
+              inlineVideo.classList.add("open");
+            } else {
+              inlineVideo.classList.remove("open");
+              iframe.src = "";
+            }
+          }
+        });
+
         const link = document.createElement("a");
         link.className = "video-link";
         link.href = item.videoUrl;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        link.setAttribute("aria-label", `Open video: ${item.title}`);
 
         const card = document.createElement("div");
         card.className = "card";
@@ -505,7 +543,9 @@
         event.appendChild(title);
         event.appendChild(desc);
         event.appendChild(link);
+        event.appendChild(inlineVideo);
         timeline.appendChild(event);
+      });
       });
 
       const observer = new IntersectionObserver(entries => {
