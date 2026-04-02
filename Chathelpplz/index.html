@@ -396,6 +396,12 @@
 
   <main class="page">
 
+  <div id="recordCount" style="margin-bottom: 10px; font-size: 14px; opacity: 0.8;">
+    Loading count...
+  </div>
+
+  <section class="timeline" id="timeline">
+
   <header class="header">
     <h1>News Daddy World Records</h1>
     <p>Your timeline of record-breaking moments</p>
@@ -461,7 +467,14 @@
     console.error(error);
     return;
   }
-
+    
+  if (rows && rows.length > 0) {
+  const maxId = Math.max(...rows.map(r => r.id));
+  document.getElementById("recordCount").textContent = `Total records: ${maxId}`;
+} else {
+  document.getElementById("recordCount").textContent = "No records";
+}
+    
   // map database → your existing format
   data = rows.map(row => ({
     date: row.date_text,
