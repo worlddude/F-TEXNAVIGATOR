@@ -410,96 +410,17 @@
   </main>
 
 <script>
+
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+  const supabase = createClient(
+  "https://F-TEXNAVIGATOR_2.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ"
+  );
+  
   // Add your items here.
   // videoUrl can be a normal YouTube link, youtu.be link, shorts link, or embed link.
-  const data = [
-    {
-      date: "Marts 21, 2026",
-      title: "Brand New Day Spider-man Trailer",
-      desc: "The trailer for the new upcoming spider-man movie Brand New Day, broke the most amount of views in 24 hours on youtube with 794 Million views in 24 hours",
-      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-    },
-    {
-      date: "August 5, 2021",
-      title: "JONAS VINGEGAARD WINS OLYMPICS",
-      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-      views: "2.3M views",
-      likes: "45K likes"
-    },
-    {
-      date: "August 5, 2021",
-      title: "JONAS VINGEGAARD WINS OLYMPICS",
-      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-      views: "2.3M views",
-      likes: "45K likes"
-    },
-    {
-      date: "August 5, 2021",
-      title: "JONAS VINGEGAARD WINS OLYMPICS",
-      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-      views: "2.3M views",
-      likes: "45K likes"
-    },
-    {
-      date: "August 5, 2021",
-      title: "JONAS VINGEGAARD WINS OLYMPICS",
-      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-      views: "2.3M views",
-      likes: "45K likes"
-    },
-    {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    },
-        {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    },
-        {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    },
-        {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    },
-        {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    },
-        {
-      date: "May 12, 2020",
-      title: "NEW WORLD RECORD",
-      desc: "A new record is set and astonishes the entire world.",
-      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-      views: "1.1M views",
-      likes: "18K likes"
-    }
-  ];
+  const data = [];
 
   function getYouTubeId(url) {
     try {
@@ -529,6 +450,30 @@
 
     return null;
   }
+
+  async function loadTimeline() {
+  const { data: rows, error } = await supabase
+    .from("timeline_items")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  // map database → your existing format
+  data = rows.map(row => ({
+    date: row.date_text,
+    title: row.title,
+    desc: row.description,
+    videoUrl: row.video_url,
+    views: row.views,
+    likes: row.likes
+  }));
+
+  buildTimeline(); // 🔥 this keeps everything working
+}
 
   function getYouTubeThumbnail(url) {
     const id = getYouTubeId(url);
@@ -683,7 +628,7 @@
   }
 
   animateScale();
-  buildTimeline();
+  loadTimeline();
 </script>
 </body>
 </html>
