@@ -403,276 +403,243 @@
     </section>
   </main>
 
-  <script>
-    // Add your items here.
-    // videoUrl can be a normal YouTube link, youtu.be link, shorts link, or embed link.
-    const data = [
-      {
-        date: "August 5, 2021",
-        title: "JONAS VINGEGAARD WINS OLYMPICS",
-        desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-        videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-        views: "2.3M views",
-        likes: "45K likes"
-      },
-      
-      {
-        date: "August 5, 2021",
-        title: "JONAS VINGEGAARD WINS OLYMPICS",
-        desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-        videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-        views: "2.3M views",
-        likes: "45K likes"
-      },
+<script>
+  // Add your items here.
+  // videoUrl can be a normal YouTube link, youtu.be link, shorts link, or embed link.
+  const data = [
+    {
+      date: "August 5, 2021",
+      title: "JONAS VINGEGAARD WINS OLYMPICS",
+      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
+      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
+      views: "2.3M views",
+      likes: "45K likes"
+    },
+    {
+      date: "August 5, 2021",
+      title: "JONAS VINGEGAARD WINS OLYMPICS",
+      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
+      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
+      views: "2.3M views",
+      likes: "45K likes"
+    },
+    {
+      date: "August 5, 2021",
+      title: "JONAS VINGEGAARD WINS OLYMPICS",
+      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
+      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
+      views: "2.3M views",
+      likes: "45K likes"
+    },
+    {
+      date: "August 5, 2021",
+      title: "JONAS VINGEGAARD WINS OLYMPICS",
+      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
+      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
+      views: "2.3M views",
+      likes: "45K likes"
+    },
+    {
+      date: "August 5, 2021",
+      title: "JONAS VINGEGAARD WINS OLYMPICS",
+      desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
+      videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
+      views: "2.3M views",
+      likes: "45K likes"
+    },
+    {
+      date: "May 12, 2020",
+      title: "NEW WORLD RECORD",
+      desc: "A new record is set and astonishes the entire world.",
+      videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
+      views: "1.1M views",
+      likes: "18K likes"
+    }
+  ];
 
-      {
-        date: "August 5, 2021",
-        title: "JONAS VINGEGAARD WINS OLYMPICS",
-        desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-        videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-        views: "2.3M views",
-        likes: "45K likes"
-      },
+  function getYouTubeId(url) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace(/^www\./, "");
 
-      {
-        date: "August 5, 2021",
-        title: "JONAS VINGEGAARD WINS OLYMPICS",
-        desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-        videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-        views: "2.3M views",
-        likes: "45K likes"
-      },
-
-
-      {
-        date: "August 5, 2021",
-        title: "JONAS VINGEGAARD WINS OLYMPICS",
-        desc: "Jonas Vingegaard achieves Olympic glory, breaking all expectations and making history.",
-        videoUrl: "https://www.youtube.com/watch?v=l4hT0LWsujk",
-        views: "2.3M views",
-        likes: "45K likes"
-      },
-
-      
-      {
-        date: "May 12, 2020",
-        title: "NEW WORLD RECORD",
-        desc: "A new record is set and astonishes the entire world.",
-        videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-        views: "1.1M views",
-        likes: "18K likes"
-      }
-    ];
-
-    function getYouTubeId(url) {
-      try {
-        const parsed = new URL(url);
-        const host = parsed.hostname.replace(/^www\./, "");
-
-        if (host === "youtu.be") {
-          return parsed.pathname.split("/").filter(Boolean)[0] || null;
-        }
-
-        if (host.includes("youtube.com")) {
-          if (parsed.pathname === "/watch") {
-            return parsed.searchParams.get("v");
-          }
-
-          if (parsed.pathname.startsWith("/shorts/")) {
-            return parsed.pathname.split("/")[2] || null;
-          }
-
-          if (parsed.pathname.startsWith("/embed/")) {
-            return parsed.pathname.split("/")[2] || null;
-          }
-        }
-      } catch (err) {
-        return null;
+      if (host === "youtu.be") {
+        return parsed.pathname.split("/").filter(Boolean)[0] || null;
       }
 
+      if (host.includes("youtube.com")) {
+        if (parsed.pathname === "/watch") {
+          return parsed.searchParams.get("v");
+        }
+
+        if (parsed.pathname.startsWith("/shorts/")) {
+          return parsed.pathname.split("/")[2] || null;
+        }
+
+        if (parsed.pathname.startsWith("/embed/")) {
+          return parsed.pathname.split("/")[2] || null;
+        }
+      }
+    } catch (err) {
       return null;
     }
 
-    function getYouTubeThumbnail(url) {
-      const id = getYouTubeId(url);
-      if (!id) return "https://via.placeholder.com/1280x720?text=Video+Thumbnail";
-      return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    return null;
+  }
+
+  function getYouTubeThumbnail(url) {
+    const id = getYouTubeId(url);
+    if (!id) return "https://via.placeholder.com/1280x720?text=Video+Thumbnail";
+    return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+  }
+
+  function createStat(text) {
+    const span = document.createElement("span");
+    span.className = "stat";
+    span.textContent = text;
+    return span;
+  }
+
+  const timelineSlider = document.getElementById("timelineSlider");
+
+  let currentScale = 1;
+  let targetScale = 1;
+
+  function updateTimelineScale(value) {
+    targetScale = Number(value);
+  }
+
+  function animateScale() {
+    const speed = 0.08;
+
+    currentScale += (targetScale - currentScale) * speed;
+
+    const timeline = document.getElementById("timeline");
+    const thumbOpacity = Math.max(0, Math.min(1, (currentScale - 0.45) / 0.25));
+
+    timeline.style.setProperty("--timeline-scale", currentScale);
+    timeline.style.setProperty("--thumb-opacity", thumbOpacity);
+
+    if (currentScale <= 0.45) {
+      document.body.classList.add("zoomed-out");
+    } else {
+      document.body.classList.remove("zoomed-out");
     }
 
-    function openInNewTab(url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
+    requestAnimationFrame(animateScale);
+  }
 
-    function createStat(text) {
-      const span = document.createElement("span");
-      span.className = "stat";
-      span.textContent = text;
-      return span;
-    }
+  function buildTimeline() {
+    const timeline = document.getElementById("timeline");
+    timeline.innerHTML = "";
 
-    const timelineSlider = document.getElementById("timelineSlider");
+    data.forEach(item => {
+      const event = document.createElement("article");
+      event.className = "event";
 
-    if (timelineSlider) {
-      timelineSlider.addEventListener("input", () => {
-        updateTimelineScale(timelineSlider.value);
+      const date = document.createElement("div");
+      date.className = "date";
+      date.textContent = item.date;
+
+      const title = document.createElement("h2");
+      title.className = "title";
+      title.textContent = item.title;
+
+      const desc = document.createElement("p");
+      desc.className = "desc";
+      desc.textContent = item.desc;
+
+      const textBox = document.createElement("div");
+      textBox.className = "text-box";
+
+      const inlineVideo = document.createElement("div");
+      inlineVideo.className = "inline-video";
+
+      const iframe = document.createElement("iframe");
+      iframe.src = "";
+      inlineVideo.appendChild(iframe);
+
+      title.addEventListener("click", () => {
+        const scale = Number(
+          getComputedStyle(document.getElementById("timeline")).getPropertyValue("--timeline-scale")
+        );
+
+        if (scale <= 0.41) {
+          if (!inlineVideo.classList.contains("open")) {
+            const id = getYouTubeId(item.videoUrl);
+            iframe.src = `https://www.youtube.com/embed/${id}`;
+            inlineVideo.classList.add("open");
+          } else {
+            inlineVideo.classList.remove("open");
+            iframe.src = "";
+          }
+        }
       });
 
-      updateTimelineScale(timelineSlider.value);
-    }
+      const link = document.createElement("a");
+      link.className = "video-link";
+      link.href = item.videoUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
 
+      const card = document.createElement("div");
+      card.className = "card";
 
+      const thumbWrap = document.createElement("div");
+      thumbWrap.className = "thumb-wrap";
 
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.src = getYouTubeThumbnail(item.videoUrl);
+      img.alt = item.title;
 
+      const playBadge = document.createElement("div");
+      playBadge.className = "play-badge";
 
+      const meta = document.createElement("div");
+      meta.className = "meta";
 
+      const metaRow = document.createElement("div");
+      metaRow.className = "meta-row";
 
+      // optional if you want to show them again later:
+      // metaRow.appendChild(createStat(item.views || "Add views"));
+      // metaRow.appendChild(createStat(item.likes || "Add likes"));
 
-    
-    let currentScale = 1;
-    let targetScale = 1;
+      thumbWrap.appendChild(img);
+      thumbWrap.appendChild(playBadge);
+      card.appendChild(thumbWrap);
+      card.appendChild(meta);
+      link.appendChild(card);
 
-    function updateTimelineScale(value) {
-      targetScale = Number(value);
-    }
+      textBox.appendChild(date);
+      textBox.appendChild(title);
+      textBox.appendChild(desc);
 
-    function animateScale() {
-      // smooth movement (lower = smoother/slower)
-      const speed = 0.08;
+      event.appendChild(textBox);
+      event.appendChild(link);
+      event.appendChild(inlineVideo);
+      timeline.appendChild(event);
+    });
 
-      currentScale += (targetScale - currentScale) * speed;
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add("show");
+      });
+    }, { threshold: 0.15 });
 
-      const timeline = document.getElementById("timeline");
-      const thumbOpacity = Math.max(0, Math.min(1, (currentScale - 0.45) / 0.25));
+    document.querySelectorAll(".event").forEach(el => observer.observe(el));
+  }
 
-      timeline.style.setProperty("--timeline-scale", currentScale);
-      timeline.style.setProperty("--thumb-opacity", thumbOpacity);
-
-      // zoomed-out class logic
-      if (currentScale <= 0.45) {
-        document.body.classList.add("zoomed-out");
-      } else {
-        document.body.classList.remove("zoomed-out");
-      }
-
-      requestAnimationFrame(animateScale);
-    }
-
-    animateScale();
-
-
-
-
-
-
-
-
-
-
-    
+  if (timelineSlider) {
     timelineSlider.addEventListener("input", () => {
       updateTimelineScale(timelineSlider.value);
     });
 
     updateTimelineScale(timelineSlider.value);
+  }
 
-    function buildTimeline() {
-      const timeline = document.getElementById("timeline");
-      timeline.innerHTML = "";
-
-      data.forEach(item => {
-        const event = document.createElement("article");
-        event.className = "event";
-
-        const date = document.createElement("div");
-        date.className = "date";
-        date.textContent = item.date;
-
-        const title = document.createElement("h2");
-        title.className = "title";
-        title.textContent = item.title;
-
-        const desc = document.createElement("p");
-        desc.className = "desc";
-        desc.textContent = item.desc;
-
-        const textBox = document.createElement("div");
-        textBox.className = "text-box";
-
-        const inlineVideo = document.createElement("div");
-        inlineVideo.className = "inline-video";
-
-        const iframe = document.createElement("iframe");
-        iframe.src = "";
-        inlineVideo.appendChild(iframe);
-
-        title.addEventListener("click", () => {
-          const scale = Number(getComputedStyle(document.getElementById("timeline")).getPropertyValue("--timeline-scale"));
-          if (scale <= 0.41) {
-            if (!inlineVideo.classList.contains("open")) {
-              const id = getYouTubeId(item.videoUrl);
-              iframe.src = `https://www.youtube.com/embed/${id}`;
-              inlineVideo.classList.add("open");
-            } else {
-              inlineVideo.classList.remove("open");
-              iframe.src = "";
-            }
-          }
-        });
-
-        const link = document.createElement("a");
-        link.className = "video-link";
-        link.href = item.videoUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const thumbWrap = document.createElement("div");
-        thumbWrap.className = "thumb-wrap";
-
-        const img = document.createElement("img");
-        img.loading = "lazy";
-        img.src = getYouTubeThumbnail(item.videoUrl);
-        img.alt = item.title;
-
-        const playBadge = document.createElement("div");
-        playBadge.className = "play-badge";
-
-        const meta = document.createElement("div");
-        meta.className = "meta";
-
-        const metaRow = document.createElement("div");
-        metaRow.className = "meta-row";
-
-        thumbWrap.appendChild(img);
-        thumbWrap.appendChild(playBadge);
-        card.appendChild(thumbWrap);
-        card.appendChild(meta);
-        link.appendChild(card);
-
-        
-        textBox.appendChild(date);
-        textBox.appendChild(title);
-        textBox.appendChild(desc);
-        event.appendChild(textBox);
-
-        
-        event.appendChild(link);
-        event.appendChild(inlineVideo);
-        timeline.appendChild(event);
-      });
-
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) entry.target.classList.add("show");
-        });
-      }, { threshold: 0.15 });
-
-      document.querySelectorAll(".event").forEach(el => observer.observe(el));
-    }
-
-    buildTimeline();
-  </script>
+  animateScale();
+  buildTimeline();
+</script>
 </body>
 </html>
