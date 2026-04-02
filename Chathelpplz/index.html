@@ -382,18 +382,23 @@
     }
   </style>
 </head>
+
+
+      
 <body>
+
+  <aside class="controls" aria-label="Timeline size control">
+    <div class="label">Timeline size</div>
+    <div class="slider-wrap">
+      <input id="timelineSlider" type="range" min="0.4" max="1.15" step="0.01" value="1">
+    </div>
+  </aside>
+
   <main class="page">
-    
-
-    <aside class="controls" aria-label="Timeline size control">
-      <div class="label">Timeline size</div>
-      <div class="slider-wrap">
-        <input id="timelineSlider" type="range" min="0.4" max="1.15" step="0.01" value="1">
-      </div>
-    </aside>
-
     <section class="timeline" id="timeline">
+
+
+      
       <div class="empty">Loading timeline...</div>
     </section>
   </main>
