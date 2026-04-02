@@ -76,21 +76,67 @@
       line-height: 1.6;
     }
 
+    .controls {
+      position: fixed;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 10px;
+      border-radius: 18px;
+      background: rgba(20, 20, 20, 0.38);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .controls .label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+      user-select: none;
+    }
+
+    .slider-wrap {
+      width: 34px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-wrap input[type="range"] {
+      width: 220px;
+      transform: rotate(-90deg);
+      cursor: pointer;
+    }
+
     .timeline {
       position: relative;
       padding-left: 42px;
       margin-top: 22px;
+      --timeline-scale: 1;
+      transform: scale(var(--timeline-scale));
+      transform-origin: top center;
+      transition: transform 0.18s ease;
     }
 
     .timeline::before {
       content: "";
       position: absolute;
-      left: 10px;
+      left: 11px;
       top: 0;
       bottom: 0;
       width: 2px;
-      background: linear-gradient(to bottom, rgba(255,138,91,0.85), rgba(255,255,255,0.28));
+      background: linear-gradient(to bottom, rgba(255, 138, 91, 0.95), rgba(255, 100, 51, 0.62) 55%, rgba(255, 255, 255, 0.28));
       border-radius: 999px;
+      box-shadow: 0 0 14px rgba(255, 138, 91, 0.18);
     }
 
     .event {
@@ -101,6 +147,7 @@
       opacity: 0;
       transform: translateY(18px);
       transition: opacity 0.55s ease, transform 0.55s ease;
+      text-align: center;
     }
 
     .event:last-child {
@@ -117,17 +164,17 @@
     .event::before {
       content: "";
       position: absolute;
-      left: -34px;
+      left: -40px;
       top: 16px;
       width: 18px;
       height: 18px;
       border-radius: 50%;
       background: var(--accent);
-      box-shadow: 0 0 0 6px rgba(255, 138, 91, 0.16), 0 0 22px rgba(255, 138, 91, 0.25);
+      box-shadow: 0 0 0 6px rgba(255, 138, 91, 0.16), 0 0 22px rgba(255, 138, 91, 0.28);
     }
 
     .date {
-      display: inline-block;
+      display: block;
       color: var(--accent);
       font-size: 1.45rem;
       font-weight: 800;
@@ -146,11 +193,12 @@
     }
 
     .desc {
-      margin: 0 0 16px;
+      margin: 0 auto 16px;
       max-width: 820px;
       color: var(--muted);
       line-height: 1.75;
       font-size: 16px;
+      text-align: center;
     }
 
     .video-link {
@@ -158,6 +206,7 @@
       text-decoration: none;
       color: inherit;
       width: min(100%, 760px);
+      margin: 0 auto;
     }
 
     .card {
@@ -228,6 +277,7 @@
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
+      justify-content: center;
       color: rgba(255,255,255,0.9);
       font-size: 14px;
       line-height: 1.4;
@@ -288,9 +338,16 @@
 <body>
   <main class="page">
     <header class="header">
-      <h1>News Daddy History Records</h1>
+      <h1>World Records</h1>
       <p>A clean timeline layout for your videos. Add your own views and likes manually, while the thumbnail is pulled automatically from the video link.</p>
     </header>
+
+    <aside class="controls" aria-label="Timeline size control">
+      <div class="label">Timeline size</div>
+      <div class="slider-wrap">
+        <input id="timelineSlider" type="range" min="0.65" max="1.15" step="0.01" value="1">
+      </div>
+    </aside>
 
     <section class="timeline" id="timeline">
       <div class="empty">Loading timeline...</div>
@@ -364,6 +421,18 @@
       span.textContent = text;
       return span;
     }
+
+    const timelineSlider = document.getElementById("timelineSlider");
+
+    function updateTimelineScale(value) {
+      document.getElementById("timeline").style.setProperty("--timeline-scale", value);
+    }
+
+    timelineSlider.addEventListener("input", () => {
+      updateTimelineScale(timelineSlider.value);
+    });
+
+    updateTimelineScale(timelineSlider.value);
 
     function buildTimeline() {
       const timeline = document.getElementById("timeline");
