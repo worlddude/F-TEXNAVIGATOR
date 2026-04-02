@@ -189,6 +189,13 @@
       line-height: 1.08;
       text-transform: uppercase;
       cursor: pointer;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .zoomed-out .title:hover {
+      background: rgba(247, 50, 43, 0.15);
+      box-shadow: 0 0 0 2px rgba(247, 50, 43, 0.4);
+      border-radius: 8px;
     }
 
     .desc {
@@ -448,6 +455,14 @@
 
     const timelineSlider = document.getElementById("timelineSlider");
 
+    if (timelineSlider) {
+      timelineSlider.addEventListener("input", () => {
+        updateTimelineScale(timelineSlider.value);
+      });
+
+      updateTimelineScale(timelineSlider.value);
+    }
+
     function updateTimelineScale(value) {
       const timeline = document.getElementById("timeline");
       const scale = Number(value);
@@ -455,6 +470,13 @@
 
       timeline.style.setProperty("--timeline-scale", scale);
       timeline.style.setProperty("--thumb-opacity", thumbOpacity);
+
+      // add class when zoomed out (for hover effect + interactions)
+      if (scale <= 0.45) {
+        document.body.classList.add("zoomed-out");
+      } else {
+        document.body.classList.remove("zoomed-out");
+      }
     }
 
     timelineSlider.addEventListener("input", () => {
