@@ -12,7 +12,7 @@
       --text: #f5f5f5;
       --muted: rgba(255, 255, 255, 0.78);
       --faint: rgba(255, 255, 255, 0.18);
-      --accent: #ff8a5b;
+      --accent: rgb(254,149,137);
       --accent-2: #ff6433;
       --line: rgba(255, 255, 255, 0.12);
       --shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
@@ -134,9 +134,9 @@
       top: 0;
       bottom: 0;
       width: 2px;
-      background: rgba(254, 108, 91, 0.95);
+      background: linear-gradient(to bottom, rgb(254,149,137), rgba(254,149,137,0.7));
       border-radius: 999px;
-      box-shadow: 0 0 14px rgba(255, 138, 91, 0.18);
+      box-shadow: 0 0 14px rgba(254,149,137,0.35);
     }
 
     .event {
@@ -147,7 +147,7 @@
       opacity: 0;
       transform: translateY(18px);
       transition: opacity 0.55s ease, transform 0.55s ease;
-      text-align: center;
+      text-align: left;
     }
 
     .event:last-child {
@@ -193,12 +193,12 @@
     }
 
     .desc {
-      margin: 0 auto 16px;
+      margin: 0 0 16px;
       max-width: 820px;
       color: var(--muted);
       line-height: 1.75;
       font-size: 16px;
-      text-align: center;
+      text-align: left;
     }
 
     .video-link {
@@ -206,7 +206,7 @@
       text-decoration: none;
       color: inherit;
       width: min(100%, 760px);
-      margin: 0 auto;
+      margin: 0;
     }
 
     .card {
@@ -305,6 +305,10 @@
       flex: 0 0 10px;
     }
 
+    .zoomed-out .video-link {
+      display: none;
+    }
+
     .empty {
       padding: 18px 0;
       color: rgba(255,255,255,0.72);
@@ -345,7 +349,7 @@
     <aside class="controls" aria-label="Timeline size control">
       <div class="label">Timeline size</div>
       <div class="slider-wrap">
-        <input id="timelineSlider" type="range" min="0.65" max="1.15" step="0.01" value="1">
+        <input id="timelineSlider" type="range" min="0.4" max="1.15" step="0.01" value="1">
       </div>
     </aside>
 
@@ -373,33 +377,7 @@
         videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
         views: "1.1M views",
         likes: "18K likes"
-      },
-      {
-        date: "May 12, 2020",
-        title: "NEW WORLD RECORD",
-        desc: "A new record is set and astonishes the entire world.",
-        videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-        views: "1.1M views",
-        likes: "18K likes"
-      },
-      {
-        date: "May 12, 2020",
-        title: "NEW WORLD RECORD",
-        desc: "A new record is set and astonishes the entire world.",
-        videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-        views: "1.1M views",
-        likes: "18K likes"
-      },
-      {
-        date: "May 12, 2020",
-        title: "NEW WORLD RECORD",
-        desc: "A new record is set and astonishes the entire world.",
-        videoUrl: "https://www.youtube.com/watch?v=YJb2Wx-p92o",
-        views: "1.1M views",
-        likes: "18K likes"
       }
-
-      
     ];
 
     function getYouTubeId(url) {
@@ -451,7 +429,15 @@
     const timelineSlider = document.getElementById("timelineSlider");
 
     function updateTimelineScale(value) {
-      document.getElementById("timeline").style.setProperty("--timeline-scale", value);
+      const timeline = document.getElementById("timeline");
+      timeline.style.setProperty("--timeline-scale", value);
+
+      // hide videos when zoomed out too far
+      if (value < 0.6) {
+        document.body.classList.add("zoomed-out");
+      } else {
+        document.body.classList.remove("zoomed-out");
+      }
     }
 
     timelineSlider.addEventListener("input", () => {
