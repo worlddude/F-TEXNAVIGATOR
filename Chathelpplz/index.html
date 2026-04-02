@@ -192,12 +192,25 @@
       transition: background 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .zoomed-out .title:hover {
-      background: rgba(247, 50, 43, 0.15);
-      box-shadow: 0 0 0 2px rgba(216, 216, 218, 0.4);
-      border-radius: 8px;
-    }
 
+
+    
+    .text-box {
+    display: inline-block;
+    padding: 12px 14px;
+    border-radius: 14px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+    .zoomed-out .text-box:hover {
+    background: rgba(247, 50, 43, 0.12);
+    box-shadow: 0 0 0 2px rgba(247, 50, 43, 0.35);
+  }
+
+
+
+
+    
+    
     .desc {
       margin: 0 0 16px;
       max-width: 820px;
@@ -505,6 +518,9 @@
         desc.className = "desc";
         desc.textContent = item.desc;
 
+        const textBox = document.createElement("div");
+        textBox.className = "text-box";
+
         const inlineVideo = document.createElement("div");
         inlineVideo.className = "inline-video";
 
@@ -561,9 +577,13 @@
         card.appendChild(meta);
         link.appendChild(card);
 
-        event.appendChild(date);
-        event.appendChild(title);
-        event.appendChild(desc);
+        
+        textBox.appendChild(date);
+        textBox.appendChild(title);
+        textBox.appendChild(desc);
+        event.appendChild(textBox);
+
+        
         event.appendChild(link);
         event.appendChild(inlineVideo);
         timeline.appendChild(event);
