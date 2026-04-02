@@ -122,9 +122,7 @@
       padding-left: 42px;
       margin-top: 22px;
       --timeline-scale: 1;
-      transform: scale(var(--timeline-scale));
-      transform-origin: top center;
-      transition: transform 0.18s ease;
+      --thumb-opacity: 1;
     }
 
     .timeline::before {
@@ -134,15 +132,15 @@
       top: 0;
       bottom: 0;
       width: 2px;
-      background: rgb(254,149,137);
+      background: rgb(253, 88, 94);
       border-radius: 999px;
-      box-shadow: 0 0 14px rgba(254,149,137,0.35);
+      box-shadow: 0 0 14px rgba(253, 88, 94, 0.35);
     }
 
     .event {
       position: relative;
-      padding-bottom: 30px;
-      margin-bottom: 30px;
+      padding-bottom: calc(30px * var(--timeline-scale));
+      margin-bottom: calc(30px * var(--timeline-scale));
       border-bottom: 1px solid var(--line);
       opacity: 0;
       transform: translateY(18px);
@@ -207,6 +205,10 @@
       color: inherit;
       width: min(100%, 760px);
       margin: 0;
+      overflow: hidden;
+      max-height: calc(1000px * var(--thumb-opacity));
+      opacity: var(--thumb-opacity);
+      transition: opacity 0.2s ease, max-height 0.2s ease;
     }
 
     .card {
@@ -430,14 +432,11 @@
 
     function updateTimelineScale(value) {
       const timeline = document.getElementById("timeline");
-      timeline.style.setProperty("--timeline-scale", value);
+      const scale = Number(value);
+      const thumbOpacity = Math.max(0, Math.min(1, (scale - 0.45) / 0.25));
 
-      // hide videos when zoomed out too far
-      if (value < 0.6) {
-        document.body.classList.add("zoomed-out");
-      } else {
-        document.body.classList.remove("zoomed-out");
-      }
+      timeline.style.setProperty("--timeline-scale", scale);
+      timeline.style.setProperty("--thumb-opacity", thumbOpacity);
     }
 
     timelineSlider.addEventListener("input", () => {
