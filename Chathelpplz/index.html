@@ -520,22 +520,55 @@
       updateTimelineScale(timelineSlider.value);
     }
 
-    function updateTimelineScale(value) {
-      const timeline = document.getElementById("timeline");
-      const scale = Number(value);
-      const thumbOpacity = Math.max(0, Math.min(1, (scale - 0.45) / 0.25));
 
-      timeline.style.setProperty("--timeline-scale", scale);
+
+
+
+
+
+
+    
+    let currentScale = 1;
+    let targetScale = 1;
+
+    function updateTimelineScale(value) {
+      targetScale = Number(value);
+    }
+
+    function animateScale() {
+      // smooth movement (lower = smoother/slower)
+      const speed = 0.08;
+
+      currentScale += (targetScale - currentScale) * speed;
+
+      const timeline = document.getElementById("timeline");
+      const thumbOpacity = Math.max(0, Math.min(1, (currentScale - 0.45) / 0.25));
+
+      timeline.style.setProperty("--timeline-scale", currentScale);
       timeline.style.setProperty("--thumb-opacity", thumbOpacity);
 
-      // add class when zoomed out (for hover effect + interactions)
-      if (scale <= 0.45) {
+      // zoomed-out class logic
+      if (currentScale <= 0.45) {
         document.body.classList.add("zoomed-out");
       } else {
         document.body.classList.remove("zoomed-out");
       }
+
+      requestAnimationFrame(animateScale);
     }
 
+    animateScale();
+
+
+
+
+
+
+
+
+
+
+    
     timelineSlider.addEventListener("input", () => {
       updateTimelineScale(timelineSlider.value);
     });
