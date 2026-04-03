@@ -1,3 +1,6 @@
+Updated. The switch is back on the right-middle, the title hover effect is restored, dense mode now expands the video too, and the dense layout is tighter with more overlap.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,7 +78,8 @@
     .controls {
       position: fixed;
       right: 18px;
-      top: 18px;
+      top: 50%;
+      transform: translateY(-50%);
       z-index: 20;
       display: flex;
       flex-direction: column;
@@ -148,7 +152,8 @@
         width 0.5s ease,
         max-width 0.5s ease,
         margin-bottom 0.5s ease,
-        padding-bottom 0.5s ease;
+        padding-bottom 0.5s ease,
+        margin-top 0.5s ease;
       text-align: left;
     }
 
@@ -181,6 +186,14 @@
       display: block;
       width: 100%;
       cursor: pointer;
+      border-radius: 14px;
+      padding: 4px 0;
+      transition: background 0.25s ease, transform 0.25s ease;
+    }
+
+    .event-toggle:hover {
+      background: rgba(255,255,255,0.04);
+      transform: translateX(2px);
     }
 
     .date {
@@ -201,11 +214,12 @@
       margin: 0;
       line-height: 1.08;
       text-transform: uppercase;
-      transition: font-size 0.45s ease, line-height 0.45s ease, text-shadow 0.25s ease;
+      transition: font-size 0.45s ease, line-height 0.45s ease, text-shadow 0.25s ease, filter 0.25s ease;
     }
 
     .event-toggle:hover .title {
-      text-shadow: 0 0 18px rgba(255,255,255,0.12);
+      text-shadow: 0 0 18px rgba(255,255,255,0.18);
+      filter: brightness(1.12);
     }
 
     .details {
@@ -457,40 +471,43 @@
     }
 
     body.mode-dense .event {
-      width: calc(50% - 52px);
-      margin-bottom: 14px;
-      padding-bottom: 14px;
+      width: calc(50% - 44px);
+      margin-bottom: -8px;
+      padding-bottom: 10px;
     }
 
     body.mode-dense .event:nth-child(odd) {
       align-self: flex-start;
-      padding-right: 30px;
+      padding-right: 18px;
+      margin-top: 0;
     }
 
     body.mode-dense .event:nth-child(even) {
       align-self: flex-end;
-      padding-left: 30px;
+      padding-left: 18px;
+      margin-top: -34px;
     }
 
     body.mode-dense .event:nth-child(odd)::before {
       left: auto;
-      right: -61px;
+      right: -53px;
     }
 
     body.mode-dense .event:nth-child(even)::before {
-      left: -61px;
+      left: -53px;
     }
 
     body.mode-dense .date {
       display: block;
       font-size: 0.92rem;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     body.mode-dense .title {
-      font-size: 1.35rem;
-      line-height: 1.08;
+      font-size: 1.42rem;
+      line-height: 1.02;
       text-transform: none;
+      margin: 0;
     }
 
     body.mode-dense .details {
@@ -515,12 +532,25 @@
 
     body.mode-dense .media-link {
       display: none;
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+      pointer-events: none;
+    }
+
+    body.mode-dense .event.expanded .media-link {
+      display: block;
+      max-height: 1000px;
+      opacity: 1;
+      margin-top: 12px;
+      pointer-events: auto;
     }
 
     @media (max-width: 900px) {
       .controls {
         right: 10px;
         top: 10px;
+        transform: none;
         width: 96px;
       }
 
@@ -598,9 +628,9 @@
     let data = [];
 
     const MODES = {
-      0: { name: "media", scale: 1.08, label: "Media" },
-      1: { name: "title", scale: 0.78, label: "Titles" },
-      2: { name: "dense", scale: 0.48, label: "Dense" }
+      0: { name: "media", scale: 1.08 },
+      1: { name: "title", scale: 0.78 },
+      2: { name: "dense", scale: 0.48 }
     };
 
     let currentMode = 0;
@@ -617,17 +647,9 @@
         }
 
         if (host.includes("youtube.com")) {
-          if (parsed.pathname === "/watch") {
-            return parsed.searchParams.get("v");
-          }
-
-          if (parsed.pathname.startsWith("/shorts/")) {
-            return parsed.pathname.split("/")[2] || null;
-          }
-
-          if (parsed.pathname.startsWith("/embed/")) {
-            return parsed.pathname.split("/")[2] || null;
-          }
+          if (parsed.pathname === "/watch") return parsed.searchParams.get("v");
+          if (parsed.pathname.startsWith("/shorts/")) return parsed.pathname.split("/")[2] || null;
+          if (parsed.pathname.startsWith("/embed/")) return parsed.pathname.split("/")[2] || null;
         }
       } catch (err) {
         return null;
@@ -736,10 +758,7 @@
         }
 
         details.appendChild(desc);
-
-        if (stats.children.length > 0) {
-          details.appendChild(stats);
-        }
+        if (stats.children.length > 0) details.appendChild(stats);
 
         const mediaLink = document.createElement("a");
         mediaLink.className = "media-link";
@@ -804,11 +823,8 @@
       document.querySelectorAll(".event").forEach(el => observer.observe(el));
     }
 
-    const modeButtons = document.querySelectorAll(".mode-btn");
-    modeButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        setMode(btn.dataset.mode);
-      });
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
     });
 
     function animateScale() {
@@ -827,3 +843,4 @@
   </script>
 </body>
 </html>
+```
