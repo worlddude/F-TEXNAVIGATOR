@@ -19,13 +19,9 @@
       --radius: 22px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html, body {
-      min-height: 100%;
-    }
+    html, body { min-height: 100%; }
 
     body {
       margin: 0;
@@ -82,9 +78,11 @@
       top: 18px;
       z-index: 20;
       display: flex;
+      flex-direction: column;
       gap: 6px;
-      padding: 8px;
-      border-radius: 999px;
+      padding: 10px;
+      width: 104px;
+      border-radius: 22px;
       background: rgba(255, 0, 0, 0.28);
       border: 1px solid rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
@@ -96,12 +94,14 @@
       cursor: pointer;
       color: rgba(255,255,255,0.88);
       background: transparent;
-      border-radius: 999px;
-      padding: 10px 14px;
+      border-radius: 14px;
+      padding: 10px 12px;
       font-size: 13px;
       font-weight: 700;
       letter-spacing: 0.02em;
-      transition: background 0.25s ease, transform 0.25s ease, color 0.25s ease;
+      transition: background 0.25s ease, transform 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+      width: 100%;
+      text-align: center;
       white-space: nowrap;
     }
 
@@ -195,7 +195,7 @@
     }
 
     .title {
-      font-size: clamp(1.45rem, 2.8vw, 2.25rem);
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
       font-weight: 900;
       letter-spacing: -0.03em;
       margin: 0;
@@ -228,7 +228,6 @@
       line-height: 1.8;
       font-size: 16px;
       text-align: left;
-      transition: opacity 0.35s ease;
     }
 
     .stats {
@@ -384,7 +383,7 @@
     }
 
     body.mode-media .title {
-      font-size: clamp(1.55rem, 3vw, 2.3rem);
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
       line-height: 1.08;
       text-transform: uppercase;
     }
@@ -400,17 +399,18 @@
 
     body.mode-title .event {
       width: 100%;
-      padding-bottom: calc(34px * var(--timeline-scale));
-      margin-bottom: calc(34px * var(--timeline-scale));
+      padding-bottom: calc(38px * var(--timeline-scale));
+      margin-bottom: calc(38px * var(--timeline-scale));
     }
 
     body.mode-title .date {
       display: block;
+      margin-bottom: 8px;
     }
 
     body.mode-title .title {
-      font-size: clamp(1.55rem, 3vw, 2.3rem);
-      line-height: 1.14;
+      font-size: clamp(1.7rem, 3.4vw, 2.55rem);
+      line-height: 1.06;
       text-transform: none;
     }
 
@@ -458,36 +458,38 @@
 
     body.mode-dense .event {
       width: calc(50% - 52px);
-      margin-bottom: 18px;
-      padding-bottom: 18px;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
     }
 
     body.mode-dense .event:nth-child(odd) {
       align-self: flex-start;
-      padding-right: 42px;
+      padding-right: 30px;
     }
 
     body.mode-dense .event:nth-child(even) {
       align-self: flex-end;
-      padding-left: 42px;
+      padding-left: 30px;
     }
 
     body.mode-dense .event:nth-child(odd)::before {
       left: auto;
-      right: -49px;
+      right: -61px;
     }
 
     body.mode-dense .event:nth-child(even)::before {
-      left: -49px;
+      left: -61px;
     }
 
     body.mode-dense .date {
-      display: none;
+      display: block;
+      font-size: 0.92rem;
+      margin-bottom: 4px;
     }
 
     body.mode-dense .title {
-      font-size: 1.08rem;
-      line-height: 1.25;
+      font-size: 1.35rem;
+      line-height: 1.08;
       text-transform: none;
     }
 
@@ -502,7 +504,7 @@
       max-height: 2000px;
       opacity: 1;
       pointer-events: auto;
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     body.mode-dense .desc {
@@ -518,11 +520,8 @@
     @media (max-width: 900px) {
       .controls {
         right: 10px;
-        top: auto;
-        bottom: 14px;
-        left: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
+        top: 10px;
+        width: 96px;
       }
 
       .page {
