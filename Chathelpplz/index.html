@@ -360,7 +360,7 @@ V1.02
     }
 
     .meta-row {
-      display: flex;
+      display: none;
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
@@ -837,7 +837,7 @@ V1.02
 
         const metaRow = document.createElement("div");
         metaRow.className = "meta-row";
-        metaRow.textContent = "Open video";
+        metaRow.textContent = "";
 
         thumbWrap.appendChild(img);
         thumbWrap.appendChild(playBadge);
