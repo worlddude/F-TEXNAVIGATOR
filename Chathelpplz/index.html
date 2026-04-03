@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Records</title>
+  <style>
+    :root {
+      --bg-overlay: rgba(0, 0, 0, 0.72);
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel-strong: rgba(255, 255, 255, 0.09);
+      --text: #f5f5f5;
+      --muted: rgba(255, 255, 255, 0.78);
+      --faint: rgba(255, 255, 255, 0.18);
+      --accent: rgb(247, 50, 43);
+      --accent-2: #ff6433;
+      --line: rgba(255, 255, 255, 0.12);
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: url("1.jpg") center/cover no-repeat fixed;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 30%),
+        var(--bg-overlay);
+      z-index: -1;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 40px auto;
+      padding: 34px 26px 30px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.035));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 26px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      text-shadow: 0 8px 30px rgba(0,0,0,0.45);
+    }
+
+    .header p {
+      margin: 10px auto 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .controls {
+      position: fixed;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 10px;
+      border-radius: 18px;
+      background: rgba(255, 0, 0, 0.33);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      min-width: 84px;
+    }
+
+    .controls .label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.75);
+      user-select: none;
+    }
+
+    .mode-readout {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.82);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      user-select: none;
+      min-height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-wrap {
+      width: 34px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-wrap input[type="range"] {
+      width: 220px;
+      transform: rotate(-90deg);
+      cursor: pointer;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 42px;
+      margin-top: 22px;
+      --timeline-scale: 1;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 11px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgb(253, 88, 94);
+      border-radius: 999px;
+      box-shadow: 0 0 14px rgba(253, 88, 94, 0.35);
+    }
+
+    .event {
+      position: relative;
+      padding-bottom: calc(30px * var(--timeline-scale));
+      margin-bottom: calc(30px * var(--timeline-scale));
+      border-bottom: 1px solid var(--line);
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.55s ease, transform 0.55s ease, width 0.35s ease, max-width 0.35s ease;
+      text-align: left;
+    }
+
+    .event:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .event.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .event::before {
+      content: "";
+      position: absolute;
+      left: -40px;
+      top: 18px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(255, 138, 91, 0.16), 0 0 22px rgba(255, 138, 91, 0.28);
+      z-index: 2;
+    }
+
+    .event-toggle {
+      all: unset;
+      display: block;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .date {
+      display: block;
+      color: var(--accent);
+      font-size: 1.08rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      transition: opacity 0.25s ease, max-height 0.25s ease;
+    }
+
+    .title {
+      font-size: clamp(1.45rem, 2.8vw, 2.25rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin: 0;
+      line-height: 1.08;
+      text-transform: uppercase;
+      transition: background 0.2s ease, box-shadow 0.2s ease, font-size 0.3s ease;
+    }
+
+    .event-toggle:hover .title {
+      text-shadow: 0 0 18px rgba(255,255,255,0.12);
+    }
+
+    .details {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+      overflow: hidden;
+      max-height: 2000px;
+      opacity: 1;
+      transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.25s ease;
+    }
+
+    .desc {
+      margin: 0;
+      max-width: 860px;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 16px;
+      text-align: left;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      white-space: nowrap;
+      color: rgba(255,255,255,0.95);
+      font-size: 14px;
+    }
+
+    .stat::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      display: inline-block;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,138,91,0.18);
+      flex: 0 0 10px;
+    }
+
+    .inline-toggle {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      width: fit-content;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .inline-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.12);
+    }
+
+    .inline-video {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
+      opacity: 0;
+      margin-top: 0;
+    }
+
+    .inline-video.open {
+      max-height: 500px;
+      opacity: 1;
+      margin-top: 12px;
+    }
+
+    .inline-video iframe {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border: none;
+      border-radius: 12px;
+    }
+
+    .media-link {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      width: min(100%, 760px);
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .card {
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(20, 20, 20, 0.62);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+      transform: translateZ(0);
+    }
+
+    .thumb-wrap {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.35s ease;
+    }
+
+    .media-link:hover .thumb-wrap img {
+      transform: scale(1.03);
+    }
+
+    .play-badge {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 78px;
+      height: 54px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ff7a45, #d94d24);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,0.18);
+      pointer-events: none;
+    }
+
+    .play-badge::before {
+      content: "";
+      display: block;
+      margin-left: 4px;
+      width: 0;
+      height: 0;
+      border-top: 11px solid transparent;
+      border-bottom: 11px solid transparent;
+      border-left: 18px solid #fff;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+    }
+
+    .meta {
+      padding: 14px 16px 15px;
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.16));
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .empty {
+      padding: 18px 0;
+      color: rgba(255,255,255,0.72);
+      font-size: 15px;
+    }
+
+    /* MEDIA VIEW */
+    body.mode-media .timeline {
+      max-width: 980px;
+    }
+
+    body.mode-media .event {
+      width: 100%;
+    }
+
+    body.mode-media .details {
+      max-height: 2000px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.mode-media .media-link {
+      display: block;
+    }
+
+    body.mode-media .inline-toggle {
+      display: inline-flex;
+    }
+
+    body.mode-media .date {
+      display: block;
+    }
+
+    body.mode-media .title {
+      font-size: clamp(1.45rem, 2.8vw, 2.25rem);
+    }
+
+    /* TITLE VIEW */
+    body.mode-title .timeline {
+      max-width: 900px;
+    }
+
+    body.mode-title .event {
+      width: 100%;
+    }
+
+    body.mode-title .date {
+      display: none;
+    }
+
+    body.mode-title .media-link {
+      display: none;
+    }
+
+    body.mode-title .inline-toggle {
+      display: inline-flex;
+    }
+
+    body.mode-title .details {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      margin-top: 0;
+    }
+
+    body.mode-title .event.expanded .details {
+      max-height: 2000px;
+      opacity: 1;
+      pointer-events: auto;
+      margin-top: 12px;
+    }
+
+    body.mode-title .title {
+      font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+      text-transform: none;
+    }
+
+    /* DENSE VIEW */
+    body.mode-dense .timeline {
+      max-width: 1200px;
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    body.mode-dense .timeline::before {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    body.mode-dense .event {
+      width: calc(50% - 52px);
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+    }
+
+    body.mode-dense .event:nth-child(odd) {
+      align-self: flex-start;
+      padding-right: 42px;
+    }
+
+    body.mode-dense .event:nth-child(even) {
+      align-self: flex-end;
+      padding-left: 42px;
+    }
+
+    body.mode-dense .event:nth-child(odd)::before {
+      left: auto;
+      right: -49px;
+    }
+
+    body.mode-dense .event:nth-child(even)::before {
+      left: -49px;
+    }
+
+    body.mode-dense .date {
+      display: none;
+    }
+
+    body.mode-dense .media-link {
+      display: none;
+    }
+
+    body.mode-dense .inline-toggle {
+      display: inline-flex;
+    }
+
+    body.mode-dense .details {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      margin-top: 0;
+    }
+
+    body.mode-dense .event.expanded .details {
+      max-height: 2000px;
+      opacity: 1;
+      pointer-events: auto;
+      margin-top: 12px;
+    }
+
+    body.mode-dense .title {
+      font-size: 1.08rem;
+      line-height: 1.25;
+      text-transform: none;
+    }
+
+    body.mode-dense .event-toggle:hover .title {
+      text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    }
+
+    @media (max-width: 900px) {
+      .controls {
+        right: 10px;
+        top: auto;
+        bottom: 14px;
+        transform: none;
+        flex-direction: row;
+        gap: 8px;
+        min-width: auto;
+        padding: 10px 12px;
+      }
+
+      .controls .label,
+      .mode-readout {
+        writing-mode: horizontal-tb;
+        transform: none;
+      }
+
+      .mode-readout {
+        min-height: auto;
+      }
+
+      .slider-wrap {
+        width: 190px;
+        height: auto;
+      }
+
+      .slider-wrap input[type="range"] {
+        width: 190px;
+      }
+
+      .page {
+        margin: 16px auto;
+        padding: 22px 16px 20px;
+      }
+
+      body.mode-dense .timeline {
+        padding-left: 34px;
+        display: block;
+      }
+
+      body.mode-dense .timeline::before {
+        left: 11px;
+        transform: none;
+      }
+
+      body.mode-dense .event,
+      body.mode-title .event,
+      body.mode-media .event {
+        width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+        align-self: auto;
+      }
+
+      body.mode-dense .event::before {
+        left: -40px;
+        right: auto;
+      }
+
+      .desc {
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <aside class="controls" aria-label="Timeline size control">
+    <div class="label">Timeline size</div>
+    <div class="slider-wrap">
+      <input id="timelineSlider" type="range" min="0" max="2" step="1" value="0" aria-label="Zoom level">
+    </div>
+    <div class="mode-readout" id="modeText">Media view</div>
+  </aside>
+
+  <main class="page">
+    <header class="header">
+      <h1>News Daddy Record-breaking News</h1>
+      <p>Your timeline of record-breaking news</p>
+    </header>
+
+    <div id="recordCount" style="margin-bottom: 10px; font-size: 14px; opacity: 0.8;">
+      Loading count...
+    </div>
+
+    <section class="timeline mode-media" id="timeline">
+      <div class="empty">Loading timeline...</div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabase = createClient(
+      "https://lpcygniycyffeswzrnms.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ"
+    );
+
+    let data = [];
+
+    const MODE_VALUES = {
+      0: { name: "media", label: "Media view", scale: 1.08 },
+      1: { name: "title", label: "Title view", scale: 0.76 },
+      2: { name: "dense", label: "Dense overview", scale: 0.48 }
+    };
+
+    function getYouTubeId(url) {
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.replace(/^www\./, "");
+
+        if (host === "youtu.be") {
+          return parsed.pathname.split("/").filter(Boolean)[0] || null;
+        }
+
+        if (host.includes("youtube.com")) {
+          if (parsed.pathname === "/watch") {
+            return parsed.searchParams.get("v");
+          }
+
+          if (parsed.pathname.startsWith("/shorts/")) {
+            return parsed.pathname.split("/")[2] || null;
+          }
+
+          if (parsed.pathname.startsWith("/embed/")) {
+            return parsed.pathname.split("/")[2] || null;
+          }
+        }
+      } catch (err) {
+        return null;
+      }
+
+      return null;
+    }
+
+    function getYouTubeThumbnail(url) {
+      const id = getYouTubeId(url);
+      if (!id) return "https://via.placeholder.com/1280x720?text=Video+Thumbnail";
+      return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+
+    function createStat(text) {
+      const span = document.createElement("span");
+      span.className = "stat";
+      span.textContent = text;
+      return span;
+    }
+
+    function setMode(modeIndex) {
+      const timeline = document.getElementById("timeline");
+      const modeText = document.getElementById("modeText");
+      const mode = MODE_VALUES[modeIndex] || MODE_VALUES[0];
+
+      timeline.classList.remove("mode-media", "mode-title", "mode-dense");
+      timeline.classList.add(`mode-${mode.name}`);
+      document.body.classList.remove("mode-media", "mode-title", "mode-dense");
+      document.body.classList.add(`mode-${mode.name}`);
+
+      modeText.textContent = mode.label;
+      return mode;
+    }
+
+    async function loadTimeline() {
+      const { data: rows, error } = await supabase
+        .from("timeline_items")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        document.getElementById("timeline").innerHTML = `<div class="empty">Failed to load timeline.</div>`;
+        return;
+      }
+
+      if (rows && rows.length > 0) {
+        document.getElementById("recordCount").textContent = `Total records: ${rows.length}`;
+      } else {
+        document.getElementById("recordCount").textContent = "No records";
+      }
+
+      data = (rows || []).map(row => ({
+        date: row.date_text || "",
+        title: row.title || "",
+        desc: row.description || "",
+        videoUrl: row.video_url || "",
+        views: row.views,
+        likes: row.likes
+      }));
+
+      buildTimeline();
+    }
+
+    function toggleInlineVideo(inlineVideo, iframe, videoUrl) {
+      const id = getYouTubeId(videoUrl);
+      if (!id) return;
+
+      const isOpen = inlineVideo.classList.contains("open");
+
+      if (isOpen) {
+        inlineVideo.classList.remove("open");
+        iframe.src = "";
+      } else {
+        iframe.src = `https://www.youtube.com/embed/${id}?rel=0`;
+        inlineVideo.classList.add("open");
+      }
+    }
+
+    function buildTimeline() {
+      const timeline = document.getElementById("timeline");
+      timeline.innerHTML = "";
+
+      data.forEach(item => {
+        const event = document.createElement("article");
+        event.className = "event";
+
+        const toggle = document.createElement("button");
+        toggle.className = "event-toggle";
+        toggle.type = "button";
+
+        const date = document.createElement("div");
+        date.className = "date";
+        date.textContent = item.date;
+
+        const title = document.createElement("h2");
+        title.className = "title";
+        title.textContent = item.title;
+
+        toggle.appendChild(date);
+        toggle.appendChild(title);
+
+        const details = document.createElement("div");
+        details.className = "details";
+
+        const desc = document.createElement("p");
+        desc.className = "desc";
+        desc.textContent = item.desc;
+
+        const stats = document.createElement("div");
+        stats.className = "stats";
+
+        if (item.views !== undefined && item.views !== null && item.views !== "") {
+          stats.appendChild(createStat(`Views ${item.views}`));
+        }
+
+        if (item.likes !== undefined && item.likes !== null && item.likes !== "") {
+          stats.appendChild(createStat(`Likes ${item.likes}`));
+        }
+
+        const inlineToggle = document.createElement("button");
+        inlineToggle.className = "inline-toggle";
+        inlineToggle.type = "button";
+        inlineToggle.textContent = "Watch inline";
+
+        const inlineVideo = document.createElement("div");
+        inlineVideo.className = "inline-video";
+
+        const iframe = document.createElement("iframe");
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        iframe.loading = "lazy";
+
+        inlineVideo.appendChild(iframe);
+
+        inlineToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          toggleInlineVideo(inlineVideo, iframe, item.videoUrl);
+        });
+
+        details.appendChild(desc);
+
+        if (stats.children.length > 0) {
+          details.appendChild(stats);
+        }
+
+        details.appendChild(inlineToggle);
+        details.appendChild(inlineVideo);
+
+        const mediaLink = document.createElement("a");
+        mediaLink.className = "media-link";
+        mediaLink.href = item.videoUrl || "#";
+        mediaLink.target = "_blank";
+        mediaLink.rel = "noopener noreferrer";
+
+        if (!item.videoUrl) {
+          mediaLink.style.pointerEvents = "none";
+          mediaLink.style.opacity = "0.6";
+        }
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const thumbWrap = document.createElement("div");
+        thumbWrap.className = "thumb-wrap";
+
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.src = item.videoUrl ? getYouTubeThumbnail(item.videoUrl) : "https://via.placeholder.com/1280x720?text=No+Video";
+        img.alt = item.title;
+
+        const playBadge = document.createElement("div");
+        playBadge.className = "play-badge";
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "meta-row";
+        metaRow.textContent = "Open video";
+
+        thumbWrap.appendChild(img);
+        thumbWrap.appendChild(playBadge);
+        card.appendChild(thumbWrap);
+        card.appendChild(meta);
+        meta.appendChild(metaRow);
+        mediaLink.appendChild(card);
+
+        toggle.addEventListener("click", () => {
+          const currentMode = document.body.classList.contains("mode-media")
+            ? "media"
+            : document.body.classList.contains("mode-title")
+              ? "title"
+              : "dense";
+
+          if (currentMode === "media") {
+            if (item.videoUrl) {
+              toggleInlineVideo(inlineVideo, iframe, item.videoUrl);
+            }
+            return;
+          }
+
+          event.classList.toggle("expanded");
+
+          if (!event.classList.contains("expanded")) {
+            inlineVideo.classList.remove("open");
+            iframe.src = "";
+          }
+        });
+
+        event.appendChild(toggle);
+        event.appendChild(details);
+        event.appendChild(mediaLink);
+        timeline.appendChild(event);
+      });
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add("show");
+        });
+      }, { threshold: 0.15 });
+
+      document.querySelectorAll(".event").forEach(el => observer.observe(el));
+    }
+
+    const timelineSlider = document.getElementById("timelineSlider");
+    let currentScale = 1;
+    let targetScale = 1;
+    let currentModeIndex = 0;
+
+    function updateTimelineScale(stepValue) {
+      const mode = MODE_VALUES[Number(stepValue)] || MODE_VALUES[0];
+      targetScale = mode.scale;
+      currentModeIndex = Number(stepValue);
+      setMode(currentModeIndex);
+    }
+
+    function animateScale() {
+      const speed = 0.08;
+      currentScale += (targetScale - currentScale) * speed;
+
+      const timeline = document.getElementById("timeline");
+      timeline.style.setProperty("--timeline-scale", currentScale);
+
+      requestAnimationFrame(animateScale);
+    }
+
+    if (timelineSlider) {
+      timelineSlider.addEventListener("input", () => {
+        updateTimelineScale(timelineSlider.value);
+      });
+
+      updateTimelineScale(timelineSlider.value);
+    }
+
+    animateScale();
+    loadTimeline();
+  </script>
+</body>
+</html>
