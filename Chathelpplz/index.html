@@ -476,18 +476,35 @@ Updated. The switch is back on the right-middle, the title hover effect is resto
       padding-bottom: 10px;
     }
 
+
+
+
+
+
+
+
     body.mode-dense .event:nth-child(odd) {
       align-self: flex-start;
-      padding-right: 18px;
-      margin-top: 0;
+      padding-right: 8px; /* was 18px */
     }
 
     body.mode-dense .event:nth-child(even) {
       align-self: flex-end;
-      padding-left: 18px;
-      margin-top: -34px;
+      padding-left: 8px; /* was 18px */
     }
 
+
+
+
+
+
+
+
+
+
+
+
+    
     body.mode-dense .event:nth-child(odd)::before {
       left: auto;
       right: -53px;
@@ -497,12 +514,33 @@ Updated. The switch is back on the right-middle, the title hover effect is resto
       left: -53px;
     }
 
+
+
+
+    
     body.mode-dense .date {
-      display: block;
-      font-size: 0.92rem;
-      margin-bottom: 3px;
+      position: absolute;
+      top: 18px;
+      font-size: 0.8rem;
     }
 
+    /* LEFT cards → date moves toward center */
+    body.mode-dense .event:nth-child(odd) .date {
+      right: -20px;
+      text-align: right;
+    }
+
+    /* RIGHT cards → date moves toward center */
+    body.mode-dense .event:nth-child(even) .date {
+      left: -20px;
+      text-align: left;
+    }
+
+
+
+
+
+    
     body.mode-dense .title {
       font-size: 1.42rem;
       line-height: 1.02;
