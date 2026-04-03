@@ -79,58 +79,41 @@
     .controls {
       position: fixed;
       right: 18px;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 18px;
       z-index: 20;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 10px;
-      border-radius: 18px;
-      background: rgba(255, 0, 0, 0.33);
+      gap: 6px;
+      padding: 8px;
+      border-radius: 999px;
+      background: rgba(255, 0, 0, 0.28);
       border: 1px solid rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-      min-width: 84px;
     }
 
-    .controls .label {
-      writing-mode: vertical-rl;
-      transform: rotate(180deg);
-      font-size: 18px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.75);
-      user-select: none;
-    }
-
-    .mode-readout {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.82);
-      writing-mode: vertical-rl;
-      transform: rotate(180deg);
-      user-select: none;
-      min-height: 96px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .slider-wrap {
-      width: 34px;
-      height: 220px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .slider-wrap input[type="range"] {
-      width: 220px;
-      transform: rotate(-90deg);
+    .mode-btn {
+      border: 0;
       cursor: pointer;
+      color: rgba(255,255,255,0.88);
+      background: transparent;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      transition: background 0.25s ease, transform 0.25s ease, color 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .mode-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.1));
+      color: white;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
     }
 
     .timeline {
@@ -154,12 +137,18 @@
 
     .event {
       position: relative;
-      padding-bottom: calc(30px * var(--timeline-scale));
-      margin-bottom: calc(30px * var(--timeline-scale));
+      padding-bottom: calc(32px * var(--timeline-scale));
+      margin-bottom: calc(32px * var(--timeline-scale));
       border-bottom: 1px solid var(--line);
       opacity: 0;
       transform: translateY(18px);
-      transition: opacity 0.55s ease, transform 0.55s ease, width 0.35s ease, max-width 0.35s ease;
+      transition:
+        opacity 0.7s ease,
+        transform 0.7s cubic-bezier(.2,.9,.2,1),
+        width 0.5s ease,
+        max-width 0.5s ease,
+        margin-bottom 0.5s ease,
+        padding-bottom 0.5s ease;
       text-align: left;
     }
 
@@ -202,7 +191,7 @@
       margin-bottom: 8px;
       letter-spacing: -0.02em;
       text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      transition: opacity 0.25s ease, max-height 0.25s ease;
+      transition: opacity 0.35s ease, max-height 0.35s ease, margin 0.35s ease;
     }
 
     .title {
@@ -212,7 +201,7 @@
       margin: 0;
       line-height: 1.08;
       text-transform: uppercase;
-      transition: background 0.2s ease, box-shadow 0.2s ease, font-size 0.3s ease;
+      transition: font-size 0.45s ease, line-height 0.45s ease, text-shadow 0.25s ease;
     }
 
     .event-toggle:hover .title {
@@ -226,16 +215,20 @@
       overflow: hidden;
       max-height: 2000px;
       opacity: 1;
-      transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.25s ease;
+      transition:
+        max-height 0.5s cubic-bezier(.2,.9,.2,1),
+        opacity 0.35s ease,
+        margin-top 0.35s ease;
     }
 
     .desc {
       margin: 0;
       max-width: 860px;
       color: var(--muted);
-      line-height: 1.75;
+      line-height: 1.8;
       font-size: 16px;
       text-align: left;
+      transition: opacity 0.35s ease;
     }
 
     .stats {
@@ -269,50 +262,18 @@
       flex: 0 0 10px;
     }
 
-    .inline-toggle {
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 999px;
-      cursor: pointer;
-      width: fit-content;
-      transition: transform 0.2s ease, background 0.2s ease;
-    }
-
-    .inline-toggle:hover {
-      transform: translateY(-1px);
-      background: rgba(255,255,255,0.12);
-    }
-
-    .inline-video {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.4s ease, opacity 0.3s ease;
-      opacity: 0;
-      margin-top: 0;
-    }
-
-    .inline-video.open {
-      max-height: 500px;
-      opacity: 1;
-      margin-top: 12px;
-    }
-
-    .inline-video iframe {
-      width: 100%;
-      aspect-ratio: 16/9;
-      border: none;
-      border-radius: 12px;
-    }
-
     .media-link {
       display: block;
       text-decoration: none;
       color: inherit;
       width: min(100%, 760px);
-      margin-top: 4px;
+      margin-top: 6px;
       overflow: hidden;
+      transition:
+        opacity 0.4s ease,
+        max-height 0.5s cubic-bezier(.2,.9,.2,1),
+        margin-top 0.35s ease,
+        transform 0.35s ease;
     }
 
     .card {
@@ -408,14 +369,14 @@
       max-height: 2000px;
       opacity: 1;
       pointer-events: auto;
+      margin-top: 12px;
     }
 
     body.mode-media .media-link {
       display: block;
-    }
-
-    body.mode-media .inline-toggle {
-      display: inline-flex;
+      max-height: 1000px;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     body.mode-media .date {
@@ -423,47 +384,62 @@
     }
 
     body.mode-media .title {
-      font-size: clamp(1.45rem, 2.8vw, 2.25rem);
+      font-size: clamp(1.55rem, 3vw, 2.3rem);
+      line-height: 1.08;
+      text-transform: uppercase;
+    }
+
+    body.mode-media .desc {
+      display: block;
     }
 
     /* TITLE VIEW */
     body.mode-title .timeline {
-      max-width: 900px;
+      max-width: 1080px;
     }
 
     body.mode-title .event {
       width: 100%;
+      padding-bottom: calc(34px * var(--timeline-scale));
+      margin-bottom: calc(34px * var(--timeline-scale));
     }
 
     body.mode-title .date {
-      display: none;
-    }
-
-    body.mode-title .media-link {
-      display: none;
-    }
-
-    body.mode-title .inline-toggle {
-      display: inline-flex;
-    }
-
-    body.mode-title .details {
-      max-height: 0;
-      opacity: 0;
-      pointer-events: none;
-      margin-top: 0;
-    }
-
-    body.mode-title .event.expanded .details {
-      max-height: 2000px;
-      opacity: 1;
-      pointer-events: auto;
-      margin-top: 12px;
+      display: block;
     }
 
     body.mode-title .title {
-      font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+      font-size: clamp(1.55rem, 3vw, 2.3rem);
+      line-height: 1.14;
       text-transform: none;
+    }
+
+    body.mode-title .details {
+      max-height: 2000px;
+      opacity: 1;
+      margin-top: 12px;
+      pointer-events: auto;
+    }
+
+    body.mode-title .desc {
+      display: block;
+      font-size: 16px;
+      line-height: 1.85;
+      max-width: 900px;
+    }
+
+    body.mode-title .media-link {
+      max-height: 0;
+      opacity: 0;
+      margin-top: 0;
+      pointer-events: none;
+    }
+
+    body.mode-title .event.expanded .media-link {
+      max-height: 1000px;
+      opacity: 1;
+      margin-top: 14px;
+      pointer-events: auto;
     }
 
     /* DENSE VIEW */
@@ -509,12 +485,10 @@
       display: none;
     }
 
-    body.mode-dense .media-link {
-      display: none;
-    }
-
-    body.mode-dense .inline-toggle {
-      display: inline-flex;
+    body.mode-dense .title {
+      font-size: 1.08rem;
+      line-height: 1.25;
+      text-transform: none;
     }
 
     body.mode-dense .details {
@@ -531,14 +505,14 @@
       margin-top: 12px;
     }
 
-    body.mode-dense .title {
-      font-size: 1.08rem;
-      line-height: 1.25;
-      text-transform: none;
+    body.mode-dense .desc {
+      display: block;
+      font-size: 15px;
+      line-height: 1.7;
     }
 
-    body.mode-dense .event-toggle:hover .title {
-      text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    body.mode-dense .media-link {
+      display: none;
     }
 
     @media (max-width: 900px) {
@@ -546,30 +520,9 @@
         right: 10px;
         top: auto;
         bottom: 14px;
-        transform: none;
-        flex-direction: row;
-        gap: 8px;
-        min-width: auto;
-        padding: 10px 12px;
-      }
-
-      .controls .label,
-      .mode-readout {
-        writing-mode: horizontal-tb;
-        transform: none;
-      }
-
-      .mode-readout {
-        min-height: auto;
-      }
-
-      .slider-wrap {
-        width: 190px;
-        height: auto;
-      }
-
-      .slider-wrap input[type="range"] {
-        width: 190px;
+        left: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
       }
 
       .page {
@@ -601,6 +554,11 @@
         right: auto;
       }
 
+      body.mode-title .media-link,
+      body.mode-media .media-link {
+        width: 100%;
+      }
+
       .desc {
         font-size: 15px;
       }
@@ -609,12 +567,10 @@
 </head>
 
 <body>
-  <aside class="controls" aria-label="Timeline size control">
-    <div class="label">Timeline size</div>
-    <div class="slider-wrap">
-      <input id="timelineSlider" type="range" min="0" max="2" step="1" value="0" aria-label="Zoom level">
-    </div>
-    <div class="mode-readout" id="modeText">Media view</div>
+  <aside class="controls" aria-label="Timeline zoom mode switch">
+    <button class="mode-btn active" data-mode="0" type="button">Media</button>
+    <button class="mode-btn" data-mode="1" type="button">Titles</button>
+    <button class="mode-btn" data-mode="2" type="button">Dense</button>
   </aside>
 
   <main class="page">
@@ -627,7 +583,7 @@
       Loading count...
     </div>
 
-    <section class="timeline mode-media" id="timeline">
+    <section class="timeline" id="timeline">
       <div class="empty">Loading timeline...</div>
     </section>
   </main>
@@ -642,11 +598,15 @@
 
     let data = [];
 
-    const MODE_VALUES = {
-      0: { name: "media", label: "Media view", scale: 1.08 },
-      1: { name: "title", label: "Title view", scale: 0.76 },
-      2: { name: "dense", label: "Dense overview", scale: 0.48 }
+    const MODES = {
+      0: { name: "media", scale: 1.08, label: "Media" },
+      1: { name: "title", scale: 0.78, label: "Titles" },
+      2: { name: "dense", scale: 0.48, label: "Dense" }
     };
+
+    let currentMode = 0;
+    let currentScale = MODES[0].scale;
+    let targetScale = MODES[0].scale;
 
     function getYouTubeId(url) {
       try {
@@ -691,17 +651,17 @@
     }
 
     function setMode(modeIndex) {
-      const timeline = document.getElementById("timeline");
-      const modeText = document.getElementById("modeText");
-      const mode = MODE_VALUES[modeIndex] || MODE_VALUES[0];
+      const mode = MODES[modeIndex] || MODES[0];
+      currentMode = Number(modeIndex);
 
-      timeline.classList.remove("mode-media", "mode-title", "mode-dense");
-      timeline.classList.add(`mode-${mode.name}`);
       document.body.classList.remove("mode-media", "mode-title", "mode-dense");
       document.body.classList.add(`mode-${mode.name}`);
 
-      modeText.textContent = mode.label;
-      return mode;
+      document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.classList.toggle("active", Number(btn.dataset.mode) === currentMode);
+      });
+
+      targetScale = mode.scale;
     }
 
     async function loadTimeline() {
@@ -734,21 +694,6 @@
       buildTimeline();
     }
 
-    function toggleInlineVideo(inlineVideo, iframe, videoUrl) {
-      const id = getYouTubeId(videoUrl);
-      if (!id) return;
-
-      const isOpen = inlineVideo.classList.contains("open");
-
-      if (isOpen) {
-        inlineVideo.classList.remove("open");
-        iframe.src = "";
-      } else {
-        iframe.src = `https://www.youtube.com/embed/${id}?rel=0`;
-        inlineVideo.classList.add("open");
-      }
-    }
-
     function buildTimeline() {
       const timeline = document.getElementById("timeline");
       timeline.innerHTML = "";
@@ -760,6 +705,7 @@
         const toggle = document.createElement("button");
         toggle.className = "event-toggle";
         toggle.type = "button";
+        toggle.setAttribute("aria-expanded", "false");
 
         const date = document.createElement("div");
         date.className = "date";
@@ -790,34 +736,11 @@
           stats.appendChild(createStat(`Likes ${item.likes}`));
         }
 
-        const inlineToggle = document.createElement("button");
-        inlineToggle.className = "inline-toggle";
-        inlineToggle.type = "button";
-        inlineToggle.textContent = "Watch inline";
-
-        const inlineVideo = document.createElement("div");
-        inlineVideo.className = "inline-video";
-
-        const iframe = document.createElement("iframe");
-        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-        iframe.allowFullscreen = true;
-        iframe.loading = "lazy";
-
-        inlineVideo.appendChild(iframe);
-
-        inlineToggle.addEventListener("click", (e) => {
-          e.stopPropagation();
-          toggleInlineVideo(inlineVideo, iframe, item.videoUrl);
-        });
-
         details.appendChild(desc);
 
         if (stats.children.length > 0) {
           details.appendChild(stats);
         }
-
-        details.appendChild(inlineToggle);
-        details.appendChild(inlineVideo);
 
         const mediaLink = document.createElement("a");
         mediaLink.className = "media-link";
@@ -859,24 +782,11 @@
         mediaLink.appendChild(card);
 
         toggle.addEventListener("click", () => {
-          const currentMode = document.body.classList.contains("mode-media")
-            ? "media"
-            : document.body.classList.contains("mode-title")
-              ? "title"
-              : "dense";
+          const modeName = MODES[currentMode].name;
 
-          if (currentMode === "media") {
-            if (item.videoUrl) {
-              toggleInlineVideo(inlineVideo, iframe, item.videoUrl);
-            }
-            return;
-          }
-
-          event.classList.toggle("expanded");
-
-          if (!event.classList.contains("expanded")) {
-            inlineVideo.classList.remove("open");
-            iframe.src = "";
+          if (modeName === "title" || modeName === "dense") {
+            const expanded = event.classList.toggle("expanded");
+            toggle.setAttribute("aria-expanded", String(expanded));
           }
         });
 
@@ -895,36 +805,24 @@
       document.querySelectorAll(".event").forEach(el => observer.observe(el));
     }
 
-    const timelineSlider = document.getElementById("timelineSlider");
-    let currentScale = 1;
-    let targetScale = 1;
-    let currentModeIndex = 0;
-
-    function updateTimelineScale(stepValue) {
-      const mode = MODE_VALUES[Number(stepValue)] || MODE_VALUES[0];
-      targetScale = mode.scale;
-      currentModeIndex = Number(stepValue);
-      setMode(currentModeIndex);
-    }
+    const modeButtons = document.querySelectorAll(".mode-btn");
+    modeButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        setMode(btn.dataset.mode);
+      });
+    });
 
     function animateScale() {
       const speed = 0.08;
       currentScale += (targetScale - currentScale) * speed;
 
       const timeline = document.getElementById("timeline");
-      timeline.style.setProperty("--timeline-scale", currentScale);
+      timeline.style.setProperty("--timeline-scale", currentScale.toFixed(3));
 
       requestAnimationFrame(animateScale);
     }
 
-    if (timelineSlider) {
-      timelineSlider.addEventListener("input", () => {
-        updateTimelineScale(timelineSlider.value);
-      });
-
-      updateTimelineScale(timelineSlider.value);
-    }
-
+    setMode(0);
     animateScale();
     loadTimeline();
   </script>
