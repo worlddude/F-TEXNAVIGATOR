@@ -1,4 +1,4 @@
-V1.34
+V0.35
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -372,6 +372,110 @@ V1.34
       filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+    
+
+
+    /* ULTRA VIEW */
+    body.mode-ultra {
+      zoom: 0.25; /* 👈 browser zoom out */
+    }
+
+    body.mode-ultra .timeline {
+      max-width: 1600px;
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    body.mode-ultra .timeline::before {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    body.mode-ultra .event {
+      width: calc(50% - 20px); /* 👈 tighter than dense */
+      margin-bottom: -20px;    /* 👈 closer together */
+      padding-bottom: 6px;
+    }
+
+    body.mode-ultra .event:nth-child(odd) {
+      align-self: flex-start;
+      padding-right: 4px;
+    }
+
+    body.mode-ultra .event:nth-child(even) {
+      align-self: flex-end;
+      padding-left: 4px;
+    }
+
+    body.mode-ultra .event:nth-child(odd)::before {
+      right: -48px;
+    }
+
+    body.mode-ultra .event:nth-child(even)::before {
+      left: -48px;
+    }
+
+    body.mode-ultra .title {
+      font-size: 1.2rem;
+      line-height: 0.9;
+    }
+    
+    body.mode-ultra .details {
+      display: none; /* super compact */
+    }
+
+    body.mode-ultra .media-link {
+      display: none;
+    }
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+    
     .meta {
       padding: 14px 16px 15px;
       display: none;
@@ -709,6 +813,7 @@ V1.34
     <button class="mode-btn" data-mode="0" type="button">Media</button>
     <button class="mode-btn" data-mode="1" type="button">Titles</button>
     <button class="mode-btn active" data-mode="2" type="button">Dense</button>
+    <button class="mode-btn" data-mode="3" type="button">Ultra</button>
   </aside>
 
 
@@ -753,6 +858,7 @@ V1.34
       0: { name: "media", scale: 1.08 },
       1: { name: "title", scale: 0.78 },
       2: { name: "dense", scale: 0.48 }
+      3: { name: "ultra", scale: 0.25 }
     };
 
     let currentMode = 0;
@@ -797,7 +903,7 @@ V1.34
       const mode = MODES[modeIndex] || MODES[0];
       currentMode = Number(modeIndex);
 
-      document.body.classList.remove("mode-media", "mode-title", "mode-dense");
+      document.body.classList.remove("mode-media", "mode-title", "mode-dense", "mode-ultra");
       document.body.classList.add(`mode-${mode.name}`);
 
       document.querySelectorAll(".mode-btn").forEach(btn => {
