@@ -1,4 +1,4 @@
-V0.36
+V0.37
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -397,7 +397,11 @@ V0.36
     body.mode-ultra {
       zoom: 0.25; /* 👈 browser zoom out */
     }
+    body.mode-ultra .controls {
+      zoom: 4;
+    }
 
+    
     body.mode-ultra .timeline {
       max-width: 1600px;
       padding-left: 0;
@@ -411,10 +415,17 @@ V0.36
       transform: translateX(-50%);
     }
 
+
+
+
+
+
+
+    
     body.mode-ultra .event {
-      width: calc(50% - 20px); /* 👈 tighter than dense */
-      margin-bottom: -20px;    /* 👈 closer together */
-      padding-bottom: 6px;
+      width: calc(50% - 20px);
+      margin-bottom: 8px;
+      padding-bottom: 14px;
     }
 
     body.mode-ultra .event:nth-child(odd) {
@@ -428,6 +439,7 @@ V0.36
     }
 
     body.mode-ultra .event:nth-child(odd)::before {
+      left: auto;
       right: -48px;
     }
 
@@ -435,9 +447,15 @@ V0.36
       left: -48px;
     }
 
+
+
+
+    
     body.mode-ultra .title {
       font-size: 1.2rem;
-      line-height: 0.9;
+      line-height: 1.15;
+      margin: 0 0 8px 0;
+      margin-bottom: 6px;
     }
     
     body.mode-ultra .details {
