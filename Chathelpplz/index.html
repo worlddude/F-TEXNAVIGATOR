@@ -1,4 +1,4 @@
-V0.37
+V0.38
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -382,17 +382,6 @@ V0.37
 
 
 
-
-
-
-
-
-    
-
-
-    
-
-
     /* ULTRA VIEW */
     body.mode-ultra {
       zoom: 0.25; /* 👈 browser zoom out */
@@ -402,96 +391,12 @@ V0.37
     }
 
     
-    body.mode-ultra .timeline {
-      max-width: 1600px;
-      padding-left: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    body.mode-ultra .timeline::before {
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-
 
 
 
 
 
     
-    body.mode-ultra .event {
-      width: calc(50% - 20px);
-      margin-bottom: 8px;
-      padding-bottom: 14px;
-    }
-
-    body.mode-ultra .event:nth-child(odd) {
-      align-self: flex-start;
-      padding-right: 4px;
-    }
-
-    body.mode-ultra .event:nth-child(even) {
-      align-self: flex-end;
-      padding-left: 4px;
-    }
-
-    body.mode-ultra .event:nth-child(odd)::before {
-      left: auto;
-      right: -48px;
-    }
-
-    body.mode-ultra .event:nth-child(even)::before {
-      left: -48px;
-    }
-
-
-
-
-    
-    body.mode-ultra .title {
-      font-size: 1.2rem;
-      line-height: 1.15;
-      margin: 0 0 8px 0;
-      margin-bottom: 6px;
-    }
-    
-    body.mode-ultra .details {
-      display: none; /* super compact */
-    }
-
-    body.mode-ultra .media-link {
-      display: none;
-    }
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
 
     
     .meta {
