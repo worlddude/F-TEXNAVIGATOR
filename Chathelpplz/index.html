@@ -184,10 +184,20 @@ V1.03
       transform: none; /* overrides your previous centering */
     }
 
+    .logo {
+      width: 320px;              /* adjust size if needed */
+      max-width: 100%;
+      display: block;
+      margin: 0 auto 10px auto;  /* center + spacing */
+    }
 
+    /* Optional glow effect (matches your neon style) */
+    .logo {
+      filter: drop-shadow(0 0 8px #00eaff)
+              drop-shadow(0 0 16px #00eaff)
+              drop-shadow(0 0 24px #00eaff);
+    }
 
-
-    
     .event-toggle {
       all: unset;
       display: block;
@@ -651,10 +661,9 @@ V1.03
 
   <main class="page">
     <header class="header">
-      <h1>News Daddy Record-breaking News</h1>
+      <img src="Logo.png" alt="News Daddy Logo" class="logo">
       <p>Your timeline of record-breaking news</p>
     </header>
-
     <div id="recordCount" style="margin-bottom: 10px; font-size: 14px; opacity: 0.8;">
       Loading count...
     </div>
