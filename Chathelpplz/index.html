@@ -827,7 +827,12 @@ V0.39
       currentMode = Number(modeIndex);
 
       document.body.classList.remove("mode-media", "mode-title", "mode-dense", "mode-ultra");
+      if (mode.name === "ultra") {
+        document.body.classList.add("mode-dense"); // 👈 force dense layout
+        document.body.classList.add("mode-ultra"); // 👈 add zoom
+      } else {
       document.body.classList.add(`mode-${mode.name}`);
+      }
 
       document.querySelectorAll(".mode-btn").forEach(btn => {
         btn.classList.toggle("active", Number(btn.dataset.mode) === currentMode);
