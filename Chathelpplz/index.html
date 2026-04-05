@@ -184,12 +184,36 @@ V1.04
       transform: none; /* overrides your previous centering */
     }
 
-    .logo {
-      width: 320px;              /* adjust size if needed */
-      max-width: 100%;
-      display: block;
-      margin: 0 auto 10px auto;  /* center + spacing */
+
+
+
+
+
+    
+
+    
+    .header {
+      text-align: center;
+      padding: 40px 20px 20px;
     }
+
+    .logo {
+      width: 420px;          /* bigger = more presence */
+      max-width: 90%;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* subtitle styling */
+    .subtitle {
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+
+
+    
 
     /* Optional glow effect (matches your neon style) */
     .logo {
@@ -198,6 +222,12 @@ V1.04
               drop-shadow(0 0 24px #00eaff);
     }
 
+
+
+
+
+    
+    
     .event-toggle {
       all: unset;
       display: block;
@@ -660,10 +690,21 @@ V1.04
   </aside>
 
   <main class="page">
+
+
+
+
+    
     <header class="header">
       <img src="Logo.png" alt="News Daddy Logo" class="logo">
-      <p>Your timeline of record-breaking news</p>
+      <p class="subtitle">Your timeline of record-breaking news</p>
     </header>
+
+
+
+
+
+    
     <div id="recordCount" style="margin-bottom: 10px; font-size: 14px; opacity: 0.8;">
       Loading count...
     </div>
