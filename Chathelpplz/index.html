@@ -1,4 +1,4 @@
-V1.12
+V1.13
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -573,13 +573,16 @@ V1.12
 
 
     .record-count {
-      text-align: center;
-      display: inline-block;
+      display: block;
+      width: fit-content;        /* 👈 THIS is the key */
+      margin: 10px auto 20px;    /* centers the whole box */
       padding: 6px 12px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.1);
-      margin: 10px auto 20px;
+      font-size: 13px;
+      opacity: 0.85;
+      text-align: center;
     }
 
 
