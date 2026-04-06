@@ -727,6 +727,80 @@ V0.42
       .desc {
         font-size: 15px;
       }
+
+
+
+
+      .suggest-btn {
+      opacity: 0.45;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .suggest-btn:hover {
+      opacity: 1;
+      background: rgba(255,255,255,0.10);
+    }
+
+      #suggestionModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(0,0,0,0.65);
+      z-index: 1000;
+    }
+
+    #suggestionModal.open {
+      display: grid;
+    }
+
+    .suggestion-panel {
+      width: min(92vw, 520px);
+      padding: 20px;
+      border-radius: 18px;
+      background: rgba(20,20,20,0.96);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }
+
+    .suggestion-panel h3 {
+      margin: 0 0 12px;
+    }
+
+    #suggestionText {
+      width: 100%;
+      resize: vertical;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      outline: none;
+    }
+
+    .suggestion-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .suggestion-actions button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+
+
+
+
+      
+
+      
     }
   </style>
 </head>
@@ -736,6 +810,7 @@ V0.42
     <button class="mode-btn" data-mode="1" type="button">Titles</button>
     <button class="mode-btn active" data-mode="2" type="button">Dense</button>
     <button class="mode-btn" data-mode="3" type="button">Ultra</button>
+    <button class="mode-btn suggest-btn" id="suggestBtn" type="button">Suggest</button>
   </aside>
 
 
@@ -808,6 +883,80 @@ V0.42
       return null;
     }
 
+
+
+
+    const suggestBtn = document.getElementById("suggestBtn");
+
+    const suggestionModal = document.createElement("div");
+    suggestionModal.id = "suggestionModal";
+    suggestionModal.innerHTML = `
+      <div class="suggestion-panel">
+        <h3>Send a suggestion</h3>
+        <form id="suggestionForm">
+          <textarea id="suggestionText" rows="5" placeholder="Write your suggestion..." required></textarea>
+          <div class="suggestion-actions">
+            <button type="button" id="cancelSuggestion">Cancel</button>
+            <button type="submit">Send</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(suggestionModal);
+
+    const suggestionModalEl = document.getElementById("suggestionModal");
+    const suggestionForm = document.getElementById("suggestionForm");
+    const suggestionText = document.getElementById("suggestionText");
+    const cancelSuggestion = document.getElementById("cancelSuggestion");
+
+    suggestBtn.addEventListener("click", () => {
+      suggestionModalEl.classList.add("open");
+      suggestionText.focus();
+    });
+
+    cancelSuggestion.addEventListener("click", () => {
+      suggestionModalEl.classList.remove("open");
+      suggestionForm.reset();
+    });
+
+    suggestionModalEl.addEventListener("click", (e) => {
+      if (e.target === suggestionModalEl) {
+        suggestionModalEl.classList.remove("open");
+        suggestionForm.reset();
+      }
+    });
+
+    suggestionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const text = suggestionText.value.trim();
+      if (!text) return;
+
+      const { error } = await supabase.from("suggestions").insert({
+        suggestion_text: text,
+        page_url: window.location.href
+      });
+
+      if (error) {
+        alert("Could not send suggestion.");
+        return;
+      }
+
+      alert("Suggestion sent.");
+      suggestionModalEl.classList.remove("open");
+      suggestionForm.reset();
+    });
+
+
+
+    
+
+
+
+
+
+
+    
     function getYouTubeThumbnail(url) {
       const id = getYouTubeId(url);
       if (!id) return "https://via.placeholder.com/1280x720?text=Video+Thumbnail";
