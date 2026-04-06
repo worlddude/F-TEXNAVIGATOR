@@ -1,4 +1,4 @@
-V0.43
+V0.44
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -142,6 +142,128 @@ V0.43
       background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.1));
       color: white;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+
+    .suggest-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 25;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      padding: 12px 16px;
+      background: rgba(190, 190, 190, 0.12);
+      color: rgba(255,255,255,0.78);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease, color 0.2s ease;
+    }
+
+    .suggest-fab:hover {
+      transform: translateY(-1px);
+      background: rgba(220, 220, 220, 0.18);
+      color: white;
+    }
+
+    .suggest-fab.active {
+      background: rgba(255,255,255,0.16);
+      color: white;
+      border-color: rgba(255,255,255,0.22);
+    }
+
+    .suggest-view {
+      display: none;
+      margin-top: 22px;
+    }
+
+    .suggest-panel {
+      width: min(100%, 860px);
+      margin: 0 auto;
+      padding: 28px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .suggest-head h2 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      letter-spacing: -0.04em;
+    }
+
+    .suggest-head p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .suggest-form {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .suggest-form textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.22);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.7;
+      outline: none;
+    }
+
+    .suggest-form textarea:focus {
+      border-color: rgba(255,255,255,0.26);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.06);
+    }
+
+    .suggest-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .suggest-actions button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .suggest-cancel {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    .suggest-send {
+      background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.1));
+      color: white;
+    }
+
+    body.mode-suggest .timeline,
+    body.mode-suggest .record-count {
+      display: none;
+    }
+
+    body.mode-suggest .suggest-view {
+      display: block;
+    }
+
+    body.mode-suggest .controls {
+      opacity: 0.5;
     }
 
     .timeline {
@@ -690,6 +812,12 @@ V0.43
         width: 96px;
       }
 
+      .suggest-fab {
+        right: 10px;
+        bottom: 10px;
+        padding: 11px 14px;
+      }
+
       .page {
         margin: 16px auto;
         padding: 22px 16px 20px;
@@ -727,80 +855,6 @@ V0.43
       .desc {
         font-size: 15px;
       }
-
-
-
-
-      .suggest-btn {
-      opacity: 0.45;
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      background: rgba(255,255,255,0.04);
-    }
-
-    .suggest-btn:hover {
-      opacity: 1;
-      background: rgba(255,255,255,0.10);
-    }
-
-      #suggestionModal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      place-items: center;
-      background: rgba(0,0,0,0.65);
-      z-index: 1000;
-    }
-
-    #suggestionModal.open {
-      display: grid;
-    }
-
-    .suggestion-panel {
-      width: min(92vw, 520px);
-      padding: 20px;
-      border-radius: 18px;
-      background: rgba(20,20,20,0.96);
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-    }
-
-    .suggestion-panel h3 {
-      margin: 0 0 12px;
-    }
-
-    #suggestionText {
-      width: 100%;
-      resize: vertical;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: white;
-      outline: none;
-    }
-
-    .suggestion-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .suggestion-actions button {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-
-
-
-
-
-      
-
-      
     }
   </style>
 </head>
@@ -810,12 +864,9 @@ V0.43
     <button class="mode-btn" data-mode="1" type="button">Titles</button>
     <button class="mode-btn active" data-mode="2" type="button">Dense</button>
     <button class="mode-btn" data-mode="3" type="button">Ultra</button>
-    <button class="mode-btn suggest-btn" id="suggestBtn" type="button">Suggest</button>
   </aside>
 
-
-
-
+  <button class="suggest-fab" id="suggestBtn" type="button">Suggest</button>
 
   <main class="page">
     <header class="header">
@@ -836,6 +887,23 @@ V0.43
       Loading count...
     </div>
 
+    <section class="suggest-view" id="suggestView" aria-hidden="true">
+      <div class="suggest-panel">
+        <div class="suggest-head">
+          <h2>Send a suggestion</h2>
+          <p>Tell me what to improve, fix, or add.</p>
+        </div>
+
+        <form id="suggestionForm" class="suggest-form">
+          <textarea id="suggestionText" rows="8" placeholder="Type your suggestion here..." required></textarea>
+          <div class="suggest-actions">
+            <button type="button" id="cancelSuggestion" class="suggest-cancel">Back</button>
+            <button type="submit" class="suggest-send">Send</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <section class="timeline" id="timeline">
       <div class="empty">Loading timeline...</div>
     </section>
@@ -851,6 +919,12 @@ V0.43
 
     let data = [];
 
+    const suggestBtn = document.getElementById("suggestBtn");
+    const suggestView = document.getElementById("suggestView");
+    const suggestionForm = document.getElementById("suggestionForm");
+    const suggestionText = document.getElementById("suggestionText");
+    const cancelSuggestion = document.getElementById("cancelSuggestion");
+
     const MODES = {
       0: { name: "media", scale: 1.08 },
       1: { name: "title", scale: 0.78 },
@@ -861,6 +935,38 @@ V0.43
     let currentMode = 0;
     let currentScale = MODES[0].scale;
     let targetScale = MODES[0].scale;
+    let suggestActive = false;
+
+    function applyBodyMode() {
+      document.body.classList.remove("mode-media", "mode-title", "mode-dense", "mode-ultra", "mode-suggest");
+
+      if (suggestActive) {
+        document.body.classList.add("mode-suggest");
+        return;
+      }
+
+      const mode = MODES[currentMode] || MODES[0];
+      if (mode.name === "ultra") {
+        document.body.classList.add("mode-dense");
+        document.body.classList.add("mode-ultra");
+      } else {
+        document.body.classList.add(`mode-${mode.name}`);
+      }
+    }
+
+    function setSuggestMode(on) {
+      suggestActive = on;
+      suggestBtn.classList.toggle("active", on);
+      suggestBtn.textContent = on ? "Back" : "Suggest";
+      suggestView.setAttribute("aria-hidden", String(!on));
+      applyBodyMode();
+
+      if (on) {
+        suggestionText.focus();
+      } else {
+        suggestionForm.reset();
+      }
+    }
 
     function getYouTubeId(url) {
       try {
@@ -883,80 +989,6 @@ V0.43
       return null;
     }
 
-
-
-
-    const suggestBtn = document.getElementById("suggestBtn");
-
-    const suggestionModal = document.createElement("div");
-    suggestionModal.id = "suggestionModal";
-    suggestionModal.innerHTML = `
-      <div class="suggestion-panel">
-        <h3>Send a suggestion</h3>
-        <form id="suggestionForm">
-          <textarea id="suggestionText" rows="5" placeholder="Write your suggestion..." required></textarea>
-          <div class="suggestion-actions">
-            <button type="button" id="cancelSuggestion">Cancel</button>
-            <button type="submit">Send</button>
-          </div>
-        </form>
-      </div>
-    `;
-    document.body.appendChild(suggestionModal);
-
-    const suggestionModalEl = document.getElementById("suggestionModal");
-    const suggestionForm = document.getElementById("suggestionForm");
-    const suggestionText = document.getElementById("suggestionText");
-    const cancelSuggestion = document.getElementById("cancelSuggestion");
-
-    suggestBtn.addEventListener("click", () => {
-      suggestionModalEl.classList.add("open");
-      suggestionText.focus();
-    });
-
-    cancelSuggestion.addEventListener("click", () => {
-      suggestionModalEl.classList.remove("open");
-      suggestionForm.reset();
-    });
-
-    suggestionModalEl.addEventListener("click", (e) => {
-      if (e.target === suggestionModalEl) {
-        suggestionModalEl.classList.remove("open");
-        suggestionForm.reset();
-      }
-    });
-
-    suggestionForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const text = suggestionText.value.trim();
-      if (!text) return;
-
-      const { error } = await supabase.from("suggestions").insert({
-        suggestion_text: text,
-        page_url: window.location.href
-      });
-
-      if (error) {
-        alert("Could not send suggestion.");
-        return;
-      }
-
-      alert("Suggestion sent.");
-      suggestionModalEl.classList.remove("open");
-      suggestionForm.reset();
-    });
-
-
-
-    
-
-
-
-
-
-
-    
     function getYouTubeThumbnail(url) {
       const id = getYouTubeId(url);
       if (!id) return "https://via.placeholder.com/1280x720?text=Video+Thumbnail";
@@ -974,19 +1006,12 @@ V0.43
       const mode = MODES[modeIndex] || MODES[0];
       currentMode = Number(modeIndex);
 
-      document.body.classList.remove("mode-media", "mode-title", "mode-dense", "mode-ultra");
-      if (mode.name === "ultra") {
-        document.body.classList.add("mode-dense"); // 👈 force dense layout
-        document.body.classList.add("mode-ultra"); // 👈 add zoom
-      } else {
-      document.body.classList.add(`mode-${mode.name}`);
-      }
-
       document.querySelectorAll(".mode-btn").forEach(btn => {
         btn.classList.toggle("active", Number(btn.dataset.mode) === currentMode);
       });
 
       targetScale = mode.scale;
+      if (!suggestActive) applyBodyMode();
     }
 
     async function loadTimeline() {
@@ -1131,6 +1156,34 @@ V0.43
       btn.addEventListener("click", () => setMode(btn.dataset.mode));
     });
 
+    suggestBtn.addEventListener("click", () => {
+      setSuggestMode(!suggestActive);
+    });
+
+    cancelSuggestion.addEventListener("click", () => {
+      setSuggestMode(false);
+    });
+
+    suggestionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const text = suggestionText.value.trim();
+      if (!text) return;
+
+      const { error } = await supabase.from("suggestions").insert({
+        suggestion_text: text,
+        page_url: window.location.href
+      });
+
+      if (error) {
+        alert("Could not send suggestion.");
+        return;
+      }
+
+      alert("Suggestion sent.");
+      setSuggestMode(false);
+    });
+
     function animateScale() {
       const speed = 0.08;
       currentScale += (targetScale - currentScale) * speed;
@@ -1142,6 +1195,7 @@ V0.43
     }
 
     setMode(2);
+    applyBodyMode();
     animateScale();
     loadTimeline();
   </script>
