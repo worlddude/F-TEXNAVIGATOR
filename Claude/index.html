@@ -1,1032 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Store Item Locator</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Locator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #f5f4f0;
-    --surface: #ffffff;
-    --surface2: #f0ede8;
-    --border: #e2ddd6;
-    --text: #1a1814;
-    --text-muted: #8a8070;
-    --accent: #2d5a3d;
-    --accent-light: #eaf2ec;
-    --accent-hover: #234a31;
-    --danger: #c0392b;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
-    --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
-    --radius: 12px;
-    --radius-sm: 8px;
-    --header-height: 100px;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html, body {
-    height: 100%;
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* ── Header ── */
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 14px 0;
-    flex-shrink: 0;
-    box-shadow: var(--shadow-sm);
-    z-index: 10;
-  }
-
-  .header-top {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .logo {
-    width: 32px;
-    height: 32px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .logo svg { width: 18px; height: 18px; color: white; }
-
-  .search-bar {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0 12px;
-    gap: 8px;
-    transition: border-color .2s, box-shadow .2s;
-  }
-
-  .search-bar:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(45,90,61,.1);
-  }
-
-  .search-bar svg { flex-shrink: 0; color: var(--text-muted); }
-
-  .search-bar input {
-    border: 0;
-    outline: 0;
-    background: transparent;
-    flex: 1;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text);
-    height: 40px;
-  }
-
-  .search-bar input::placeholder { color: var(--text-muted); }
-
-  /* ── Tabs ── */
-  .tabs {
-    display: flex;
-    gap: 4px;
-  }
-
-  .tabs button {
-    flex: 1;
-    background: none;
-    border: 0;
-    padding: 10px 8px;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
-    position: relative;
-    transition: color .2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border-bottom: 2px solid transparent;
-  }
-
-  .tabs button::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0; right: 0;
-    height: 2px;
-    background: var(--accent);
-    border-radius: 2px 2px 0 0;
-    transform: scaleX(0);
-    transition: transform .2s;
-  }
-
-  .tabs button.active {
-    color: var(--accent);
-  }
-
-  .tabs button.active::after {
-    transform: scaleX(1);
-  }
-
-  .tabs button svg { width: 15px; height: 15px; }
-
-  /* ── Main area ── */
-  .main {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── Map ── */
-  #mapContainer {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    touch-action: none;
-    background: var(--surface2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #map {
-    will-change: transform;
-    transform-origin: 0 0;
-    user-select: none;
-    -webkit-user-drag: none;
-    pointer-events: none;
-    height: 100%;
-    width: auto;
-    object-fit: contain;
-  }
-
-  /* ── Camera ── */
-  #video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
-  }
-
-  #video.fullscreen {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 10;
-    object-fit: cover;
-  }
-
-  /* ── Torch ── */
-  #torchBtn {
-    position: fixed;
-    bottom: 180px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 60;
-    background: rgba(0,0,0,.55);
-    backdrop-filter: blur(8px);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,.2);
-    padding: 12px 16px;
-    border-radius: 50px;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    display: none;
-    cursor: pointer;
-    gap: 6px;
-    align-items: center;
-    box-shadow: var(--shadow-md);
-    transition: background .2s;
-  }
-
-  #torchBtn.on { background: rgba(255,220,50,.9); color: #1a1814; }
-
-  /* ── Item Card ── */
-  .item-card {
-    position: relative;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: 16px;
-    flex-shrink: 0;
-    box-shadow: 0 -4px 16px rgba(0,0,0,.06);
-    z-index: 5;
-  }
-
-  .item-card.hidden { display: none; }
-
-  .item-card-inner {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-  }
-
-  #itemPhotoDisplay {
-    width: 68px;
-    height: 68px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-    cursor: zoom-in;
-  }
-
-  .item-info { flex: 1; min-width: 0; }
-
-  .item-info h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .item-info .meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .meta-chip {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    white-space: nowrap;
-  }
-
-  .meta-chip span { color: var(--text); font-weight: 500; }
-
-  /* ── Add/Edit Form ── */
-  #addForm {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-    margin-top: 12px;
-  }
-
-  .form-row {
-    display: flex;
-    gap: 8px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-  }
-
-  .form-group label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--text-muted);
-  }
-
-  .form-group input {
-    padding: 9px 12px;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
-  }
-
-  .form-group input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(45,90,61,.1);
-  }
-
-  .form-group input[readonly] {
-    background: var(--surface2);
-    color: var(--text-muted);
-    cursor: default;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-  }
-
-  .photo-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    background: var(--surface2);
-    border: 1.5px dashed var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px;
-  }
-
-  #photoPreview {
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    border-radius: 6px;
-    background: var(--border);
-    display: none;
-    flex-shrink: 0;
-  }
-
-  .photo-upload-label {
-    font-size: 13px;
-    color: var(--text-muted);
-    flex: 1;
-  }
-
-  .photo-upload-label strong { color: var(--accent); cursor: pointer; }
-
-  input[type="file"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .btn-save {
-    padding: 11px 16px;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: var(--accent);
-    color: #fff;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .2s, transform .1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .btn-save:hover { background: var(--accent-hover); }
-  .btn-save:active { transform: scale(.98); }
-
-  /* ── List Page ── */
-  #listPage {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    display: none;
-  }
-
-  .list-item {
-    background: var(--surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 12px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: box-shadow .2s, border-color .15s;
-    box-shadow: var(--shadow-sm);
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
-
-  .list-item:hover {
-    box-shadow: var(--shadow-md);
-    border-color: #c8c4bb;
-  }
-
-  .list-thumb {
-    width: 52px;
-    height: 52px;
-    object-fit: cover;
-    border-radius: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    flex: 0 0 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-  }
-
-  .list-item-body { flex: 1; min-width: 0; }
-
-  .list-item-body h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .list-item-body .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .chip {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 2px 7px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    color: var(--text-muted);
-  }
-
-  .chip.category {
-    background: var(--accent-light);
-    border-color: #b8ddc0;
-    color: var(--accent);
-  }
-
-  .list-item-arrow {
-    color: var(--border);
-    flex-shrink: 0;
-  }
-
-  .press-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: rgba(45,90,61,.12);
-    opacity: 0;
-    transition: opacity 120ms linear;
-    border-radius: inherit;
-  }
-
-  .load-more {
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--accent);
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s;
-  }
-
-  .load-more:hover { background: var(--accent-light); }
-
-  .empty {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 40px 20px;
-    font-size: 15px;
-  }
-
-  .empty svg {
-    display: block;
-    margin: 0 auto 12px;
-    opacity: .3;
-  }
-
-  /* ── Photo Modal ── */
-  #photoModal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    inset: 0;
-    background: rgba(0,0,0,.75);
-    backdrop-filter: blur(6px);
-    justify-content: center;
-    align-items: center;
-    animation: fadeIn .15s ease;
-  }
-
-  #photoModal img {
-    max-width: 90%;
-    max-height: 90%;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-    cursor: zoom-out;
-  }
-
-  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-
-  /* ── Scrollbar ── */
-  #listPage::-webkit-scrollbar { width: 4px; }
-  #listPage::-webkit-scrollbar-track { background: transparent; }
-  #listPage::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-  /* ── Loading state ── */
-  .loading-indicator {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-muted);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .6s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  #detectBadge { display: none !important; }
+:root {
+  --bg:        #0c0c0e;
+  --bg2:       #111114;
+  --surface:   rgba(255,255,255,.045);
+  --surface2:  rgba(255,255,255,.075);
+  --border:    rgba(255,255,255,.09);
+  --border2:   rgba(255,255,255,.15);
+  --text:      #f0f0f2;
+  --muted:     rgba(240,240,242,.38);
+  --accent:    #263454;
+  --accent-bg: rgba(168,255,87,.1);
+  --accent-glow: rgba(168,255,87,.22);
+  --r: 14px;
+  --r-sm: 9px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.022;pointer-events:none;z-index:9999}
+
+/* header */
+.header{padding:13px 13px 0;flex-shrink:0;z-index:10;background:var(--bg)}
+.header-top{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.wordmark{font-size:14px;font-weight:800;letter-spacing:.01em;color:var(--text);white-space:nowrap;flex-shrink:0}
+.wordmark em{color:var(--accent);font-style:normal}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-icon{position:absolute;left:11px;color:var(--muted);pointer-events:none;display:flex}
+.search-wrap input{width:100%;height:38px;background:var(--surface2);border:1px solid var(--border2);border-radius:50px;padding:0 14px 0 36px;font-size:13px;font-family:'Syne',sans-serif;color:var(--text);outline:none;transition:border-color .18s,box-shadow .18s,background .18s}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-wrap input:focus{border-color:var(--accent);background:rgba(168,255,87,.05);box-shadow:0 0 0 3px var(--accent-glow)}
+
+/* tabs */
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:3px;margin-bottom:0}
+.tabs button{flex:1;background:none;border:0;color:var(--muted);padding:8px 6px;font-size:11.5px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-radius:50px;transition:color .15s,background .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.tabs button svg{width:12px;height:12px;flex-shrink:0}
+.tabs button.active{background:var(--accent);color:#0c0c0e}
+
+/* main */
+.main{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
+
+/* map */
+#mapContainer{position:absolute;inset:0;overflow:hidden;touch-action:none;background:var(--bg2);display:flex;align-items:center;justify-content:center}
+#map{will-change:transform;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none;height:100%;width:auto;object-fit:contain}
+
+/* camera */
+#video{width:100%;height:100%;object-fit:cover;display:none}
+#video.fullscreen{position:fixed;inset:0;width:100vw;height:100vh;z-index:10;object-fit:cover}
+
+/* scan overlay */
+#scanOverlay{display:none;position:fixed;inset:0;z-index:11;pointer-events:none;align-items:center;justify-content:center}
+#scanOverlay.on{display:flex}
+.sf{width:230px;height:150px;position:relative}
+.sf::before,.sf::after,.sf span::before,.sf span::after{content:'';position:absolute;width:22px;height:22px;border-color:var(--accent);border-style:solid}
+.sf::before{top:0;left:0;border-width:2px 0 0 2px;border-radius:3px 0 0 0}
+.sf::after{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 3px 0 0}
+.sf span::before{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 3px}
+.sf span::after{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 3px 0}
+.sl{position:absolute;left:4px;right:4px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 10px var(--accent);animation:scan 2s ease-in-out infinite}
+@keyframes scan{0%{top:6px;opacity:1}50%{top:calc(100% - 6px);opacity:.7}100%{top:6px;opacity:1}}
+
+/* torch */
+#torchBtn{position:fixed;bottom:210px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(12,12,14,.75);backdrop-filter:blur(14px);color:var(--muted);border:1px solid var(--border2);padding:9px 17px;border-radius:50px;font-size:11px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;display:none;cursor:pointer;align-items:center;gap:6px;transition:all .2s}
+#torchBtn.on{background:rgba(168,255,87,.15);border-color:var(--accent);color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
+
+/* item card */
+.item-card{position:relative;background:var(--bg2);border-top:1px solid var(--border);padding:14px 13px;flex-shrink:0;z-index:5}
+.item-card.hidden{display:none}
+.card-row{display:flex;gap:11px;align-items:flex-start}
+#itemPhotoDisplay{width:58px;height:58px;object-fit:cover;border-radius:9px;border:1px solid var(--border2);flex-shrink:0;cursor:zoom-in}
+.card-info{flex:1;min-width:0}
+.card-info h2{font-size:14.5px;font-weight:700;letter-spacing:-.01em;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-family:'Geist Mono',monospace;font-size:10px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:50px;color:var(--muted);letter-spacing:.02em}
+.chip b{color:var(--text);font-weight:500}
+.chip.hi{background:var(--accent-bg);border-color:rgba(168,255,87,.25);color:var(--accent)}
+
+/* form */
+#addForm{display:none;flex-direction:column;gap:9px;padding-top:13px;border-top:1px solid var(--border);margin-top:13px}
+.form-row{display:flex;gap:7px}
+.fg{display:flex;flex-direction:column;gap:4px;flex:1}
+.fg label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.fg input{height:38px;padding:0 11px;font-size:13px;font-family:'Syne',sans-serif;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
+.fg input::placeholder{color:var(--muted)}
+.fg input:focus{border-color:var(--accent);background:rgba(168,255,87,.04);box-shadow:0 0 0 3px var(--accent-glow)}
+.fg input[readonly]{font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface);cursor:default}
+.photo-zone{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px dashed var(--border2);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s}
+.photo-zone:hover{border-color:var(--accent);background:rgba(168,255,87,.03)}
+#photoPreview{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border2);display:none;flex-shrink:0}
+.photo-label{font-size:12px;color:var(--muted);line-height:1.5}
+.photo-label strong{color:var(--accent)}
+input[type="file"]{position:absolute;opacity:0;width:0;height:0}
+.btn-save{height:42px;border:0;border-radius:var(--r-sm);background:var(--accent);color:#0c0c0e;font-size:12.5px;font-family:'Syne',sans-serif;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 0 22px rgba(168,255,87,.18);transition:opacity .15s,transform .1s,box-shadow .15s}
+.btn-save:hover{box-shadow:0 0 32px rgba(168,255,87,.35)}
+.btn-save:active{transform:scale(.98);opacity:.85}
+
+/* list */
+#listPage{flex:1;overflow-y:auto;padding:9px 11px;display:none;flex-direction:column;gap:5px}
+#listPage::-webkit-scrollbar{width:3px}
+#listPage::-webkit-scrollbar-track{background:transparent}
+#listPage::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.list-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px;display:flex;align-items:center;gap:11px;cursor:pointer;position:relative;overflow:hidden;transition:background .12s,border-color .12s;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.list-item:hover{background:var(--surface2);border-color:var(--border2)}
+.list-thumb{width:46px;height:46px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex:0 0 46px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
+.list-body{flex:1;min-width:0}
+.list-body h3{font-size:13px;font-weight:600;letter-spacing:-.01em;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.press-overlay{position:absolute;inset:0;pointer-events:none;background:rgba(168,255,87,.08);opacity:0;transition:opacity 120ms linear;border-radius:inherit}
+.list-arrow{color:var(--muted);flex-shrink:0;opacity:.35}
+.load-more{height:38px;border-radius:var(--r-sm);border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:11px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .12s}
+.load-more:hover{background:var(--accent-bg)}
+.empty{text-align:center;color:var(--muted);padding:44px 20px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty svg{opacity:.18}
+
+/* modal */
+#photoModal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);justify-content:center;align-items:center;animation:fi .15s ease}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+#photoModal img{max-width:90%;max-height:90%;border-radius:var(--r);box-shadow:0 32px 80px rgba(0,0,0,.7);cursor:zoom-out}
+#detectBadge{display:none!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-<!-- Header -->
 <div class="header">
   <div class="header-top">
-    <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
-      </svg>
-    </div>
-    <form class="search-bar" id="searchForm" autocomplete="off">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="searchInput" placeholder="Search items, categories, barcodes…">
+    <span class="wordmark">ITEM<em>LOC</em></span>
+    <form class="search-wrap" id="searchForm" autocomplete="off">
+      <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+      <input type="text" id="searchInput" placeholder="Search items, barcodes, categories…">
     </form>
   </div>
   <div class="tabs">
     <button id="tab-add">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       List
     </button>
     <button id="tab-map" class="active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
       Map
     </button>
     <button id="tab-scan">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12"/><line x1="12" y1="12" x2="17" y2="12"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><rect x="7" y="9" width="10" height="6" rx="1"/></svg>
       Scan
     </button>
   </div>
 </div>
 
-<!-- Main content -->
 <div class="main">
-  <div id="mapContainer">
-    <img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Map/map_random%20(1).png" alt="Store map">
-  </div>
+  <div id="mapContainer"><img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Map/map_random%20(1).png" alt="Store map"></div>
   <video id="video" playsinline autoplay muted></video>
+  <div id="scanOverlay"><div class="sf"><span></span><div class="sl"></div></div></div>
   <div id="listPage"></div>
-  <button id="torchBtn">🔦 Flash</button>
-  <div id="detectBadge">0/3</div>
+  <button id="torchBtn">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Flash
+  </button>
+  <div id="detectBadge"></div>
 </div>
 
-<!-- Item card -->
 <div class="item-card" id="itemCard">
-  <div class="item-card-inner">
-    <img id="itemPhotoDisplay" src="" alt="Item photo" style="display:none">
-    <div class="item-info">
+  <div class="card-row">
+    <img id="itemPhotoDisplay" src="" alt="photo" style="display:none">
+    <div class="card-info">
       <h2 id="itemNameDisplay">No item selected</h2>
-      <div class="meta" id="itemMeta">
-        <div class="meta-chip" id="barcodeDisplay">Barcode: —</div>
-        <div class="meta-chip" id="shelfDisplay">Shelf: —</div>
-        <div class="meta-chip" id="categoryDisplay">Category: —</div>
-        <div class="meta-chip" id="dateDisplay" style="display:none"></div>
+      <div class="chips">
+        <span class="chip" id="barcodeDisplay">Barcode —</span>
+        <span class="chip" id="shelfDisplay">Shelf —</span>
+        <span class="chip hi" id="categoryDisplay">—</span>
       </div>
     </div>
   </div>
-
   <div id="addForm">
-    <div class="form-group">
-      <label>Barcode</label>
-      <input type="text" id="itemBarcode" placeholder="Barcode" readonly>
+    <div class="fg"><label>Barcode</label><input type="text" id="itemBarcode" readonly></div>
+    <div class="form-row">
+      <div class="fg"><label>Name</label><input type="text" id="itemName" placeholder="e.g. Heinz Ketchup"></div>
+      <div class="fg" style="max-width:130px"><label>Category</label><input list="categoryList" id="itemCategory" placeholder="e.g. Sauces"><datalist id="categoryList"></datalist></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Item Name</label>
-        <input type="text" id="itemName" placeholder="e.g. Heinz Ketchup">
-      </div>
-      <div class="form-group" style="max-width:140px">
-        <label>Category</label>
-        <input list="categoryList" id="itemCategory" placeholder="e.g. Sauces">
-        <datalist id="categoryList"></datalist>
-      </div>
+      <div class="fg"><label>Shelf №</label><input type="text" id="itemShelf" placeholder="A3"></div>
+      <div class="fg"><label>Section №</label><input type="text" id="itemSection" placeholder="12"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Shelf №</label>
-        <input type="text" id="itemShelf" placeholder="e.g. A3">
-      </div>
-      <div class="form-group">
-        <label>Section №</label>
-        <input type="text" id="itemSection" placeholder="e.g. 12">
-      </div>
-    </div>
-    <div class="photo-row">
-      <img id="photoPreview" src="" alt="preview">
-      <div class="photo-upload-label">
-        <strong id="photoUploadTrigger">📷 Choose photo</strong> or keep captured frame
-        <input type="file" id="itemPhotoInput" accept="image/*">
-        <input type="hidden" id="itemPhotoData">
-      </div>
+    <div class="photo-zone" id="photoZone">
+      <img id="photoPreview" src="" alt="">
+      <div class="photo-label"><strong>Tap to choose photo</strong><br>or keep captured frame</div>
+      <input type="file" id="itemPhotoInput" accept="image/*">
+      <input type="hidden" id="itemPhotoData">
     </div>
     <button class="btn-save" id="saveBtn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
       Save Item
     </button>
   </div>
 </div>
 
-<!-- Photo modal -->
-<div id="photoModal"><img src="" alt="Enlarged photo" id="modalPhoto"></div>
+<div id="photoModal"><img src="" alt="" id="modalPhoto"></div>
 
 <script>
-const SUPABASE_URL='https://lpcygniycyffeswzrnms.supabase.co/',SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ',SUPABASE_BUCKET='item_images';
-const{createClient}=supabase;const supabaseClient=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const SB_URL='https://lpcygniycyffeswzrnms.supabase.co/',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ',BUCKET='item_images';
+const{createClient}=supabase,db=createClient(SB_URL,SB_KEY);
+const $=id=>document.getElementById(id);
+const video=$('video'),mapImg=$('map'),mapCon=$('mapContainer'),scanOv=$('scanOverlay'),
+  itemCard=$('itemCard'),nameD=$('itemNameDisplay'),barD=$('barcodeDisplay'),
+  shelfD=$('shelfDisplay'),catD=$('categoryDisplay'),addForm=$('addForm'),
+  saveBtn=$('saveBtn'),nameI=$('itemName'),catI=$('itemCategory'),shelfI=$('itemShelf'),
+  secI=$('itemSection'),barI=$('itemBarcode'),listPage=$('listPage'),
+  searchForm=$('searchForm'),searchInput=$('searchInput'),catDL=$('categoryList'),
+  torchBtn=$('torchBtn'),photoPrev=$('photoPreview'),photoInput=$('itemPhotoInput'),
+  photoDataI=$('itemPhotoData'),photoDisp=$('itemPhotoDisplay'),photoZone=$('photoZone');
 
-const video=document.getElementById('video'),mapImg=document.getElementById('map'),mapContainer=document.getElementById('mapContainer'),itemCard=document.getElementById('itemCard'),itemNameDisplay=document.getElementById('itemNameDisplay'),barcodeDisplay=document.getElementById('barcodeDisplay'),dateDisplay=document.getElementById('dateDisplay'),shelfDisplay=document.getElementById('shelfDisplay'),categoryDisplay=document.getElementById('categoryDisplay'),addForm=document.getElementById('addForm'),saveBtn=document.getElementById('saveBtn'),itemNameInput=document.getElementById('itemName'),itemCategoryInput=document.getElementById('itemCategory'),itemShelfInput=document.getElementById('itemShelf'),itemSectionInput=document.getElementById('itemSection'),itemBarcodeInput=document.getElementById('itemBarcode'),listPage=document.getElementById('listPage'),searchForm=document.getElementById('searchForm'),searchInput=document.getElementById('searchInput'),categoryDatalist=document.getElementById('categoryList'),torchBtn=document.getElementById('torchBtn'),detectBadge=document.getElementById('detectBadge'),photoPreview=document.getElementById('photoPreview'),itemPhotoInput=document.getElementById('itemPhotoInput'),itemPhotoData=document.getElementById('itemPhotoData'),itemPhotoDisplay=document.getElementById('itemPhotoDisplay'),photoUploadTrigger=document.getElementById('photoUploadTrigger');
+let bDB={},cats=new Set(),stream=null,torchOn=false,CT=3,lastC=null,cnt=0,cool=false,PAGE=100;
 
-let barcodeDB={},currentCode=null,categoriesSet=new Set(),currentStream=null,torchOn=false,CONFIRMATION_THRESHOLD=3,lastDetectedCode=null,consecutiveDetectCount=0,acceptCooldown=false,PAGE_SIZE=100,lastRenderedItems=[];
-
-// Photo upload trigger
-photoUploadTrigger.addEventListener('click',()=>itemPhotoInput.click());
+photoZone.addEventListener('click',()=>photoInput.click());
 
 function switchTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
   tab.classList.add('active');
-  mapContainer.style.display='none';
-  video.style.display='none';
-  addForm.style.display='none';
-  listPage.style.display='none';
-  itemCard.classList.add('hidden');
-  torchBtn.style.display='none';
-  video.classList.remove('fullscreen');
+  mapCon.style.display='none';video.style.display='none';listPage.style.display='none';
+  addForm.style.display='none';itemCard.classList.add('hidden');
+  torchBtn.style.display='none';scanOv.classList.remove('on');video.classList.remove('fullscreen');
+  if(tab.id==='tab-map'){mapCon.style.display='flex';itemCard.classList.remove('hidden');stopCam()}
+  else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex'}
+  else{listPage.style.display='flex';stopCam();renderList(getAll(),0)}
+}
+$('tab-map').addEventListener('click',e=>switchTab(e.currentTarget));
+$('tab-scan').addEventListener('click',e=>switchTab(e.currentTarget));
+$('tab-add').addEventListener('click',e=>switchTab(e.currentTarget));
 
-  if(tab.id==='tab-map'){
-    mapContainer.style.display='flex';
-    itemCard.classList.remove('hidden');
-    stopCamera();
-  } else if(tab.id==='tab-scan'){
-    video.style.display='block';
-    video.classList.add('fullscreen');
-    itemCard.classList.add('hidden');
-    startCamera();
-    torchBtn.style.display='flex';
-  } else if(tab.id==='tab-add'){
-    listPage.style.display='flex';
-    stopCamera();
-    const all=getAllItemsArray();
-    renderList(all,0);
-  }
+function getAll(){return Object.entries(bDB).map(([b,it])=>({barcode:b,...it}))}
+
+function lev(a,b){if(a===b)return 0;if(!a.length)return b.length;if(!b.length)return a.length;const m=[];for(let i=0;i<=b.length;i++)m[i]=[i];for(let j=0;j<=a.length;j++)m[0][j]=j;for(let i=1;i<=b.length;i++)for(let j=1;j<=a.length;j++)m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:1+Math.min(m[i-1][j-1],m[i][j-1],m[i-1][j]);return m[b.length][a.length]}
+
+function updateDL(){catDL.innerHTML='';Array.from(cats).filter(Boolean).sort((a,b)=>a.localeCompare(b)).forEach(c=>{const o=document.createElement('option');o.value=c;catDL.appendChild(o)})}
+
+function esc(s){return s?String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])):''}
+
+function showCard(barcode,item){
+  const name=item?.name||'Unknown item',shelf=item?.shelf||'—',sec=item?.section||'—',cat=item?.category||'—';
+  if(item?.photo){photoDisp.src=item.photo;photoDisp.style.display='block'}else photoDisp.style.display='none';
+  nameD.textContent=name;
+  barD.innerHTML=`Barcode <b>${esc(barcode)}</b>`;
+  shelfD.innerHTML=`Shelf <b>${esc(shelf)}·${esc(sec)}</b>`;
+  catD.innerHTML=`<b>${esc(cat)}</b>`;
+  catD.className='chip hi';
 }
 
-document.getElementById('tab-map').addEventListener('click',e=>switchTab(e.currentTarget));
-document.getElementById('tab-scan').addEventListener('click',e=>switchTab(e.currentTarget));
-document.getElementById('tab-add').addEventListener('click',e=>switchTab(e.currentTarget));
-
-function getAllItemsArray(){
-  return Object.entries(barcodeDB).map(([barcode,item])=>({barcode,name:item.name||'',category:item.category||'',shelf:item.shelf||'',section:item.section||'',photo:item.photo||item.photoPath||''}));
-}
-
-function levenshtein(a,b){if(a===b)return 0;if(!a.length)return b.length;if(!b.length)return a.length;const m=[];for(let i=0;i<=b.length;i++)m[i]=[i];for(let j=0;j<=a.length;j++)m[0][j]=j;for(let i=1;i<=b.length;i++)for(let j=1;j<=a.length;j++)m[i][j]=b.charAt(i-1)===a.charAt(j-1)?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);return m[b.length][a.length]}
-
-function updateCategoryDatalist(){
-  categoryDatalist.innerHTML='';
-  Array.from(categoriesSet).filter(c=>c&&String(c).trim()).sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'})).forEach(c=>{const o=document.createElement('option');o.value=c;categoryDatalist.appendChild(o)});
-}
-
-function showItemOnCard(barcode,item){
-  const name=item&&item.name?item.name:'Unknown item';
-  const shelf=item&&item.shelf?item.shelf:'—';
-  const section=item&&item.section?item.section:'—';
-  const category=item&&item.category?item.category:'—';
-
-  if(item&&(item.photo||item.photoPath)){
-    itemPhotoDisplay.src=item.photo||item.photoPath;
-    itemPhotoDisplay.style.display='block';
-  } else {
-    itemPhotoDisplay.style.display='none';
-  }
-
-  itemNameDisplay.textContent=name;
-  barcodeDisplay.innerHTML=`Barcode: <span>${escapeHtml(barcode)}</span>`;
-  shelfDisplay.innerHTML=`Shelf: <span>${escapeHtml(shelf)} / ${escapeHtml(section)}</span>`;
-  categoryDisplay.innerHTML=`<span>${escapeHtml(category)}</span>`;
-  dateDisplay.style.display='none';
-}
-
-function openItemForEdit(barcode){
-  const item=barcodeDB[barcode];
+function openEdit(barcode){
+  const item=bDB[barcode];
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-map').classList.add('active');
-  mapContainer.style.display='flex';
-  video.style.display='none';
-  listPage.style.display='none';
-  itemCard.classList.remove('hidden');
-  addForm.style.display='flex';
-  torchBtn.style.display='none';
-
-  itemBarcodeInput.value=barcode||'';
-  itemNameInput.value=item&&item.name?item.name:'';
-  itemCategoryInput.value=item&&item.category?item.category:'';
-  itemShelfInput.value=item&&item.shelf?item.shelf:'';
-  itemSectionInput.value=item&&item.section?item.section:'';
-
-  showItemOnCard(barcode, item||{});
-
-  if(item&&(item.photo||item.photoPath)){
-    const src=item.photo||item.photoPath;
-    photoPreview.src=src;
-    photoPreview.style.display='block';
-    itemPhotoData.value='';
-  } else {
-    photoPreview.style.display='none';
-    itemPhotoData.value='';
-    photoPreview.src='';
-  }
-
-  saveBtn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes`;
+  $('tab-map').classList.add('active');
+  mapCon.style.display='flex';video.style.display='none';listPage.style.display='none';
+  itemCard.classList.remove('hidden');addForm.style.display='flex';
+  torchBtn.style.display='none';scanOv.classList.remove('on');
+  barI.value=barcode||'';nameI.value=item?.name||'';catI.value=item?.category||'';shelfI.value=item?.shelf||'';secI.value=item?.section||'';
+  showCard(barcode,item||{});
+  if(item?.photo){photoPrev.src=item.photo;photoPrev.style.display='block';photoDataI.value=''}
+  else{photoPrev.style.display='none';photoPrev.src='';photoDataI.value=''}
+  saveBtn.querySelector('span').textContent='Save Changes';
 }
 
-function renderList(items, startIndex=0){
-  lastRenderedItems=items;
-  if(startIndex===0) listPage.innerHTML='';
-  const end=Math.min(startIndex+PAGE_SIZE,items.length);
-
-  if(items.length===0){
-    listPage.innerHTML=`<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>No items found.</div>`;
-    return;
-  }
-
-  for(let i=startIndex;i<end;i++){
-    const it=items[i];
-    const div=document.createElement('div');
-    div.className='list-item';
-    div.setAttribute('data-barcode',it.barcode);
-
-    const thumbHTML=it.photo
-      ?`<img class="list-thumb" src="${escapeHtml(it.photo)}" alt="">`
-      :`<div class="list-thumb"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
-
-    div.innerHTML=`
-      ${thumbHTML}
-      <div class="list-item-body">
-        <h3>${escapeHtml(it.name||'Unnamed item')}</h3>
-        <div class="chips">
-          ${it.category?`<span class="chip category">${escapeHtml(it.category)}</span>`:''}
-          <span class="chip">${escapeHtml(it.barcode)}</span>
-          ${it.shelf?`<span class="chip">Shelf ${escapeHtml(it.shelf)}/${escapeHtml(it.section||'?')}</span>`:''}
-        </div>
-      </div>
-      <svg class="list-item-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    `;
-
-    const overlay=document.createElement('div');
-    overlay.className='press-overlay';
-    div.appendChild(overlay);
-
-    div.addEventListener('click',()=>{
-      const barcode=div.dataset.barcode;
-      const item=barcodeDB[barcode];
-      if(item){
-        showItemOnCard(barcode, item);
-        switchTab(document.getElementById('tab-map'));
-      }
-    });
-
-    // Long press to edit
-    (function(localDiv, barcode, overlayEl){
-      let longPressTimer=null;const LP=1250;let pressingStart=null;let raf=null;
-      function update(){if(!pressingStart)return;const e=Date.now()-pressingStart;const c=Math.min(1,e/LP);overlayEl.style.opacity=String(0.1+c*.9);if(c<1)raf=requestAnimationFrame(update)}
-      function startLP(){clearLP();pressingStart=Date.now();overlayEl.style.transition='opacity 60ms linear';raf=requestAnimationFrame(update);longPressTimer=setTimeout(()=>{longPressTimer=null;pressingStart=null;cancelAnimationFrame(raf);overlayEl.style.opacity='0';openItemForEdit(barcode)},LP)}
-      function clearLP(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null}if(raf){cancelAnimationFrame(raf);raf=null}pressingStart=null;overlayEl.style.transition='opacity 200ms linear';overlayEl.style.opacity='0'}
-      localDiv.addEventListener('mousedown',e=>{if(e.button!==0)return;startLP()});
-      localDiv.addEventListener('mouseup',clearLP);
-      localDiv.addEventListener('mouseleave',clearLP);
-      localDiv.addEventListener('touchstart',e=>{if(e.touches&&e.touches.length>1)return;startLP()},{passive:true});
-      localDiv.addEventListener('touchend',clearLP);
-      localDiv.addEventListener('touchcancel',clearLP);
-      localDiv.addEventListener('contextmenu',e=>e.preventDefault());
-      localDiv.addEventListener('selectstart',e=>e.preventDefault());
-    })(div,it.barcode,overlay);
-
+function renderList(items,start=0){
+  if(start===0)listPage.innerHTML='';
+  const end=Math.min(start+PAGE,items.length);
+  if(!items.length){listPage.innerHTML=`<div class="empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>No items found.</div>`;return}
+  for(let i=start;i<end;i++){
+    const it=items[i],div=document.createElement('div');
+    div.className='list-item';div.dataset.barcode=it.barcode;
+    const thumb=it.photo?`<img class="list-thumb" src="${esc(it.photo)}" alt="">`:`<div class="list-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+    div.innerHTML=`${thumb}<div class="list-body"><h3>${esc(it.name||'Unnamed')}</h3><div class="chips">${it.category?`<span class="chip hi">${esc(it.category)}</span>`:''}<span class="chip">${esc(it.barcode)}</span>${it.shelf?`<span class="chip">${esc(it.shelf)}·${esc(it.section||'?')}</span>`:''}</div></div><svg class="list-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+    const ov=document.createElement('div');ov.className='press-overlay';div.appendChild(ov);
+    div.addEventListener('click',()=>{const item=bDB[div.dataset.barcode];if(item){showCard(div.dataset.barcode,item);switchTab($('tab-map'))}});
+    (function(el,bc,overlay){
+      let timer=null,t0=null,raf=null;const LP=1250;
+      function upd(){if(!t0)return;const p=Math.min(1,(Date.now()-t0)/LP);overlay.style.opacity=.1+p*.9;if(p<1)raf=requestAnimationFrame(upd)}
+      function go(){clr();t0=Date.now();overlay.style.transition='opacity 60ms';raf=requestAnimationFrame(upd);timer=setTimeout(()=>{timer=null;t0=null;cancelAnimationFrame(raf);overlay.style.opacity=0;openEdit(bc)},LP)}
+      function clr(){if(timer)clearTimeout(timer);if(raf)cancelAnimationFrame(raf);timer=raf=t0=null;overlay.style.transition='opacity 200ms';overlay.style.opacity=0}
+      el.addEventListener('mousedown',e=>{if(e.button)return;go()});
+      el.addEventListener('mouseup',clr);el.addEventListener('mouseleave',clr);
+      el.addEventListener('touchstart',e=>{if(e.touches.length>1)return;go()},{passive:true});
+      el.addEventListener('touchend',clr);el.addEventListener('touchcancel',clr);
+      el.addEventListener('contextmenu',e=>e.preventDefault());
+      el.addEventListener('selectstart',e=>e.preventDefault());
+    })(div,it.barcode,ov);
     listPage.appendChild(div);
   }
-
-  if(end<items.length){
-    const btn=document.createElement('button');
-    btn.className='load-more';
-    btn.textContent=`Load more (${items.length-end} remaining)`;
-    btn.addEventListener('click',()=>{btn.remove();renderList(items,end)});
-    listPage.appendChild(btn);
-  }
+  if(end<items.length){const btn=document.createElement('button');btn.className='load-more';btn.textContent=`Load more · ${items.length-end} remaining`;btn.addEventListener('click',()=>{btn.remove();renderList(items,end)});listPage.appendChild(btn)}
 }
 
-function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[s]))}
-
-function performSearch(){
-  const q=searchInput.value.trim().toLowerCase();
-  const all=getAllItemsArray();
+function doSearch(){
+  const q=searchInput.value.trim().toLowerCase(),all=getAll();
   if(!q){renderList(all,0);return}
-  const results=[];
+  const res=[];
   for(const it of all){
-    const name=(it.name||'').toLowerCase(),barcode=(it.barcode||'').toLowerCase(),category=(it.category||'').toLowerCase();
-    let score=10000;
-    if(name===q)score=-1000;else if(barcode===q)score=-900;else if(category===q)score=-950;
-    else if(name.startsWith(q))score=-100+name.indexOf(q);else if(category.startsWith(q))score=-120+category.indexOf(q);
-    else if(name.includes(q))score=10+name.indexOf(q);else if(category.includes(q))score=5+category.indexOf(q);
-    else if(barcode.includes(q))score=20+barcode.indexOf(q);
-    else{const lev=levenshtein(q,name);if(name&&lev<=Math.max(2,Math.floor(name.length*.25)))score=50+lev;}
-    if(score<10000)results.push({it,score});
+    const n=(it.name||'').toLowerCase(),b=(it.barcode||'').toLowerCase(),c=(it.category||'').toLowerCase();
+    let s=10000;
+    if(n===q)s=-1000;else if(b===q)s=-900;else if(c===q)s=-950;
+    else if(n.startsWith(q))s=-100;else if(c.startsWith(q))s=-120;
+    else if(n.includes(q))s=10+n.indexOf(q);else if(c.includes(q))s=5+c.indexOf(q);
+    else if(b.includes(q))s=20;
+    else{const l=lev(q,n);if(n&&l<=Math.max(2,Math.floor(n.length*.25)))s=50+l}
+    if(s<10000)res.push({it,s});
   }
-  results.sort((a,b)=>a.score-b.score);
-  renderList(results.map(r=>r.it),0);
+  res.sort((a,b)=>a.s-b.s);renderList(res.map(r=>r.it),0);
 }
 
-searchForm.addEventListener('submit',e=>{e.preventDefault();switchTab(document.getElementById('tab-add'));performSearch()});
-let debounceTimer=null;
-searchInput.addEventListener('input',()=>{
-  switchTab(document.getElementById('tab-add'));
-  clearTimeout(debounceTimer);
-  debounceTimer=setTimeout(()=>{performSearch();debounceTimer=null},150);
-});
+searchForm.addEventListener('submit',e=>{e.preventDefault();switchTab($('tab-add'));doSearch()});
+let dt=null;searchInput.addEventListener('input',()=>{switchTab($('tab-add'));clearTimeout(dt);dt=setTimeout(doSearch,150)});
 
-function dataURLtoBlob(dataURL){const p=dataURL.split(',');const mime=p[0].match(/:(.*?);/)[1];const bin=atob(p[1]);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return new Blob([u8],{type:mime})}
+function d2b(d){const p=d.split(','),mime=p[0].match(/:(.*?);/)[1],bin=atob(p[1]),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return new Blob([u8],{type:mime})}
 
-async function uploadImageToSupabase(barcode,dataURL){if(!dataURL)return null;const blob=dataURLtoBlob(dataURL);const filename=`${barcode}/${Date.now()}.jpg`;const{error}=await supabaseClient.storage.from(SUPABASE_BUCKET).upload(filename,blob,{cacheControl:'3600',upsert:true});if(error)throw error;return supabaseClient.storage.from(SUPABASE_BUCKET).getPublicUrl(filename).data.publicUrl}
+async function uploadImg(barcode,dataURL){if(!dataURL)return null;const blob=d2b(dataURL),fn=`${barcode}/${Date.now()}.jpg`;const{error}=await db.storage.from(BUCKET).upload(fn,blob,{cacheControl:'3600',upsert:true});if(error)throw error;return db.storage.from(BUCKET).getPublicUrl(fn).data.publicUrl}
 
-async function saveItemToSupabase(barcode,item){const{error}=await supabaseClient.from('items').upsert({barcode,name:item.name||null,category:item.category||null,shelf:item.shelf||null,section:item.section||null,image_url:item.image_url||null},{onConflict:'barcode'});if(error)throw error}
+async function saveItem(barcode,item){const{error}=await db.from('items').upsert({barcode,name:item.name,category:item.category,shelf:item.shelf,section:item.section,image_url:item.image_url||null},{onConflict:'barcode'});if(error)throw error}
 
-async function loadDatabaseFromSupabase(){
-  const{data,error}=await supabaseClient.from('items').select('*').order('created_at',{ascending:false});
-  if(error)throw error;
-  barcodeDB={};categoriesSet=new Set();
-  for(const row of data){
-    barcodeDB[row.barcode]={name:row.name||'',category:row.category||'',shelf:row.shelf||'',section:row.section||'',photo:row.image_url||''};
-    if(row.category)categoriesSet.add(row.category);
-  }
-  updateCategoryDatalist();
-}
+async function loadDB(){const{data,error}=await db.from('items').select('*').order('created_at',{ascending:false});if(error)throw error;bDB={};cats=new Set();for(const r of data){bDB[r.barcode]={name:r.name||'',category:r.category||'',shelf:r.shelf||'',section:r.section||'',photo:r.image_url||''};if(r.category)cats.add(r.category)}updateDL()}
 
-function captureFrameDataURL(){try{const c=document.createElement('canvas');c.width=video.videoWidth||640;c.height=video.videoHeight||480;c.getContext('2d').drawImage(video,0,0,c.width,c.height);return c.toDataURL('image/png')}catch(e){return null}}
+function captureFrame(){try{const c=document.createElement('canvas');c.width=video.videoWidth||640;c.height=video.videoHeight||480;c.getContext('2d').drawImage(video,0,0,c.width,c.height);return c.toDataURL('image/png')}catch(e){return null}}
 
-itemPhotoInput.addEventListener('change',e=>{
-  const f=e.target.files&&e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{itemPhotoData.value=ev.target.result;photoPreview.src=ev.target.result;photoPreview.style.display='block'};
-  r.readAsDataURL(f);
-});
+photoInput.addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{photoDataI.value=ev.target.result;photoPrev.src=ev.target.result;photoPrev.style.display='block'};r.readAsDataURL(f)});
 
 function startScanner(){
-  lastDetectedCode=null;consecutiveDetectCount=0;acceptCooldown=false;
+  lastC=null;cnt=0;cool=false;
   Quagga.init({inputStream:{name:'Live',type:'LiveStream',target:video},decoder:{readers:['ean_reader','upc_reader','code_128_reader']},locate:true},err=>{if(err){console.error(err);return}Quagga.start()});
-  Quagga.onDetected(result=>{
-    if(!result||!result.codeResult)return;
-    const code=result.codeResult.code;
-    if(acceptCooldown)return;
-    if(lastDetectedCode===code)consecutiveDetectCount++;else{lastDetectedCode=code;consecutiveDetectCount=1}
-    if(consecutiveDetectCount>=CONFIRMATION_THRESHOLD){
-      acceptCooldown=true;lastDetectedCode=null;consecutiveDetectCount=0;currentCode=code;
-      const item=barcodeDB[code];
-      if(item){
-        showItemOnCard(code, item);
-        switchTab(document.getElementById('tab-map'));
-      } else {
-        itemNameDisplay.textContent='❌ Not in database';
-        barcodeDisplay.innerHTML=`Barcode: <span>${escapeHtml(code)}</span>`;
-        shelfDisplay.innerHTML='Shelf: —';categoryDisplay.textContent='—';
-        itemBarcodeInput.value=code;
-        const dataURL=captureFrameDataURL();
-        if(dataURL){itemPhotoData.value=dataURL;photoPreview.src=dataURL;photoPreview.style.display='block';}
-        else{itemPhotoData.value='';photoPreview.style.display='none';}
-        saveBtn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Item`;
-        video.style.display='none';addForm.style.display='flex';itemCard.classList.remove('hidden');
-        stopCamera();
+  Quagga.onDetected(res=>{
+    if(!res?.codeResult||cool)return;
+    const code=res.codeResult.code;
+    if(lastC===code)cnt++;else{lastC=code;cnt=1}
+    if(cnt>=CT){
+      cool=true;lastC=null;cnt=0;
+      const item=bDB[code];
+      if(item){showCard(code,item);switchTab($('tab-map'))}
+      else{
+        nameD.textContent='Not in database';barD.innerHTML=`Barcode <b>${esc(code)}</b>`;shelfD.innerHTML='Shelf <b>—</b>';catD.textContent='—';catD.className='chip';
+        barI.value=code;
+        const frame=captureFrame();if(frame){photoDataI.value=frame;photoPrev.src=frame;photoPrev.style.display='block'}else{photoDataI.value='';photoPrev.style.display='none'}
+        saveBtn.querySelector('span').textContent='Save Item';
+        video.style.display='none';scanOv.classList.remove('on');addForm.style.display='flex';itemCard.classList.remove('hidden');stopCam();
       }
-      setTimeout(()=>{acceptCooldown=false},700);
+      setTimeout(()=>{cool=false},700);
     }
   });
 }
 
-function stopCamera(){
-  acceptCooldown=false;lastDetectedCode=null;consecutiveDetectCount=0;
-  if(currentStream){currentStream.getTracks().forEach(t=>t.stop());currentStream=null}
-  if(video.srcObject){try{video.srcObject.getTracks().forEach(t=>t.stop())}catch(e){}video.srcObject=null}
-  if(window.Quagga){try{Quagga.stop()}catch(e){}}
-}
+function stopCam(){cool=false;lastC=null;cnt=0;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}if(video.srcObject){try{video.srcObject.getTracks().forEach(t=>t.stop())}catch(e){}video.srcObject=null}if(window.Quagga){try{Quagga.stop()}catch(e){}}}
 
-async function startCamera(){
-  acceptCooldown=false;lastDetectedCode=null;consecutiveDetectCount=0;
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    currentStream=stream;video.srcObject=stream;video.play().catch(()=>{});torchOn=false;
-    torchBtn.classList.remove('on');
-    startScanner();
-  }catch(err){alert('Camera error: '+err.message)}
-}
+async function startCam(){cool=false;lastC=null;cnt=0;try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});stream=s;video.srcObject=s;video.play().catch(()=>{});torchOn=false;torchBtn.classList.remove('on');startScanner()}catch(err){alert('Camera error: '+err.message)}}
 
-async function toggleTorch(){
-  if(!currentStream){alert('Camera not started');return}
-  const track=currentStream.getVideoTracks()[0];
-  if(!track)return;
-  try{await track.applyConstraints({advanced:[{torch:!torchOn}]});torchOn=!torchOn;torchBtn.classList.toggle('on',torchOn)}
-  catch(err){alert('Torch not supported on this device.')}
-}
-
+async function toggleTorch(){if(!stream)return;const t=stream.getVideoTracks()[0];if(!t)return;try{await t.applyConstraints({advanced:[{torch:!torchOn}]});torchOn=!torchOn;torchBtn.classList.toggle('on',torchOn)}catch(e){alert('Torch not supported.')}}
 torchBtn.addEventListener('click',toggleTorch);
 
-async function resizeDataURL(dataURL,maxWidth=1024,quality=0.75){
-  return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,maxWidth/img.width);const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);try{res(c.toDataURL('image/jpeg',quality))}catch(e){rej(e)}};img.onerror=()=>rej(new Error('Image load failed'));img.crossOrigin='anonymous';img.src=dataURL});
-}
+async function resizeDURL(d,mw=1024,q=.75){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,mw/img.width),w=img.width*sc,h=img.height*sc,c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);try{res(c.toDataURL('image/jpeg',q))}catch(e){rej(e)}};img.onerror=()=>rej(new Error('fail'));img.crossOrigin='anonymous';img.src=d})}
 
 saveBtn.addEventListener('click',async()=>{
   try{
-    const name=itemNameInput.value.trim(),category=itemCategoryInput.value.trim(),shelf=itemShelfInput.value.trim(),section=itemSectionInput.value.trim(),barcode=itemBarcodeInput.value.trim();
-    if(!name||!shelf||!section||!barcode||!category){alert('Please fill in all fields including category.');return}
-    let finalPhotoUrl=null;
-    const inlinePhoto=itemPhotoData.value||null;
-    if(inlinePhoto){
-      let uploadData;
-      try{uploadData=await resizeDataURL(inlinePhoto)}catch(e){uploadData=inlinePhoto}
-      finalPhotoUrl=await uploadImageToSupabase(barcode,uploadData);
-    } else if(barcodeDB[barcode]&&barcodeDB[barcode].photo){
-      finalPhotoUrl=barcodeDB[barcode].photo;
-    }
-    await saveItemToSupabase(barcode,{name,category,shelf,section,image_url:finalPhotoUrl});
-    if(category)categoriesSet.add(category);
-    updateCategoryDatalist();
-    await loadDatabaseFromSupabase();
-    const saved=barcodeDB[barcode];
-    showItemOnCard(barcode, saved||{name,shelf,section,category});
-    addForm.style.display='none';
-    switchTab(document.getElementById('tab-map'));
-    alert('✅ Item saved successfully.');
-  }catch(err){console.error('Save failed:',err);alert('Save failed: '+(err.message||err))}
+    const name=nameI.value.trim(),cat=catI.value.trim(),shelf=shelfI.value.trim(),sec=secI.value.trim(),barcode=barI.value.trim();
+    if(!name||!cat||!shelf||!sec||!barcode){alert('Please fill in all fields.');return}
+    let photoUrl=null;
+    const raw=photoDataI.value||null;
+    if(raw){let d;try{d=await resizeDURL(raw)}catch(e){d=raw}photoUrl=await uploadImg(barcode,d)}
+    else if(bDB[barcode]?.photo)photoUrl=bDB[barcode].photo;
+    await saveItem(barcode,{name,category:cat,shelf,section:sec,image_url:photoUrl});
+    cats.add(cat);updateDL();await loadDB();
+    showCard(barcode,bDB[barcode]||{name,shelf,section:sec,category:cat});
+    addForm.style.display='none';switchTab($('tab-map'));
+  }catch(err){alert('Save failed: '+(err.message||err))}
 });
 
+// Fix saveBtn span reference
+saveBtn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>Save Item</span>`;
+
 // Photo modal
-const photoModal=document.getElementById('photoModal'),modalPhoto=document.getElementById('modalPhoto');
-itemPhotoDisplay.addEventListener('click',()=>{if(itemPhotoDisplay.src){modalPhoto.src=itemPhotoDisplay.src;photoModal.style.display='flex'}});
+const photoModal=$('photoModal'),modalPhoto=$('modalPhoto');
+photoDisp.addEventListener('click',()=>{if(photoDisp.src){modalPhoto.src=photoDisp.src;photoModal.style.display='flex'}});
 photoModal.addEventListener('click',()=>{photoModal.style.display='none';modalPhoto.src=''});
 
 // Map pan/zoom
-let scale=1,minScale=0.1,maxScale=6,panX=0,panY=0,isPanning=false,panStartX=0,panStartY=0,lastPanX=0,lastPanY=0,lastTouchDist=null,lastTouchCenter=null;
-function applyTransform(){mapImg.style.transform=`translate(${panX}px,${panY}px) scale(${scale})`}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-
-mapContainer.addEventListener('wheel',e=>{if(mapContainer.style.display==='none')return;e.preventDefault();const rect=mapImg.getBoundingClientRect();const mx=e.clientX-rect.left,my=e.clientY-rect.top;const zf=Math.exp(-e.deltaY*.0015);const ns=clamp(scale*zf,minScale,maxScale);const sr=ns/scale;panX=(panX-mx)*sr+mx;panY=(panY-my)*sr+my;scale=ns;applyTransform()},{passive:false});
-mapContainer.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;isPanning=true;panStartX=e.clientX;panStartY=e.clientY;lastPanX=panX;lastPanY=panY;mapContainer.setPointerCapture(e.pointerId)});
-mapContainer.addEventListener('pointermove',e=>{if(!isPanning)return;panX=lastPanX+(e.clientX-panStartX);panY=lastPanY+(e.clientY-panStartY);applyTransform()});
-mapContainer.addEventListener('pointerup',e=>{isPanning=false;try{mapContainer.releasePointerCapture(e.pointerId)}catch(_){}});
-mapContainer.addEventListener('pointercancel',e=>{isPanning=false;try{mapContainer.releasePointerCapture(e.pointerId)}catch(_){}});
-mapContainer.addEventListener('touchstart',e=>{if(!e.touches)return;if(e.touches.length===1){lastTouchDist=null;isPanning=true;panStartX=e.touches[0].clientX;panStartY=e.touches[0].clientY;lastPanX=panX;lastPanY=panY}else if(e.touches.length===2){isPanning=false;const t0=e.touches[0],t1=e.touches[1];lastTouchDist=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);lastTouchCenter={x:(t0.clientX+t1.clientX)/2,y:(t0.clientY+t1.clientY)/2}}},{passive:false});
-mapContainer.addEventListener('touchmove',e=>{if(!e.touches)return;if(e.touches.length===1&&isPanning){e.preventDefault();panX=lastPanX+(e.touches[0].clientX-panStartX);panY=lastPanY+(e.touches[0].clientY-panStartY);applyTransform()}else if(e.touches.length===2){e.preventDefault();const t0=e.touches[0],t1=e.touches[1];const cd=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);if(lastTouchDist){const ns=clamp(scale*(cd/lastTouchDist),minScale,maxScale);const rect=mapImg.getBoundingClientRect();const cx=(t0.clientX+t1.clientX)/2-rect.left,cy=(t0.clientY+t1.clientY)/2-rect.top;const sr=ns/scale;panX=(panX-cx)*sr+cx;panY=(panY-cy)*sr+cy;scale=ns;applyTransform()}lastTouchDist=cd}},{passive:false});
-mapContainer.addEventListener('touchend',e=>{if(!e.touches||e.touches.length===0){isPanning=false;lastTouchDist=null}else if(e.touches.length===1){isPanning=true;panStartX=e.touches[0].clientX;panStartY=e.touches[0].clientY;lastPanX=panX;lastPanY=panY;lastTouchDist=null}},{passive:false});
+let sc=1,mn=.1,mx=6,px=0,py=0,pan=false,psx=0,psy=0,lpx=0,lpy=0,ltd=null;
+function at(){mapImg.style.transform=`translate(${px}px,${py}px) scale(${sc})`}
+function cl(v,a,b){return Math.max(a,Math.min(b,v))}
+mapCon.addEventListener('wheel',e=>{e.preventDefault();const r=mapImg.getBoundingClientRect(),zf=Math.exp(-e.deltaY*.0015),ns=cl(sc*zf,mn,mx),sr=ns/sc;px=(px-(e.clientX-r.left))*sr+(e.clientX-r.left);py=(py-(e.clientY-r.top))*sr+(e.clientY-r.top);sc=ns;at()},{passive:false});
+mapCon.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;pan=true;psx=e.clientX;psy=e.clientY;lpx=px;lpy=py;mapCon.setPointerCapture(e.pointerId)});
+mapCon.addEventListener('pointermove',e=>{if(!pan)return;px=lpx+(e.clientX-psx);py=lpy+(e.clientY-psy);at()});
+mapCon.addEventListener('pointerup',e=>{pan=false;try{mapCon.releasePointerCapture(e.pointerId)}catch(_){}});
+mapCon.addEventListener('pointercancel',e=>{pan=false;try{mapCon.releasePointerCapture(e.pointerId)}catch(_){}});
+mapCon.addEventListener('touchstart',e=>{if(e.touches.length===1){ltd=null;pan=true;psx=e.touches[0].clientX;psy=e.touches[0].clientY;lpx=px;lpy=py}else if(e.touches.length===2){pan=false;ltd=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY)}},{passive:false});
+mapCon.addEventListener('touchmove',e=>{if(e.touches.length===1&&pan){e.preventDefault();px=lpx+(e.touches[0].clientX-psx);py=lpy+(e.touches[0].clientY-psy);at()}else if(e.touches.length===2){e.preventDefault();const cd=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);if(ltd){const ns=cl(sc*(cd/ltd),mn,mx),r=mapImg.getBoundingClientRect(),cx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,cy=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top,sr=ns/sc;px=(px-cx)*sr+cx;py=(py-cy)*sr+cy;sc=ns;at()}ltd=cd}},{passive:false});
+mapCon.addEventListener('touchend',e=>{if(!e.touches.length){pan=false;ltd=null}else if(e.touches.length===1){pan=true;psx=e.touches[0].clientX;psy=e.touches[0].clientY;lpx=px;lpy=py;ltd=null}},{passive:false});
 
 // Init
-mapContainer.style.display='flex';
-mapImg.style.cssText='height:100%;width:auto;object-fit:contain;transform:none;display:block;';
-mapImg.addEventListener('load',()=>{mapImg.style.cssText='height:100%;width:auto;object-fit:contain;transform:none;display:block;'});
-
-window.addEventListener('load',async()=>{
-  try{await loadDatabaseFromSupabase()}catch(e){console.warn('Failed to load items',e)}
-});
+mapCon.style.display='flex';
+const MS='height:100%;width:auto;object-fit:contain;transform:none;display:block;';
+mapImg.setAttribute('style',MS);
+mapImg.addEventListener('load',()=>mapImg.setAttribute('style',MS));
+window.addEventListener('load',async()=>{try{await loadDB()}catch(e){console.warn(e)}});
 </script>
 </body>
 </html>
