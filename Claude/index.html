@@ -186,13 +186,23 @@ input[type="file"]{position:absolute;opacity:0;width:0;height:0}
 <div class="main">
   <div id="mapContainer"><img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Map/map_random%20(1).png" alt="Store map"></div>
   <video id="video" playsinline autoplay muted></video>
+
+
+
+  
+  
   <div id="scanOverlay">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      
+    <button id="scanBackBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Tilbage
     </button>
     <div class="sf"><span></span><div class="sf-inner-border"></div><div class="sl"></div></div>
     <div id="scanHint">Hold stregkoden inden for rammen</div>
   </div>
+
+  
   <div id="listPage"></div>
   <button id="torchBtn">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -266,7 +276,7 @@ function switchTab(tab){
   torchBtn.style.display='none';scanOv.classList.remove('on');video.classList.remove('fullscreen');
   if (scanBackBtn) scanBackBtn.style.display = 'none';
   if(tab.id==='tab-map'){mapCon.style.display='flex';itemCard.classList.remove('hidden');stopCam()}
-  else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';scanBackBtn.style.display='flex'}
+  else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';if (scanBackBtn) scanBackBtn.style.display = 'flex';
   else{listPage.style.display='flex';stopCam();renderList(getAll(),0)}
 }
 $('tab-map').addEventListener('click',e=>switchTab(e.currentTarget));
