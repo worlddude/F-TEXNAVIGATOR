@@ -269,7 +269,6 @@ function switchTab(tab){
   else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';scanBackBtn.style.display='flex'}
   else{listPage.style.display='flex';stopCam();renderList(getAll(),0)}
 }
-scanBackBtn.addEventListener('click',()=>switchTab($('tab-map')));
 $('tab-map').addEventListener('click',e=>switchTab(e.currentTarget));
 $('tab-scan').addEventListener('click',e=>switchTab(e.currentTarget));
 $('tab-add').addEventListener('click',e=>switchTab(e.currentTarget));
