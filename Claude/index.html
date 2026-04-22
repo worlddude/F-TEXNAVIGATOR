@@ -276,7 +276,7 @@ function switchTab(tab){
   torchBtn.style.display='none';scanOv.classList.remove('on');video.classList.remove('fullscreen');
   if (scanBackBtn) scanBackBtn.style.display = 'none';
   if(tab.id==='tab-map'){mapCon.style.display='flex';itemCard.classList.remove('hidden');stopCam()}
-  else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';if (scanBackBtn) scanBackBtn.style.display = 'flex';
+  else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';if(scanBackBtn)scanBackBtn.style.display='flex';}
   else{listPage.style.display='flex';stopCam();renderList(getAll(),0)}
 }
 $('tab-map').addEventListener('click',e=>switchTab(e.currentTarget));
