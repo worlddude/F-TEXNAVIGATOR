@@ -264,7 +264,7 @@ function switchTab(tab){
   mapCon.style.display='none';video.style.display='none';listPage.style.display='none';
   addForm.style.display='none';itemCard.classList.add('hidden');
   torchBtn.style.display='none';scanOv.classList.remove('on');video.classList.remove('fullscreen');
-  scanBackBtn.style.display='none';
+  if (scanBackBtn) scanBackBtn.style.display = 'none';
   if(tab.id==='tab-map'){mapCon.style.display='flex';itemCard.classList.remove('hidden');stopCam()}
   else if(tab.id==='tab-scan'){video.style.display='block';video.classList.add('fullscreen');scanOv.classList.add('on');startCam();torchBtn.style.display='flex';scanBackBtn.style.display='flex'}
   else{listPage.style.display='flex';stopCam();renderList(getAll(),0)}
