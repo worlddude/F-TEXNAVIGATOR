@@ -220,7 +220,7 @@ input[type="file"]{position:absolute;opacity:0;width:0;height:0}
       <div class="card-info">
         <h2 id="itemNameDisplay">No item selected</h2>
         <div class="chips">
-          <span class="chip" id="barcodeDisplay">Barcode —</span>
+          <span class="chip" id="barcodeDisplay" style="display:none">Barcode —</span>
           <span class="chip" id="shelfDisplay">Shelf —</span>
           <span class="chip hi" id="categoryDisplay">—</span>
         </div>
@@ -436,7 +436,13 @@ photoModal.addEventListener('click',()=>{photoModal.style.display='none';modalPh
 
 // Map pan/zoom
 let sc=1,mn=0.5,mx=6,px=0,py=0,pan=false,psx=0,psy=0,lpx=0,lpy=0,ltd=null;
-function at(){mapImg.style.transform=`translate(${px}px,${py}px) scale(${sc})`}
+function at(){
+  if(!mapImg.offsetWidth)return;
+  const cw=mapCon.clientWidth,ch=mapCon.clientHeight,iw=mapImg.offsetWidth*sc,ih=mapImg.offsetHeight*sc;
+  const il=(cw-mapImg.offsetWidth)/2,it=(ch-mapImg.offsetHeight)/2,b=100;
+  px=cl(px,b-il-iw,cw-b-il);py=cl(py,b-it-ih,ch-b-it);
+  mapImg.style.transform=`translate(${px}px,${py}px) scale(${sc})`;
+}
 function cl(v,a,b){return Math.max(a,Math.min(b,v))}
 mapCon.addEventListener('wheel',e=>{e.preventDefault();const r=mapImg.getBoundingClientRect(),zf=Math.exp(-e.deltaY*.0015),ns=cl(sc*zf,mn,mx),sr=ns/sc;px-= (e.clientX-r.left)*(sr-1);py-= (e.clientY-r.top)*(sr-1);sc=ns;at()},{passive:false});
 mapCon.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;pan=true;psx=e.clientX;psy=e.clientY;lpx=px;lpy=py;mapCon.setPointerCapture(e.pointerId)});
