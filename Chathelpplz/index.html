@@ -772,6 +772,145 @@
       cursor: zoom-out
     }
 
+    /* Category List Styles */
+    .cat-section {
+      margin-bottom: 24px;
+    }
+
+    .cat-header {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #a8ff57;
+      margin: 16px 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cat-header::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(168, 255, 87, 0.2), transparent);
+    }
+
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .cat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cat-card:hover {
+      background: var(--surface2);
+      border-color: #a8ff57;
+      transform: translateY(-2px);
+    }
+
+    .cat-card span {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* ItemGPT Banner */
+    .gpt-banner {
+      background: linear-gradient(135deg, rgba(168, 255, 87, 0.1), rgba(37, 99, 235, 0.1));
+      border: 1px solid rgba(168, 255, 87, 0.2);
+      border-radius: var(--r);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .gpt-banner:active {
+      transform: scale(0.98);
+    }
+
+    .gpt-icon {
+      width: 36px;
+      height: 36px;
+      background: #a8ff57;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0c0c0e;
+      box-shadow: 0 0 15px rgba(168, 255, 87, 0.4);
+    }
+
+    .gpt-text h4 {
+      font-size: 13px;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .gpt-text p {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* GPT Modal */
+    #gptModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(12, 12, 14, 0.9);
+      backdrop-filter: blur(20px);
+      padding: 20px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #gptModal.on {
+      display: flex;
+    }
+
+    .gpt-input-wrap {
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+    }
+
+    .gpt-input-wrap input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid #a8ff57;
+      color: #fff;
+      font-size: 18px;
+      font-family: 'Syne', sans-serif;
+      padding: 10px 0;
+      outline: none;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .gpt-status {
+      font-size: 12px;
+      color: #a8ff57;
+      height: 1.5em;
+    }
+
     #detectBadge {
       display: none !important
     }
@@ -1015,279 +1154,411 @@
 
     <div id="photoModal"><img src="" alt="" id="modalPhoto"></div>
 
-  </div><!-- end phone-shell -->
+    <div id="gptModal">
+      <div class="gpt-input-wrap">
+        <div class="gpt-icon" style="margin: 0 auto 20px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+            <path d="M12 12L2.1 12.1" />
+            <path d="M12 12l9.9-0.1" />
+            <path d="M12 12V22" />
+          </svg></div>
+        <input type="text" id="gptInput" placeholder="Hvad leder du efter?">
+        <div id="gptReasoning"
+          style="font-size: 10px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em; height: 14px;">
+        </div>
+        <div class="gpt-status" id="gptStatus"></div>
+      </div>
+      <button class="chip" onclick="$('gptModal').classList.remove('on')" style="margin-top:40px">Luk</button>
+    </div>
 
-  <script>
-    const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
-    const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
-    const $ = id => document.getElementById(id);
-    const video = $('video'), mapImg = $('map'), mapCon = $('mapContainer'), scanOv = $('scanOverlay'),
-      itemCard = $('itemCard'), nameD = $('itemNameDisplay'), barD = $('barcodeDisplay'),
-      shelfD = $('shelfDisplay'), catD = $('categoryDisplay'), addForm = $('addForm'),
-      saveBtn = $('saveBtn'), nameI = $('itemName'), catI = $('itemCategory'), shelfI = $('itemShelf'),
-      secI = $('itemSection'), barI = $('itemBarcode'), listPage = $('listPage'),
-      searchForm = $('searchForm'), searchInput = $('searchInput'), catDL = $('categoryList'),
-      torchBtn = $('torchBtn'), photoPrev = $('photoPreview'), photoInput = $('itemPhotoInput'),
-      photoDataI = $('itemPhotoData'), photoDisp = $('itemPhotoDisplay'), photoZone = $('photoZone'),
-      mapCard = $('mapCard'), mapWrap = $('mapWrapper'), aisleH = $('aisleHighlight'),
-      shelfImg = $('shelfPhoto'), shelfH = $('shelfHighlight');
+    <script>
+      const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
+      const GEMINI_KEY = 'AIzaSyB0V80ktQ0seESVfuAbMlrH8cFtXAgDQCs'; // Get your free key at https://aistudio.google.com/app/apikey
+      const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
+      const $ = id => document.getElementById(id);
 
-    const AISLE_DATA = {
-      'A3': { name: 'Snacks & Chips', x: 585, y: 350, w: 30, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } },
-      'Brød': { name: 'Brød & Kager', x: 230, y: 150, w: 100, h: 60, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 20, l: 10, w: 40, h: 60 } },
-      'Vin': { name: 'Vin & Spiritus', x: 350, y: 120, w: 80, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 15, l: 5, w: 30, h: 70 } },
-      'Chips': { name: 'Chips & Snacks', x: 450, y: 250, w: 40, h: 120, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } }
-    };
+      (function () {
+        window.initGPT = () => {
+          const gi = $('gptInput'), gs = $('gptStatus'), gr = $('gptReasoning');
+          if (!gi) return;
 
-    let bDB = {}, cats = new Set(), stream = null, torchOn = false, CT = 3, lastC = null, cnt = 0, cool = false, PAGE = 100;
+          const think = (txt, delay) => new Promise(r => setTimeout(() => { gr.textContent = txt; r() }, delay));
 
-    photoZone.addEventListener('click', () => photoInput.click());
+          gi.onkeydown = async e => {
+            if (e.key === 'Enter') {
+              const val = gi.value.trim();
+              if (!val) return;
+              if (GEMINI_KEY === 'PASTE_YOUR_KEY_HERE') {
+                alert('Please add your Gemini API Key at the top of the script tag!');
+                return;
+              }
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-      tab.classList.add('active');
-      mapCon.style.display = 'none'; video.style.display = 'none'; listPage.style.display = 'none';
-      addForm.style.display = 'none'; itemCard.classList.add('hidden');
-      torchBtn.style.display = 'none'; scanOv.classList.remove('on'); video.classList.remove('fullscreen');
-      if (tab.id === 'tab-map') {
-        mapCon.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
-      } else if (tab.id === 'tab-scan') {
-        video.style.display = 'block'; video.classList.add('fullscreen'); scanOv.classList.add('on'); startCam(); torchBtn.style.display = 'flex';
-      } else {
-        listPage.style.display = 'flex'; stopCam(); renderList(getAll(), 0);
+              gs.textContent = 'Gemini tænker...';
+              await think('Sender katalog til AI...', 300);
+
+              const all = getAll().map(it => ({ barcode: it.barcode, name: it.name, category: it.category }));
+              const prompt = `Du er en indkøbsassistent. Her er butikkens varekatalog: ${JSON.stringify(all)}. Brugeren spørger: "${val}". Find de varer der passer bedst til brugerens ønske (tænk på synonymer, sprog og behov). Returner KUN et JSON array med stregkoderne på de matchende varer. Hvis intet matcher, returner []. Ingen forklaring, kun JSON.`;
+
+              try {
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (!resp.ok) {
+                  const errData = await resp.json();
+                  const msg = errData.error?.message || 'API Error';
+                  // Parse retry time if available
+                  const wait = msg.match(/retry in ([\d.]+)s/);
+                  if (wait) {
+                    let sec = Math.ceil(parseFloat(wait[1]));
+                    const itv = setInterval(() => {
+                      gs.textContent = `Vent venligst ${sec}s før næste søgning...`;
+                      if (--sec < 0) { clearInterval(itv); gs.textContent = 'Klar til ny søgning!'; }
+                    }, 1000);
+                    throw new Error('Søge-grænse nået.');
+                  }
+                  throw new Error(msg);
+                }
+
+                const data = await resp.json();
+                if (!data.candidates || !data.candidates[0]) {
+                  throw new Error('Ingen svar fra AI. Prøv igen.');
+                }
+
+                const text = data.candidates[0].content.parts[0].text.trim();
+                const barcodes = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+                if (barcodes && Array.isArray(barcodes) && barcodes.length > 0) {
+                  const results = barcodes.map(b => bDB[b]).filter(Boolean);
+                  await think('Gemini fandt de perfekte varer!', 200);
+                  gs.textContent = `Jeg har fundet ${results.length} anbefalinger til dig.`;
+                  setTimeout(() => {
+                    $('gptModal').classList.remove('on');
+                    gi.value = ''; gs.textContent = ''; gr.textContent = '';
+                    switchTab($('tab-add'));
+                    renderList(results, 0);
+                  }, 1000);
+                } else {
+                  gs.textContent = 'Gemini kunne ikke finde noget der matchede i kataloget.';
+                }
+              } catch (err) {
+                console.error('Gemini Error:', err);
+                if (!gs.textContent.includes('Vent venligst')) {
+                  gs.textContent = 'Fejl: ' + err.message;
+                }
+              }
+            }
+          };
+        };
+      })();
+      const video = $('video'), mapImg = $('map'), mapCon = $('mapContainer'), scanOv = $('scanOverlay'),
+        itemCard = $('itemCard'), nameD = $('itemNameDisplay'), barD = $('barcodeDisplay'),
+        shelfD = $('shelfDisplay'), catD = $('categoryDisplay'), addForm = $('addForm'),
+        saveBtn = $('saveBtn'), nameI = $('itemName'), catI = $('itemCategory'), shelfI = $('itemShelf'),
+        secI = $('itemSection'), barI = $('itemBarcode'), listPage = $('listPage'),
+        searchForm = $('searchForm'), searchInput = $('searchInput'), catDL = $('categoryList'),
+        torchBtn = $('torchBtn'), photoPrev = $('photoPreview'), photoInput = $('itemPhotoInput'),
+        photoDataI = $('itemPhotoData'), photoDisp = $('itemPhotoDisplay'), photoZone = $('photoZone'),
+        mapCard = $('mapCard'), mapWrap = $('mapWrapper'), aisleH = $('aisleHighlight'),
+        shelfImg = $('shelfPhoto'), shelfH = $('shelfHighlight');
+
+      const AISLE_DATA = {
+        'A3': { name: 'Snacks & Chips', x: 585, y: 350, w: 30, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } },
+        'Brød': { name: 'Brød & Kager', x: 230, y: 150, w: 100, h: 60, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 20, l: 10, w: 40, h: 60 } },
+        'Vin': { name: 'Vin & Spiritus', x: 350, y: 120, w: 80, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 15, l: 5, w: 30, h: 70 } },
+        'Chips': { name: 'Chips & Snacks', x: 450, y: 250, w: 40, h: 120, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } }
+      };
+
+      const GPT_KNOWLEDGE = {
+        'pasta': 'Italian', 'ketchup': 'Sauces', 'tomat': 'Vegetables', 'brød': 'Bakery',
+        'mælk': 'Dairy', 'øl': 'Beverages', 'vin': 'Vin & Spiritus', 'snacks': 'Chips & Snacks',
+        'sodavand': 'Beverages', 'chips': 'Chips & Snacks', 'slik': 'Snacks', 'morgenmad': 'Bakery',
+        'sovs': 'Sauces', 'aftensmad': 'Meat', 'kylling': 'Meat', 'frugt': 'Vegetables', 'grøntsager': 'Vegetables'
+      };
+
+      let bDB = {}, cats = new Set(), stream = null, torchOn = false, CT = 3, lastC = null, cnt = 0, cool = false, PAGE = 100;
+
+      photoZone.addEventListener('click', () => photoInput.click());
+
+      function switchTab(tab) {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        tab.classList.add('active');
+        mapCon.style.display = 'none'; video.style.display = 'none'; listPage.style.display = 'none';
+        addForm.style.display = 'none'; itemCard.classList.add('hidden');
+        torchBtn.style.display = 'none'; scanOv.classList.remove('on'); video.classList.remove('fullscreen');
+        if (tab.id === 'tab-map') {
+          mapCon.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
+        } else if (tab.id === 'tab-scan') {
+          video.style.display = 'block'; video.classList.add('fullscreen'); scanOv.classList.add('on'); startCam(); torchBtn.style.display = 'flex';
+        } else {
+          listPage.style.display = 'flex'; stopCam(); renderList(getAll(), 0);
+        }
       }
-    }
 
-    $('tab-map').addEventListener('click', e => switchTab(e.currentTarget));
-    $('tab-scan').addEventListener('click', e => switchTab(e.currentTarget));
-    $('tab-add').addEventListener('click', e => switchTab(e.currentTarget));
+      $('tab-map').addEventListener('click', e => switchTab(e.currentTarget));
+      $('tab-scan').addEventListener('click', e => switchTab(e.currentTarget));
+      $('tab-add').addEventListener('click', e => switchTab(e.currentTarget));
 
-    function getAll() { return Object.entries(bDB).map(([b, it]) => ({ barcode: b, ...it })) }
+      function getAll() { return Object.entries(bDB).map(([b, it]) => ({ barcode: b, ...it })) }
 
-    function lev(a, b) { if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length; const m = []; for (let i = 0; i <= b.length; i++)m[i] = [i]; for (let j = 0; j <= a.length; j++)m[0][j] = j; for (let i = 1; i <= b.length; i++)for (let j = 1; j <= a.length; j++)m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1] : 1 + Math.min(m[i - 1][j - 1], m[i][j - 1], m[i - 1][j]); return m[b.length][a.length] }
+      function lev(a, b) { if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length; const m = []; for (let i = 0; i <= b.length; i++)m[i] = [i]; for (let j = 0; j <= a.length; j++)m[0][j] = j; for (let i = 1; i <= b.length; i++)for (let j = 1; j <= a.length; j++)m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1] : 1 + Math.min(m[i - 1][j - 1], m[i][j - 1], m[i - 1][j]); return m[b.length][a.length] }
 
-    function updateDL() { catDL.innerHTML = ''; Array.from(cats).filter(Boolean).sort((a, b) => a.localeCompare(b)).forEach(c => { const o = document.createElement('option'); o.value = c; catDL.appendChild(o) }) }
+      function updateDL() { catDL.innerHTML = ''; Array.from(cats).filter(Boolean).sort((a, b) => a.localeCompare(b)).forEach(c => { const o = document.createElement('option'); o.value = c; catDL.appendChild(o) }) }
 
-    function esc(s) { return s ? String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" }[c])) : '' }
+      function esc(s) { return s ? String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" }[c])) : '' }
 
-    let currentAd = null;
-    function panToAisle(ad) {
-      if (!ad || !mapImg.offsetWidth) return;
-      const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
-      sc = 2.5; 
-      px = cw / 2 - (ad.x + ad.w / 2) * sc;
-      py = ch / 2 - (ad.y + ad.h / 2) * sc;
-      at();
-      mapCard.classList.remove('flipped');
-    }
-
-    function showCard(barcode, item) {
-      const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
-      if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
-      nameD.textContent = name;
-      barD.style.display = 'none';
-
-      currentAd = AISLE_DATA[shelf] || AISLE_DATA[cat];
-      shelfD.style.display = 'none';
-      catD.innerHTML = `<b>${esc(cat)}</b>`;
-      catD.className = 'chip hi';
-
-      // Aisle highlight
-      if (currentAd) {
-        aisleH.style.left = currentAd.x + 'px';
-        aisleH.style.top = currentAd.y + 'px';
-        aisleH.style.width = currentAd.w + 'px';
-        aisleH.style.height = currentAd.h + 'px';
-        aisleH.classList.add('active');
-        shelfImg.src = currentAd.photo;
-        shelfH.style.top = currentAd.shelfH.t + '%';
-        shelfH.style.left = currentAd.shelfH.l + '%';
-        shelfH.style.width = currentAd.shelfH.w + '%';
-        shelfH.style.height = currentAd.shelfH.h + '%';
-
-        // Auto pan to aisle
-        setTimeout(() => panToAisle(currentAd), 50);
-      } else {
-        aisleH.classList.remove('active');
+      let currentAd = null;
+      function panToAisle(ad) {
+        if (!ad || !mapImg.offsetWidth) return;
+        const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
+        sc = 2.5;
+        px = cw / 2 - (ad.x + ad.w / 2) * sc;
+        py = ch / 2 - (ad.y + ad.h / 2) * sc;
+        at();
+        mapCard.classList.remove('flipped');
       }
-      mapCard.classList.remove('flipped');
-    }
 
-    catD.addEventListener('click', () => {
-      if (currentAd) {
-        switchTab($('tab-map'));
-        panToAisle(currentAd);
+      function showCard(barcode, item) {
+        const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
+        if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
+        nameD.textContent = name;
+        barD.style.display = 'none';
+
+        currentAd = AISLE_DATA[shelf] || AISLE_DATA[cat];
+        shelfD.style.display = 'none';
+        catD.innerHTML = `<b>${esc(cat)}</b>`;
+        catD.className = 'chip hi';
+
+        // Aisle highlight
+        if (currentAd) {
+          aisleH.style.left = currentAd.x + 'px';
+          aisleH.style.top = currentAd.y + 'px';
+          aisleH.style.width = currentAd.w + 'px';
+          aisleH.style.height = currentAd.h + 'px';
+          aisleH.classList.add('active');
+          shelfImg.src = currentAd.photo;
+          shelfH.style.top = currentAd.shelfH.t + '%';
+          shelfH.style.left = currentAd.shelfH.l + '%';
+          shelfH.style.width = currentAd.shelfH.w + '%';
+          shelfH.style.height = currentAd.shelfH.h + '%';
+
+          // Auto pan to aisle
+          setTimeout(() => panToAisle(currentAd), 50);
+        } else {
+          aisleH.classList.remove('active');
+        }
+        mapCard.classList.remove('flipped');
       }
-    });
 
-    function openEdit(barcode) {
-      const item = bDB[barcode];
-      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-      $('tab-map').classList.add('active');
-      mapCon.style.display = 'flex'; video.style.display = 'none'; listPage.style.display = 'none';
-      itemCard.classList.remove('hidden'); addForm.style.display = 'flex';
-      torchBtn.style.display = 'none'; scanOv.classList.remove('on');
-      barI.value = barcode || ''; nameI.value = item?.name || ''; catI.value = item?.category || ''; shelfI.value = item?.shelf || ''; secI.value = item?.section || '';
-      showCard(barcode, item || {});
-      if (item?.photo) { photoPrev.src = item.photo; photoPrev.style.display = 'block'; photoDataI.value = '' }
-      else { photoPrev.style.display = 'none'; photoPrev.src = ''; photoDataI.value = '' }
-      saveBtn.querySelector('span').textContent = 'Save Changes';
-    }
-
-    function renderList(items, start = 0) {
-      if (start === 0) listPage.innerHTML = '';
-      const end = Math.min(start + PAGE, items.length);
-      if (!items.length) { listPage.innerHTML = `<div class="empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>No items found.</div>`; return }
-      for (let i = start; i < end; i++) {
-        const it = items[i], div = document.createElement('div');
-        div.className = 'list-item'; div.dataset.barcode = it.barcode;
-        const thumb = it.photo ? `<img class="list-thumb" src="${esc(it.photo)}" alt="">` : `<div class="list-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
-        div.innerHTML = `${thumb}<div class="list-body"><h3>${esc(it.name || 'Unnamed')}</h3><div class="chips">${it.category ? `<span class="chip hi">${esc(it.category)}</span>` : ''}<span class="chip">${esc(it.barcode)}</span></div></div><svg class="list-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
-        const ov = document.createElement('div'); ov.className = 'press-overlay'; div.appendChild(ov);
-        div.addEventListener('click', () => { const item = bDB[div.dataset.barcode]; if (item) { showCard(div.dataset.barcode, item); switchTab($('tab-map')) } });
-        (function (el, bc, overlay) {
-          let timer = null, t0 = null, raf = null; const LP = 1250;
-          function upd() { if (!t0) return; const p = Math.min(1, (Date.now() - t0) / LP); overlay.style.opacity = .1 + p * .9; if (p < 1) raf = requestAnimationFrame(upd) }
-          function go() { clr(); t0 = Date.now(); overlay.style.transition = 'opacity 60ms'; raf = requestAnimationFrame(upd); timer = setTimeout(() => { timer = null; t0 = null; cancelAnimationFrame(raf); overlay.style.opacity = 0; openEdit(bc) }, LP) }
-          function clr() { if (timer) clearTimeout(timer); if (raf) cancelAnimationFrame(raf); timer = raf = t0 = null; overlay.style.transition = 'opacity 200ms'; overlay.style.opacity = 0 }
-          el.addEventListener('mousedown', e => { if (e.button) return; go() });
-          el.addEventListener('mouseup', clr); el.addEventListener('mouseleave', clr);
-          el.addEventListener('touchstart', e => { if (e.touches.length > 1) return; go() }, { passive: true });
-          el.addEventListener('touchend', clr); el.addEventListener('touchcancel', clr);
-          el.addEventListener('contextmenu', e => e.preventDefault());
-          el.addEventListener('selectstart', e => e.preventDefault());
-        })(div, it.barcode, ov);
-        listPage.appendChild(div);
-      }
-      if (end < items.length) { const btn = document.createElement('button'); btn.className = 'load-more'; btn.textContent = `Load more · ${items.length - end} remaining`; btn.addEventListener('click', () => { btn.remove(); renderList(items, end) }); listPage.appendChild(btn) }
-    }
-
-    function doSearch() {
-      const q = searchInput.value.trim().toLowerCase(), all = getAll();
-      if (!q) { renderList(all, 0); return }
-      const res = [];
-      for (const it of all) {
-        const n = (it.name || '').toLowerCase(), b = (it.barcode || '').toLowerCase(), c = (it.category || '').toLowerCase();
-        let s = 10000;
-        if (n === q) s = -1000; else if (b === q) s = -900; else if (c === q) s = -950;
-        else if (n.startsWith(q)) s = -100; else if (c.startsWith(q)) s = -120;
-        else if (n.includes(q)) s = 10 + n.indexOf(q); else if (c.includes(q)) s = 5 + c.indexOf(q);
-        else if (b.includes(q)) s = 20;
-        else { const l = lev(q, n); if (n && l <= Math.max(2, Math.floor(n.length * .25))) s = 50 + l }
-        if (s < 10000) res.push({ it, s });
-      }
-      res.sort((a, b) => a.s - b.s); renderList(res.map(r => r.it), 0);
-    }
-
-    searchForm.addEventListener('submit', e => { e.preventDefault(); switchTab($('tab-add')); doSearch() });
-    let dt = null; searchInput.addEventListener('input', () => { switchTab($('tab-add')); clearTimeout(dt); dt = setTimeout(doSearch, 150) });
-
-    function d2b(d) { const p = d.split(','), mime = p[0].match(/:(.*?);/)[1], bin = atob(p[1]), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++)u8[i] = bin.charCodeAt(i); return new Blob([u8], { type: mime }) }
-
-    async function uploadImg(barcode, dataURL) { if (!dataURL) return null; const blob = d2b(dataURL), fn = `${barcode}/${Date.now()}.jpg`; const { error } = await db.storage.from(BUCKET).upload(fn, blob, { cacheControl: '3600', upsert: true }); if (error) throw error; return db.storage.from(BUCKET).getPublicUrl(fn).data.publicUrl }
-
-    async function saveItem(barcode, item) { const { error } = await db.from('items').upsert({ barcode, name: item.name, category: item.category, shelf: item.shelf, section: item.section, image_url: item.image_url || null }, { onConflict: 'barcode' }); if (error) throw error }
-
-    async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '' }; if (r.category) cats.add(r.category) } updateDL() }
-
-    function captureFrame() { try { const c = document.createElement('canvas'); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); return c.toDataURL('image/png') } catch (e) { return null } }
-
-    photoInput.addEventListener('change', e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { photoDataI.value = ev.target.result; photoPrev.src = ev.target.result; photoPrev.style.display = 'block' }; r.readAsDataURL(f) });
-
-    function startScanner() {
-      lastC = null; cnt = 0; cool = false;
-      Quagga.init({ inputStream: { name: 'Live', type: 'LiveStream', target: video }, decoder: { readers: ['ean_reader', 'upc_reader', 'code_128_reader'] }, locate: true }, err => { if (err) { console.error(err); return } Quagga.start() });
-      Quagga.onDetected(res => {
-        if (!res?.codeResult || cool) return;
-        const code = res.codeResult.code;
-        if (lastC === code) cnt++; else { lastC = code; cnt = 1 }
-        if (cnt >= CT) {
-          cool = true; lastC = null; cnt = 0;
-          const item = bDB[code];
-          if (item) { showCard(code, item); switchTab($('tab-map')) }
-          else {
-            nameD.textContent = 'Not in database'; barD.innerHTML = `Barcode <b>${esc(code)}</b>`; shelfD.style.display = 'none'; catD.textContent = '—'; catD.className = 'chip';
-            barI.value = code;
-            const frame = captureFrame(); if (frame) { photoDataI.value = frame; photoPrev.src = frame; photoPrev.style.display = 'block' } else { photoDataI.value = ''; photoPrev.style.display = 'none' }
-            saveBtn.querySelector('span').textContent = 'Save Item';
-            video.style.display = 'none'; scanOv.classList.remove('on'); addForm.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
-          }
-          setTimeout(() => { cool = false }, 700);
+      catD.addEventListener('click', () => {
+        if (currentAd) {
+          switchTab($('tab-map'));
+          panToAisle(currentAd);
         }
       });
-    }
 
-    function stopCam() { cool = false; lastC = null; cnt = 0; if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null } if (video.srcObject) { try { video.srcObject.getTracks().forEach(t => t.stop()) } catch (e) { } video.srcObject = null } if (window.Quagga) { try { Quagga.stop() } catch (e) { } } }
-
-    async function startCam() { cool = false; lastC = null; cnt = 0; try { const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); stream = s; video.srcObject = s; video.play().catch(() => { }); torchOn = false; torchBtn.classList.remove('on'); startScanner() } catch (err) { alert('Camera error: ' + err.message) } }
-
-    async function toggleTorch() { if (!stream) return; const t = stream.getVideoTracks()[0]; if (!t) return; try { await t.applyConstraints({ advanced: [{ torch: !torchOn }] }); torchOn = !torchOn; torchBtn.classList.toggle('on', torchOn) } catch (e) { alert('Torch not supported.') } }
-    torchBtn.addEventListener('click', toggleTorch);
-
-    async function resizeDURL(d, mw = 1024, q = .75) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const sc = Math.min(1, mw / img.width), w = img.width * sc, h = img.height * sc, c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); try { res(c.toDataURL('image/jpeg', q)) } catch (e) { rej(e) } }; img.onerror = () => rej(new Error('fail')); img.crossOrigin = 'anonymous'; img.src = d }) }
-
-    saveBtn.addEventListener('click', async () => {
-      try {
-        const name = nameI.value.trim(), cat = catI.value.trim(), shelf = shelfI.value.trim(), sec = secI.value.trim(), barcode = barI.value.trim();
-        if (!name || !cat || !shelf || !sec || !barcode) { alert('Please fill in all fields.'); return }
-        let photoUrl = null;
-        const raw = photoDataI.value || null;
-        if (raw) { let d; try { d = await resizeDURL(raw) } catch (e) { d = raw } photoUrl = await uploadImg(barcode, d) }
-        else if (bDB[barcode]?.photo) photoUrl = bDB[barcode].photo;
-        await saveItem(barcode, { name, category: cat, shelf, section: sec, image_url: photoUrl });
-        cats.add(cat); updateDL(); await loadDB();
-        showCard(barcode, bDB[barcode] || { name, shelf, section: sec, category: cat });
-        addForm.style.display = 'none'; switchTab($('tab-map'));
-      } catch (err) { alert('Save failed: ' + (err.message || err)) }
-    });
-
-    // Photo modal
-    const photoModal = $('photoModal'), modalPhoto = $('modalPhoto');
-    photoDisp.addEventListener('click', () => { if (photoDisp.src) { modalPhoto.src = photoDisp.src; photoModal.style.display = 'flex' } });
-    photoModal.addEventListener('click', () => { photoModal.style.display = 'none'; modalPhoto.src = '' });
-
-    // Map pan/zoom
-    let sc = 1, mn = 0.5, mx = 6, px = 0, py = 0, pan = false, psx = 0, psy = 0, lpx = 0, lpy = 0, ltd = null;
-    function at() {
-      if (!mapImg.offsetWidth) return;
-      const cw = mapCon.clientWidth, ch = mapCon.clientHeight, iw = mapImg.offsetWidth * sc, ih = mapImg.offsetHeight * sc;
-      const b = 100;
-      px = cl(px, b - iw, cw - b); py = cl(py, b - ih, ch - b);
-      mapWrap.style.transform = `translate(${px}px,${py}px) scale(${sc})`;
-    }
-    function atNoTrans() {
-      mapWrap.classList.add('no-transition');
-      at();
-      setTimeout(() => mapWrap.classList.remove('no-transition'), 50);
-    }
-    function cl(v, a, b) { return Math.max(a, Math.min(b, v)) }
-    mapCon.addEventListener('wheel', e => { e.preventDefault(); const r = mapImg.getBoundingClientRect(), zf = Math.exp(-e.deltaY * .0015), ns = cl(sc * zf, mn, mx), sr = ns / sc; px -= (e.clientX - r.left) * (sr - 1); py -= (e.clientY - r.top) * (sr - 1); sc = ns; atNoTrans() }, { passive: false });
-    mapCon.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; pan = true; psx = e.clientX; psy = e.clientY; lpx = px; lpy = py; mapCon.setPointerCapture(e.pointerId) });
-    mapCon.addEventListener('pointermove', e => { if (!pan) return; px = lpx + (e.clientX - psx); py = lpy + (e.clientY - psy); atNoTrans() });
-    mapCon.addEventListener('pointerup', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
-    mapCon.addEventListener('pointercancel', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
-    mapCon.addEventListener('touchstart', e => { if (e.touches.length === 1) { ltd = null; pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py } else if (e.touches.length === 2) { pan = false; ltd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY) } }, { passive: false });
-    mapCon.addEventListener('touchmove', e => { if (e.touches.length === 1 && pan) { e.preventDefault(); px = lpx + (e.touches[0].clientX - psx); py = lpy + (e.touches[0].clientY - psy); atNoTrans() } else if (e.touches.length === 2) { e.preventDefault(); const cd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY); if (ltd) { const ns = cl(sc * (cd / ltd), mn, mx), r = mapImg.getBoundingClientRect(), cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top, sr = ns / sc; px -= cx * (sr - 1); py -= cy * (sr - 1); sc = ns; atNoTrans() } ltd = cd } }, { passive: false });
-    mapCon.addEventListener('touchend', e => { if (!e.touches.length) { pan = false; ltd = null } else if (e.touches.length === 1) { pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py; ltd = null } }, { passive: false });
-
-    mapCon.addEventListener('click', e => {
-      if (aisleH.classList.contains('active')) {
-        mapCard.classList.toggle('flipped');
+      function openEdit(barcode) {
+        const item = bDB[barcode];
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        $('tab-map').classList.add('active');
+        mapCon.style.display = 'flex'; video.style.display = 'none'; listPage.style.display = 'none';
+        itemCard.classList.remove('hidden'); addForm.style.display = 'flex';
+        torchBtn.style.display = 'none'; scanOv.classList.remove('on');
+        barI.value = barcode || ''; nameI.value = item?.name || ''; catI.value = item?.category || ''; shelfI.value = item?.shelf || ''; secI.value = item?.section || '';
+        showCard(barcode, item || {});
+        if (item?.photo) { photoPrev.src = item.photo; photoPrev.style.display = 'block'; photoDataI.value = '' }
+        else { photoPrev.style.display = 'none'; photoPrev.src = ''; photoDataI.value = '' }
+        saveBtn.querySelector('span').textContent = 'Save Changes';
       }
-    });
 
-    // Init
-    mapCon.style.display = 'flex';
-    const MS = 'height:100%;width:auto;display:block;';
-    mapImg.setAttribute('style', MS);
-    mapImg.addEventListener('load', () => {
+      function renderList(items, start = 0) {
+        if (start === 0) {
+          listPage.innerHTML = `
+          <div class="gpt-banner" id="gptBtn">
+            <div class="gpt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.1"/><path d="M12 12l9.9-0.1"/><path d="M12 12V22"/></svg></div>
+            <div class="gpt-text">
+              <h4>ItemGPT</h4>
+              <p>Beskriv varen, og jeg finder den for dig...</p>
+            </div>
+          </div>
+          <div class="cat-grid" id="catGrid"></div>
+        `;
+          const cg = $('catGrid'), sCats = Array.from(cats).sort();
+          sCats.forEach(c => {
+            const d = document.createElement('div'); d.className = 'cat-card';
+            d.innerHTML = `<span>${esc(c)}</span>`;
+            d.onclick = () => { searchInput.value = c; doSearch() };
+            cg.appendChild(d);
+          });
+          $('gptBtn').onclick = () => $('gptModal').classList.add('on');
+        }
+
+        const grouped = {};
+        items.forEach(it => { const c = it.category || 'Andre'; if (!grouped[c]) grouped[c] = []; grouped[c].push(it) });
+
+        Object.entries(grouped).sort().forEach(([cat, cItems]) => {
+          const sect = document.createElement('div'); sect.className = 'cat-section';
+          sect.innerHTML = `<div class="cat-header">${esc(cat)} (${cItems.length})</div>`;
+          const limit = 5;
+          cItems.slice(0, limit).forEach(it => {
+            const div = document.createElement('div'); div.className = 'list-item';
+            const thumb = it.photo ? `<img class="list-thumb" src="${esc(it.photo)}" alt="">` : `<div class="list-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+            div.innerHTML = `${thumb}<div class="list-body"><h3>${esc(it.name || 'Unnamed')}</h3><div class="chips">${it.category ? `<span class="chip hi">${esc(it.category)}</span>` : ''}<span class="chip">${esc(it.barcode)}</span></div></div><svg class="list-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+            const ov = document.createElement('div'); ov.className = 'press-overlay'; div.appendChild(ov);
+            div.onclick = () => { showCard(it.barcode, it); switchTab($('tab-map')) };
+            sect.appendChild(div);
+          });
+          if (cItems.length > limit) {
+            const btn = document.createElement('button'); btn.className = 'load-more'; btn.textContent = `Se alle ${cItems.length} varer i ${cat}`;
+            btn.onclick = () => {
+              btn.remove(); cItems.slice(limit).forEach(it => {
+                const div = document.createElement('div'); div.className = 'list-item';
+                const thumb = it.photo ? `<img class="list-thumb" src="${esc(it.photo)}" alt="">` : `<div class="list-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+                div.innerHTML = `${thumb}<div class="list-body"><h3>${esc(it.name || 'Unnamed')}</h3><div class="chips">${it.category ? `<span class="chip hi">${esc(it.category)}</span>` : ''}<span class="chip">${esc(it.barcode)}</span></div></div><svg class="list-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+                div.onclick = () => { showCard(it.barcode, it); switchTab($('tab-map')) };
+                sect.appendChild(div);
+              })
+            };
+            sect.appendChild(btn);
+          }
+          listPage.appendChild(sect);
+        });
+      }
+
+      function doSearch() {
+        const q = searchInput.value.trim().toLowerCase(), all = getAll();
+        if (!q) { renderList(all, 0); return }
+        const res = [];
+        for (const it of all) {
+          const n = (it.name || '').toLowerCase(), b = (it.barcode || '').toLowerCase(), c = (it.category || '').toLowerCase();
+          let s = 10000;
+          if (n === q) s = -1000; else if (b === q) s = -900; else if (c === q) s = -950;
+          else if (n.startsWith(q)) s = -100; else if (c.startsWith(q)) s = -120;
+          else if (n.includes(q)) s = 10 + n.indexOf(q); else if (c.includes(q)) s = 5 + c.indexOf(q);
+          else if (b.includes(q)) s = 20;
+          else { const l = lev(q, n); if (n && l <= Math.max(2, Math.floor(n.length * .25))) s = 50 + l }
+          if (s < 10000) res.push({ it, s });
+        }
+        res.sort((a, b) => a.s - b.s); renderList(res.map(r => r.it), 0);
+      }
+
+      searchForm.addEventListener('submit', e => { e.preventDefault(); switchTab($('tab-add')); doSearch() });
+      let dt = null; searchInput.addEventListener('input', () => { switchTab($('tab-add')); clearTimeout(dt); dt = setTimeout(doSearch, 150) });
+
+      function d2b(d) { const p = d.split(','), mime = p[0].match(/:(.*?);/)[1], bin = atob(p[1]), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++)u8[i] = bin.charCodeAt(i); return new Blob([u8], { type: mime }) }
+
+      async function uploadImg(barcode, dataURL) { if (!dataURL) return null; const blob = d2b(dataURL), fn = `${barcode}/${Date.now()}.jpg`; const { error } = await db.storage.from(BUCKET).upload(fn, blob, { cacheControl: '3600', upsert: true }); if (error) throw error; return db.storage.from(BUCKET).getPublicUrl(fn).data.publicUrl }
+
+      async function saveItem(barcode, item) { const { error } = await db.from('items').upsert({ barcode, name: item.name, category: item.category, shelf: item.shelf, section: item.section, image_url: item.image_url || null }, { onConflict: 'barcode' }); if (error) throw error }
+
+      async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '' }; if (r.category) cats.add(r.category) } updateDL() }
+
+      function captureFrame() { try { const c = document.createElement('canvas'); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); return c.toDataURL('image/png') } catch (e) { return null } }
+
+      photoInput.addEventListener('change', e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { photoDataI.value = ev.target.result; photoPrev.src = ev.target.result; photoPrev.style.display = 'block' }; r.readAsDataURL(f) });
+
+      function startScanner() {
+        lastC = null; cnt = 0; cool = false;
+        Quagga.init({ inputStream: { name: 'Live', type: 'LiveStream', target: video }, decoder: { readers: ['ean_reader', 'upc_reader', 'code_128_reader'] }, locate: true }, err => { if (err) { console.error(err); return } Quagga.start() });
+        Quagga.onDetected(res => {
+          if (!res?.codeResult || cool) return;
+          const code = res.codeResult.code;
+          if (lastC === code) cnt++; else { lastC = code; cnt = 1 }
+          if (cnt >= CT) {
+            cool = true; lastC = null; cnt = 0;
+            const item = bDB[code];
+            if (item) { showCard(code, item); switchTab($('tab-map')) }
+            else {
+              nameD.textContent = 'Not in database'; barD.innerHTML = `Barcode <b>${esc(code)}</b>`; shelfD.style.display = 'none'; catD.textContent = '—'; catD.className = 'chip';
+              barI.value = code;
+              const frame = captureFrame(); if (frame) { photoDataI.value = frame; photoPrev.src = frame; photoPrev.style.display = 'block' } else { photoDataI.value = ''; photoPrev.style.display = 'none' }
+              saveBtn.querySelector('span').textContent = 'Save Item';
+              video.style.display = 'none'; scanOv.classList.remove('on'); addForm.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
+            }
+            setTimeout(() => { cool = false }, 700);
+          }
+        });
+      }
+
+      function stopCam() { cool = false; lastC = null; cnt = 0; if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null } if (video.srcObject) { try { video.srcObject.getTracks().forEach(t => t.stop()) } catch (e) { } video.srcObject = null } if (window.Quagga) { try { Quagga.stop() } catch (e) { } } }
+
+      async function startCam() { cool = false; lastC = null; cnt = 0; try { const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); stream = s; video.srcObject = s; video.play().catch(() => { }); torchOn = false; torchBtn.classList.remove('on'); startScanner() } catch (err) { alert('Camera error: ' + err.message) } }
+
+      async function toggleTorch() { if (!stream) return; const t = stream.getVideoTracks()[0]; if (!t) return; try { await t.applyConstraints({ advanced: [{ torch: !torchOn }] }); torchOn = !torchOn; torchBtn.classList.toggle('on', torchOn) } catch (e) { alert('Torch not supported.') } }
+      torchBtn.addEventListener('click', toggleTorch);
+
+      async function resizeDURL(d, mw = 1024, q = .75) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const sc = Math.min(1, mw / img.width), w = img.width * sc, h = img.height * sc, c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); try { res(c.toDataURL('image/jpeg', q)) } catch (e) { rej(e) } }; img.onerror = () => rej(new Error('fail')); img.crossOrigin = 'anonymous'; img.src = d }) }
+
+      saveBtn.addEventListener('click', async () => {
+        try {
+          const name = nameI.value.trim(), cat = catI.value.trim(), shelf = shelfI.value.trim(), sec = secI.value.trim(), barcode = barI.value.trim();
+          if (!name || !cat || !shelf || !sec || !barcode) { alert('Please fill in all fields.'); return }
+          let photoUrl = null;
+          const raw = photoDataI.value || null;
+          if (raw) { let d; try { d = await resizeDURL(raw) } catch (e) { d = raw } photoUrl = await uploadImg(barcode, d) }
+          else if (bDB[barcode]?.photo) photoUrl = bDB[barcode].photo;
+          await saveItem(barcode, { name, category: cat, shelf, section: sec, image_url: photoUrl });
+          cats.add(cat); updateDL(); await loadDB();
+          showCard(barcode, bDB[barcode] || { name, shelf, section: sec, category: cat });
+          addForm.style.display = 'none'; switchTab($('tab-map'));
+        } catch (err) { alert('Save failed: ' + (err.message || err)) }
+      });
+
+      // Photo modal
+      const photoModal = $('photoModal'), modalPhoto = $('modalPhoto');
+      photoDisp.addEventListener('click', () => { if (photoDisp.src) { modalPhoto.src = photoDisp.src; photoModal.style.display = 'flex' } });
+      photoModal.addEventListener('click', () => { photoModal.style.display = 'none'; modalPhoto.src = '' });
+
+      // Map pan/zoom
+      let sc = 1, mn = 0.5, mx = 6, px = 0, py = 0, pan = false, psx = 0, psy = 0, lpx = 0, lpy = 0, ltd = null;
+      function at() {
+        if (!mapImg.offsetWidth) return;
+        const cw = mapCon.clientWidth, ch = mapCon.clientHeight, iw = mapImg.offsetWidth * sc, ih = mapImg.offsetHeight * sc;
+        const b = 100;
+        px = cl(px, b - iw, cw - b); py = cl(py, b - ih, ch - b);
+        mapWrap.style.transform = `translate(${px}px,${py}px) scale(${sc})`;
+      }
+      function atNoTrans() {
+        mapWrap.classList.add('no-transition');
+        at();
+        setTimeout(() => mapWrap.classList.remove('no-transition'), 50);
+      }
+      function cl(v, a, b) { return Math.max(a, Math.min(b, v)) }
+      mapCon.addEventListener('wheel', e => { e.preventDefault(); const r = mapImg.getBoundingClientRect(), zf = Math.exp(-e.deltaY * .0015), ns = cl(sc * zf, mn, mx), sr = ns / sc; px -= (e.clientX - r.left) * (sr - 1); py -= (e.clientY - r.top) * (sr - 1); sc = ns; atNoTrans() }, { passive: false });
+      mapCon.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; pan = true; psx = e.clientX; psy = e.clientY; lpx = px; lpy = py; mapCon.setPointerCapture(e.pointerId) });
+      mapCon.addEventListener('pointermove', e => { if (!pan) return; px = lpx + (e.clientX - psx); py = lpy + (e.clientY - psy); atNoTrans() });
+      mapCon.addEventListener('pointerup', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
+      mapCon.addEventListener('pointercancel', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
+      mapCon.addEventListener('touchstart', e => { if (e.touches.length === 1) { ltd = null; pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py } else if (e.touches.length === 2) { pan = false; ltd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY) } }, { passive: false });
+      mapCon.addEventListener('touchmove', e => { if (e.touches.length === 1 && pan) { e.preventDefault(); px = lpx + (e.touches[0].clientX - psx); py = lpy + (e.touches[0].clientY - psy); atNoTrans() } else if (e.touches.length === 2) { e.preventDefault(); const cd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY); if (ltd) { const ns = cl(sc * (cd / ltd), mn, mx), r = mapImg.getBoundingClientRect(), cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top, sr = ns / sc; px -= cx * (sr - 1); py -= cy * (sr - 1); sc = ns; atNoTrans() } ltd = cd } }, { passive: false });
+      mapCon.addEventListener('touchend', e => { if (!e.touches.length) { pan = false; ltd = null } else if (e.touches.length === 1) { pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py; ltd = null } }, { passive: false });
+
+      mapCon.addEventListener('click', e => {
+        if (aisleH.classList.contains('active')) {
+          mapCard.classList.toggle('flipped');
+        }
+      });
+
+      // Init
+      mapCon.style.display = 'flex';
+      const MS = 'height:100%;width:auto;display:block;';
       mapImg.setAttribute('style', MS);
-      px = (mapCon.clientWidth - mapImg.offsetWidth) / 2;
-      py = (mapCon.clientHeight - mapImg.offsetHeight) / 2;
-      atNoTrans();
-    });
-    window.addEventListener('load', async () => { try { await loadDB() } catch (e) { console.warn(e) } });
-  </script>
+      mapImg.addEventListener('load', () => {
+        mapImg.setAttribute('style', MS);
+        px = (mapCon.clientWidth - mapImg.offsetWidth) / 2;
+        py = (mapCon.clientHeight - mapImg.offsetHeight) / 2;
+        atNoTrans();
+      });
+      window.addEventListener('load', async () => {
+        try {
+          await loadDB();
+          initGPT(); // Initialize ItemGPT after DOM is ready
+        } catch (e) { console.warn(e) }
+      });
+    </script>
 </body>
 
 </html>
