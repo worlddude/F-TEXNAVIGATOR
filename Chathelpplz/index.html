@@ -86,7 +86,8 @@
       padding: 13px 13px 0;
       flex-shrink: 0;
       z-index: 10;
-      background: var(--bg)
+      background: var(--bg);
+      touch-action: none;
     }
 
     @media(min-width:500px) {
@@ -401,6 +402,7 @@
       flex-shrink: 0;
       z-index: 20;
       pointer-events: none;
+      touch-action: none;
     }
 
     .item-card.hidden {
@@ -780,6 +782,7 @@
       position: absolute;
       inset: 0;
     }
+
     .flip-card {
       width: 100%;
       height: 100%;
@@ -787,9 +790,11 @@
       transform-style: preserve-3d;
       transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .flip-card.flipped {
       transform: rotateY(180deg);
     }
+
     .flip-face {
       position: absolute;
       inset: 0;
@@ -797,8 +802,10 @@
       -webkit-backface-visibility: hidden;
       overflow: hidden;
       background: var(--bg2);
-      transform: translateZ(0); /* Fix mobile flicker */
+      transform: translateZ(0);
+      /* Fix mobile flicker */
     }
+
     .flip-back {
       transform: rotateY(180deg);
       background: #0c0c0e;
@@ -806,6 +813,7 @@
       align-items: center;
       justify-content: center;
     }
+
     #mapWrapper {
       position: absolute;
       top: 0;
@@ -814,19 +822,23 @@
       will-change: transform;
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     #mapWrapper.no-transition {
       transition: none;
     }
+
     #map {
       display: block;
       height: 100%;
       width: auto;
     }
+
     #shelfPhoto {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
     }
+
     .aisle-rect {
       position: absolute;
       border: 3px solid #a8ff57;
@@ -837,15 +849,29 @@
       display: none;
       z-index: 10;
     }
+
     .aisle-rect.active {
       display: block;
       animation: pulse 1.5s infinite;
     }
+
     @keyframes pulse {
-      0% { opacity: 0.6; box-shadow: 0 0 10px #a8ff57; }
-      50% { opacity: 1; box-shadow: 0 0 30px #a8ff57; }
-      100% { opacity: 0.6; box-shadow: 0 0 10px #a8ff57; }
+      0% {
+        opacity: 0.6;
+        box-shadow: 0 0 10px #a8ff57;
+      }
+
+      50% {
+        opacity: 1;
+        box-shadow: 0 0 30px #a8ff57;
+      }
+
+      100% {
+        opacity: 0.6;
+        box-shadow: 0 0 10px #a8ff57;
+      }
     }
+
     .shelf-highlight {
       position: absolute;
       border: 3px solid #a8ff57;
@@ -870,7 +896,7 @@
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
             </svg></span>
-          <input type="text" id="searchInput" placeholder="Search items, barcodes, categories…">
+          <input type="text" id="searchInput" placeholder="Search items or categories">
         </form>
       </div>
       <div class="tabs">
@@ -915,7 +941,9 @@
           <!-- Front: Map -->
           <div class="flip-face">
             <div id="mapWrapper">
-              <img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/ChatGPT%20Image%2026.%20apr.%202026,%2019.37.35.png" alt="Store map">
+              <img id="map"
+                src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/ChatGPT%20Image%2026.%20apr.%202026,%2019.37.35.png"
+                alt="Store map">
               <div id="aisleHighlight" class="aisle-rect"></div>
             </div>
           </div>
@@ -950,7 +978,7 @@
             <h2 id="itemNameDisplay">No item selected</h2>
             <div class="chips">
               <span class="chip" id="barcodeDisplay" style="display:none">Barcode —</span>
-              <span class="chip" id="shelfDisplay">Shelf —</span>
+              <span class="chip" id="shelfDisplay" style="display:none"></span>
               <span class="chip hi" id="categoryDisplay">—</span>
             </div>
           </div>
@@ -1042,44 +1070,55 @@
 
     function esc(s) { return s ? String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" }[c])) : '' }
 
+    let currentAd = null;
+    function panToAisle(ad) {
+      if (!ad || !mapImg.offsetWidth) return;
+      const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
+      sc = 2.5; 
+      px = cw / 2 - (ad.x + ad.w / 2) * sc;
+      py = ch / 2 - (ad.y + ad.h / 2) * sc;
+      at();
+      mapCard.classList.remove('flipped');
+    }
+
     function showCard(barcode, item) {
       const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
       if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
       nameD.textContent = name;
       barD.style.display = 'none';
-      
-      const ad = AISLE_DATA[shelf] || AISLE_DATA[cat];
+
+      currentAd = AISLE_DATA[shelf] || AISLE_DATA[cat];
       shelfD.style.display = 'none';
       catD.innerHTML = `<b>${esc(cat)}</b>`;
       catD.className = 'chip hi';
 
       // Aisle highlight
-      if (ad) {
-        aisleH.style.left = ad.x + 'px';
-        aisleH.style.top = ad.y + 'px';
-        aisleH.style.width = ad.w + 'px';
-        aisleH.style.height = ad.h + 'px';
+      if (currentAd) {
+        aisleH.style.left = currentAd.x + 'px';
+        aisleH.style.top = currentAd.y + 'px';
+        aisleH.style.width = currentAd.w + 'px';
+        aisleH.style.height = currentAd.h + 'px';
         aisleH.classList.add('active');
-        shelfImg.src = ad.photo;
-        shelfH.style.top = ad.shelfH.t + '%';
-        shelfH.style.left = ad.shelfH.l + '%';
-        shelfH.style.width = ad.shelfH.w + '%';
-        shelfH.style.height = ad.shelfH.h + '%';
+        shelfImg.src = currentAd.photo;
+        shelfH.style.top = currentAd.shelfH.t + '%';
+        shelfH.style.left = currentAd.shelfH.l + '%';
+        shelfH.style.width = currentAd.shelfH.w + '%';
+        shelfH.style.height = currentAd.shelfH.h + '%';
 
         // Auto pan to aisle
-        setTimeout(() => {
-          if (!mapImg.offsetWidth) return;
-          const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
-          sc = 2.5; // zoom in
-          px = cw / 2 - (ad.x + ad.w / 2) * sc;
-          py = ch / 2 - (ad.y + ad.h / 2) * sc;
-          at();
-        }, 50);
+        setTimeout(() => panToAisle(currentAd), 50);
       } else {
         aisleH.classList.remove('active');
       }
       mapCard.classList.remove('flipped');
     }
+
+    catD.addEventListener('click', () => {
+      if (currentAd) {
+        switchTab($('tab-map'));
+        panToAisle(currentAd);
+      }
+    });
 
     function openEdit(barcode) {
       const item = bDB[barcode];
