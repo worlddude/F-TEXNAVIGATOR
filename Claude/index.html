@@ -94,8 +94,32 @@ body{height:100%;display:flex;justify-content:center;align-items:center;backgrou
 #torchBtn.on{background:rgba(168,255,87,.15);border-color:#a8ff57;color:#a8ff57;box-shadow:0 0 20px rgba(168,255,87,.22)}
 
 /* item card */
-.item-card{position:relative;background:var(--bg2);border-top:1px solid var(--border);padding:14px 13px;flex-shrink:0;z-index:5}
+.item-card{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  background:transparent;
+  border-top:none;
+  padding:14px 13px;
+  flex-shrink:0;
+  z-index:20;
+  pointer-events:none;
+}
 .item-card.hidden{display:none}
+.card-row, #addForm{
+  pointer-events:auto;
+  background:rgba(12,12,14,0.6);
+  backdrop-filter:blur(20px);
+  border-radius:var(--r);
+  border:1px solid var(--border);
+  padding:12px;
+}
+#addForm{
+  flex-direction:column;
+  gap:9px;
+  margin-top:8px;
+}
 .card-row{display:flex;gap:11px;align-items:flex-start}
 #itemPhotoDisplay{width:58px;height:58px;object-fit:cover;border-radius:9px;border:1px solid var(--border2);flex-shrink:0;cursor:zoom-in}
 .card-info{flex:1;min-width:0}
@@ -106,7 +130,7 @@ body{height:100%;display:flex;justify-content:center;align-items:center;backgrou
 .chip.hi{background:rgba(168,255,87,.1);border-color:rgba(168,255,87,.25);color:#a8ff57}
 
 /* form */
-#addForm{display:none;flex-direction:column;gap:9px;padding-top:13px;border-top:1px solid var(--border);margin-top:13px}
+#addForm{display:none;}
 .form-row{display:flex;gap:7px}
 .fg{display:flex;flex-direction:column;gap:4px;flex:1}
 .fg label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
@@ -190,42 +214,41 @@ input[type="file"]{position:absolute;opacity:0;width:0;height:0}
     Flash
   </button>
   <div id="detectBadge"></div>
-</div>
-
-<div class="item-card" id="itemCard">
-  <div class="card-row">
-    <img id="itemPhotoDisplay" src="" alt="photo" style="display:none">
-    <div class="card-info">
-      <h2 id="itemNameDisplay">No item selected</h2>
-      <div class="chips">
-        <span class="chip" id="barcodeDisplay">Barcode —</span>
-        <span class="chip" id="shelfDisplay">Shelf —</span>
-        <span class="chip hi" id="categoryDisplay">—</span>
+  <div class="item-card" id="itemCard">
+    <div class="card-row">
+      <img id="itemPhotoDisplay" src="" alt="photo" style="display:none">
+      <div class="card-info">
+        <h2 id="itemNameDisplay">No item selected</h2>
+        <div class="chips">
+          <span class="chip" id="barcodeDisplay">Barcode —</span>
+          <span class="chip" id="shelfDisplay">Shelf —</span>
+          <span class="chip hi" id="categoryDisplay">—</span>
+        </div>
       </div>
     </div>
+    <div id="addForm">
+      <div class="fg"><label>Barcode</label><input type="text" id="itemBarcode" readonly></div>
+      <div class="form-row">
+        <div class="fg"><label>Name</label><input type="text" id="itemName" placeholder="e.g. Heinz Ketchup"></div>
+        <div class="fg" style="max-width:130px"><label>Category</label><input list="categoryList" id="itemCategory" placeholder="e.g. Sauces"><datalist id="categoryList"></datalist></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Shelf №</label><input type="text" id="itemShelf" placeholder="A3"></div>
+        <div class="fg"><label>Section №</label><input type="text" id="itemSection" placeholder="12"></div>
+      </div>
+      <div class="photo-zone" id="photoZone">
+        <img id="photoPreview" src="" alt="">
+        <div class="photo-label"><strong>Tap to choose photo</strong><br>or keep captured frame</div>
+        <input type="file" id="itemPhotoInput" accept="image/*">
+        <input type="hidden" id="itemPhotoData">
+      </div>
+      <button class="btn-save" id="saveBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>Save Item</span>
+      </button>
+    </div>
   </div>
-  <div id="addForm">
-    <div class="fg"><label>Barcode</label><input type="text" id="itemBarcode" readonly></div>
-    <div class="form-row">
-      <div class="fg"><label>Name</label><input type="text" id="itemName" placeholder="e.g. Heinz Ketchup"></div>
-      <div class="fg" style="max-width:130px"><label>Category</label><input list="categoryList" id="itemCategory" placeholder="e.g. Sauces"><datalist id="categoryList"></datalist></div>
-    </div>
-    <div class="form-row">
-      <div class="fg"><label>Shelf №</label><input type="text" id="itemShelf" placeholder="A3"></div>
-      <div class="fg"><label>Section №</label><input type="text" id="itemSection" placeholder="12"></div>
-    </div>
-    <div class="photo-zone" id="photoZone">
-      <img id="photoPreview" src="" alt="">
-      <div class="photo-label"><strong>Tap to choose photo</strong><br>or keep captured frame</div>
-      <input type="file" id="itemPhotoInput" accept="image/*">
-      <input type="hidden" id="itemPhotoData">
-    </div>
-    <button class="btn-save" id="saveBtn">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      <span>Save Item</span>
-    </button>
-  </div>
-</div>
+</div><!-- end main -->
 
 <div id="photoModal"><img src="" alt="" id="modalPhoto"></div>
 
@@ -412,7 +435,7 @@ photoDisp.addEventListener('click',()=>{if(photoDisp.src){modalPhoto.src=photoDi
 photoModal.addEventListener('click',()=>{photoModal.style.display='none';modalPhoto.src=''});
 
 // Map pan/zoom
-let sc=1,mn=.1,mx=6,px=0,py=0,pan=false,psx=0,psy=0,lpx=0,lpy=0,ltd=null;
+let sc=1,mn=1,mx=6,px=0,py=0,pan=false,psx=0,psy=0,lpx=0,lpy=0,ltd=null;
 function at(){mapImg.style.transform=`translate(${px}px,${py}px) scale(${sc})`}
 function cl(v,a,b){return Math.max(a,Math.min(b,v))}
 mapCon.addEventListener('wheel',e=>{e.preventDefault();const r=mapImg.getBoundingClientRect(),zf=Math.exp(-e.deltaY*.0015),ns=cl(sc*zf,mn,mx),sr=ns/sc;px=(px-(e.clientX-r.left))*sr+(e.clientX-r.left);py=(py-(e.clientY-r.top))*sr+(e.clientY-r.top);sc=ns;at()},{passive:false});
