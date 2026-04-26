@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Locator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --bg2: #111114;
+      --surface: rgba(255, 255, 255, .045);
+      --surface2: rgba(255, 255, 255, .075);
+      --border: rgba(255, 255, 255, .09);
+      --border2: rgba(255, 255, 255, .15);
+      --text: #f0f0f2;
+      --muted: rgba(240, 240, 242, .38);
+      --accent: #eff1f3;
+      --accent-bg: rgba(168, 255, 87, .1);
+      --accent-glow: rgba(168, 255, 87, .22);
+      --r: 14px;
+      --r-sm: 9px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    html {
+      height: 100%;
+      font-family: 'Syne', sans-serif;
+      background: #000;
+      overflow: hidden
+    }
+
+    body {
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a1a;
+      overflow: hidden
+    }
+
+    .phone-shell {
+      width: 100%;
+      max-width: 430px;
+      height: 100%;
+      max-height: 900px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 40px 120px rgba(0, 0, 0, .9);
+      border-radius: 0;
+    }
+
+    @media(min-width:500px) {
+      .phone-shell {
+        border-radius: 44px;
+        max-height: 860px;
+      }
+    }
+
+    .phone-shell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: .022;
+      pointer-events: none;
+      z-index: 9999;
+      border-radius: inherit
+    }
+
+    /* header */
+    .header {
+      padding: 13px 13px 0;
+      flex-shrink: 0;
+      z-index: 10;
+      background: var(--bg)
+    }
+
+    @media(min-width:500px) {
+      .header {
+        padding-top: 18px
+      }
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 11px
+    }
+
+    .wordmark {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .01em;
+      color: var(--text);
+      white-space: nowrap;
+      flex-shrink: 0
+    }
+
+    .wordmark em {
+      color: #263454eb;
+      font-style: normal
+    }
+
+    .search-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      color: #fff;
+      pointer-events: none;
+      display: flex
+    }
+
+    .search-wrap input {
+      width: 100%;
+      height: 38px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 50px;
+      padding: 0 14px 0 36px;
+      font-size: 13px;
+      font-family: 'Syne', sans-serif;
+      color: #fff;
+      outline: none;
+      transition: border-color .18s, box-shadow .18s, background .18s
+    }
+
+    .search-wrap input::placeholder {
+      color: rgba(255, 255, 255, .5)
+    }
+
+    .search-wrap input:focus {
+      border-color: #2563eb;
+      background: rgba(37, 99, 235, .07);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .22)
+    }
+
+    /* tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 3px;
+      margin-bottom: 0
+    }
+
+    .tabs button {
+      flex: 1;
+      background: none;
+      border: 0;
+      color: #fff;
+      padding: 8px 6px;
+      font-size: 11.5px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 50px;
+      transition: color .15s, background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px
+    }
+
+    .tabs button svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0
+    }
+
+    .tabs button.active {
+      background: #2563eb;
+      color: #fff
+    }
+
+    /* main */
+    .main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column
+    }
+
+    /* map */
+    #mapContainer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      touch-action: none;
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #map {
+      will-change: transform;
+      transform-origin: 0 0;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+      height: 100%;
+      width: auto;
+      object-fit: contain
+    }
+
+    /* camera */
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+      position: absolute;
+      inset: 0
+    }
+
+    #video.fullscreen {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      object-fit: cover
+    }
+
+    /* scan overlay */
+    #scanOverlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 11;
+      pointer-events: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0
+    }
+
+    #scanOverlay.on {
+      display: flex
+    }
+
+    #scanHint {
+      color: rgba(255, 255, 255, .75);
+      font-size: 12px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-top: 22px;
+      text-align: center;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, .8)
+    }
+
+    .sf {
+      width: 280px;
+      height: 180px;
+      position: relative
+    }
+
+    .sf::before,
+    .sf::after,
+    .sf span::before,
+    .sf span::after {
+      content: '';
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-color: #a8ff57;
+      border-style: solid
+    }
+
+    .sf::before {
+      top: 0;
+      left: 0;
+      border-width: 3px 0 0 3px;
+      border-radius: 5px 0 0 0
+    }
+
+    .sf::after {
+      top: 0;
+      right: 0;
+      border-width: 3px 3px 0 0;
+      border-radius: 0 5px 0 0
+    }
+
+    .sf span::before {
+      bottom: 0;
+      left: 0;
+      border-width: 0 0 3px 3px;
+      border-radius: 0 0 0 5px
+    }
+
+    .sf span::after {
+      bottom: 0;
+      right: 0;
+      border-width: 0 3px 3px 0;
+      border-radius: 0 0 5px 0
+    }
+
+    .sf-inner-border {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(168, 255, 87, .15);
+      border-radius: 4px
+    }
+
+    .sl {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #a8ff57, transparent);
+      box-shadow: 0 0 18px 2px rgba(168, 255, 87, .7), 0 0 40px rgba(168, 255, 87, .3);
+      animation: scan 2s ease-in-out infinite
+    }
+
+    @keyframes scan {
+      0% {
+        top: 6px;
+        opacity: 1
+      }
+
+      50% {
+        top: calc(100% - 6px);
+        opacity: .85
+      }
+
+      100% {
+        top: 6px;
+        opacity: 1
+      }
+    }
+
+    /* torch */
+    #torchBtn {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      background: rgba(12, 12, 14, .75);
+      backdrop-filter: blur(14px);
+      color: #fff;
+      border: 1px solid var(--border2);
+      padding: 9px 17px;
+      border-radius: 50px;
+      font-size: 11px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      display: none;
+      cursor: pointer;
+      align-items: center;
+      gap: 6px;
+      transition: all .2s
+    }
+
+    #torchBtn.on {
+      background: rgba(168, 255, 87, .15);
+      border-color: #a8ff57;
+      color: #a8ff57;
+      box-shadow: 0 0 20px rgba(168, 255, 87, .22)
+    }
+
+    /* item card */
+    .item-card {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: transparent;
+      border-top: none;
+      padding: 14px 13px;
+      flex-shrink: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .item-card.hidden {
+      display: none
+    }
+
+    .card-row,
+    #addForm {
+      pointer-events: auto;
+      background: rgba(12, 12, 14, 0.6);
+      backdrop-filter: blur(20px);
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      padding: 12px;
+    }
+
+    #addForm {
+      flex-direction: column;
+      gap: 9px;
+      margin-top: 8px;
+    }
+
+    .card-row {
+      display: flex;
+      gap: 11px;
+      align-items: flex-start
+    }
+
+    #itemPhotoDisplay {
+      width: 58px;
+      height: 58px;
+      object-fit: cover;
+      border-radius: 9px;
+      border: 1px solid var(--border2);
+      flex-shrink: 0;
+      cursor: zoom-in
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .card-info h2 {
+      font-size: 14.5px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      margin-bottom: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px
+    }
+
+    .chip {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      color: #fff;
+      letter-spacing: .02em
+    }
+
+    .chip b {
+      color: #fff;
+      font-weight: 600
+    }
+
+    .chip.hi {
+      background: rgba(168, 255, 87, .1);
+      border-color: rgba(168, 255, 87, .25);
+      color: #a8ff57
+    }
+
+    /* form */
+    #addForm {
+      display: none;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 7px
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1
+    }
+
+    .fg label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--muted)
+    }
+
+    .fg input {
+      height: 38px;
+      padding: 0 11px;
+      font-size: 13px;
+      font-family: 'Syne', sans-serif;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s, background .15s
+    }
+
+    .fg input::placeholder {
+      color: var(--muted)
+    }
+
+    .fg input:focus {
+      border-color: #a8ff57;
+      background: rgba(168, 255, 87, .04);
+      box-shadow: 0 0 0 3px rgba(168, 255, 87, .22)
+    }
+
+    .fg input[readonly] {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      cursor: default
+    }
+
+    .photo-zone {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      background: var(--surface);
+      border: 1px dashed var(--border2);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s
+    }
+
+    .photo-zone:hover {
+      border-color: #a8ff57;
+      background: rgba(168, 255, 87, .03)
+    }
+
+    #photoPreview {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      display: none;
+      flex-shrink: 0
+    }
+
+    .photo-label {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5
+    }
+
+    .photo-label strong {
+      color: #a8ff57
+    }
+
+    input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0
+    }
+
+    .btn-save {
+      height: 42px;
+      border: 0;
+      border-radius: var(--r-sm);
+      background: #a8ff57;
+      color: #0c0c0e;
+      font-size: 12.5px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow: 0 0 22px rgba(168, 255, 87, .18);
+      transition: opacity .15s, transform .1s, box-shadow .15s
+    }
+
+    .btn-save:hover {
+      box-shadow: 0 0 32px rgba(168, 255, 87, .35)
+    }
+
+    .btn-save:active {
+      transform: scale(.98);
+      opacity: .85
+    }
+
+    /* list */
+    #listPage {
+      flex: 1;
+      overflow-y: auto;
+      padding: 9px 11px;
+      display: none;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    #listPage::-webkit-scrollbar {
+      width: 3px
+    }
+
+    #listPage::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    #listPage::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px
+    }
+
+    .list-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 11px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background .12s, border-color .12s;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      flex-shrink: 0
+    }
+
+    .list-item:hover {
+      background: var(--surface2);
+      border-color: var(--border2)
+    }
+
+    .list-thumb {
+      width: 46px;
+      height: 46px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      flex: 0 0 46px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      overflow: hidden
+    }
+
+    .list-body {
+      flex: 1;
+      min-width: 0
+    }
+
+    .list-body h3 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff
+    }
+
+    .press-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: rgba(168, 255, 87, .08);
+      opacity: 0;
+      transition: opacity 120ms linear;
+      border-radius: inherit
+    }
+
+    .list-arrow {
+      color: #fff;
+      flex-shrink: 0;
+      opacity: .6
+    }
+
+    .load-more {
+      height: 38px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: #a8ff57;
+      font-size: 11px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .12s
+    }
+
+    .load-more:hover {
+      background: rgba(168, 255, 87, .1)
+    }
+
+    .empty {
+      text-align: center;
+      color: #fff;
+      padding: 44px 20px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px
+    }
+
+    .empty svg {
+      opacity: .35
+    }
+
+    /* modal */
+    #photoModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, .88);
+      backdrop-filter: blur(14px);
+      justify-content: center;
+      align-items: center;
+      animation: fi .15s ease
+    }
+
+    @keyframes fi {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    #photoModal img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: var(--r);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, .7);
+      cursor: zoom-out
+    }
+
+    #detectBadge {
+      display: none !important
+    }
+
+    /* Map Flip Scene */
+    .flip-scene {
+      perspective: 2000px;
+      position: absolute;
+      inset: 0;
+    }
+    .flip-card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flip-card.flipped {
+      transform: rotateY(180deg);
+    }
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      overflow: hidden;
+    }
+    .flip-back {
+      transform: rotateY(180deg);
+      background: #0c0c0e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #mapWrapper {
+      width: 100%;
+      height: 100%;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    #shelfPhoto {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .aisle-rect {
+      position: absolute;
+      border: 3px solid #a8ff57;
+      background: rgba(168, 255, 87, 0.2);
+      box-shadow: 0 0 20px rgba(168, 255, 87, 0.5);
+      border-radius: 4px;
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+    }
+    .aisle-rect.active {
+      display: block;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; box-shadow: 0 0 10px #a8ff57; }
+      50% { opacity: 1; box-shadow: 0 0 30px #a8ff57; }
+      100% { opacity: 0.6; box-shadow: 0 0 10px #a8ff57; }
+    }
+    .shelf-highlight {
+      position: absolute;
+      border: 3px solid #a8ff57;
+      box-shadow: 0 0 25px #a8ff57;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+</head>
+
+<body>
+  <div class="phone-shell">
+
+    <div class="header">
+      <div class="header-top">
+        <span class="wordmark">ITEM<em>LOC</em></span>
+        <form class="search-wrap" id="searchForm" autocomplete="off">
+          <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg></span>
+          <input type="text" id="searchInput" placeholder="Search items, barcodes, categories…">
+        </form>
+      </div>
+      <div class="tabs">
+        <button id="tab-add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+          List
+        </button>
+        <button id="tab-map" class="active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+            <line x1="9" y1="3" x2="9" y2="18" />
+            <line x1="15" y1="6" x2="15" y2="21" />
+          </svg>
+          Map
+        </button>
+        <button id="tab-scan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 012-2h2" />
+            <path d="M17 3h2a2 2 0 012 2v2" />
+            <path d="M21 17v2a2 2 0 01-2 2h-2" />
+            <path d="M7 21H5a2 2 0 01-2-2v-2" />
+            <rect x="7" y="9" width="10" height="6" rx="1" />
+          </svg>
+          Scan
+        </button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div id="mapContainer" class="flip-scene">
+        <div id="mapCard" class="flip-card">
+          <!-- Front: Map -->
+          <div class="flip-face">
+            <div id="mapWrapper">
+              <img id="map" src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/ChatGPT%20Image%2026.%20apr.%202026,%2019.37.35.png" alt="Store map">
+              <div id="aisleHighlight" class="aisle-rect"></div>
+            </div>
+          </div>
+          <!-- Back: Shelf -->
+          <div class="flip-face flip-back" id="shelfView">
+            <img id="shelfPhoto" src="" alt="Shelf photo">
+            <div id="shelfHighlight" class="shelf-highlight"></div>
+          </div>
+        </div>
+      </div>
+      <video id="video" playsinline autoplay muted></video>
+      <div id="scanOverlay">
+        <div class="sf"><span></span>
+          <div class="sf-inner-border"></div>
+          <div class="sl"></div>
+        </div>
+        <div id="scanHint">Hold stregkoden inden for rammen</div>
+      </div>
+      <div id="listPage"></div>
+      <button id="torchBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        Flash
+      </button>
+      <div id="detectBadge"></div>
+      <div class="item-card" id="itemCard">
+        <div class="card-row">
+          <img id="itemPhotoDisplay" src="" alt="photo" style="display:none">
+          <div class="card-info">
+            <h2 id="itemNameDisplay">No item selected</h2>
+            <div class="chips">
+              <span class="chip" id="barcodeDisplay" style="display:none">Barcode —</span>
+              <span class="chip" id="shelfDisplay">Shelf —</span>
+              <span class="chip hi" id="categoryDisplay">—</span>
+            </div>
+          </div>
+        </div>
+        <div id="addForm">
+          <div class="fg"><label>Barcode</label><input type="text" id="itemBarcode" readonly></div>
+          <div class="form-row">
+            <div class="fg"><label>Name</label><input type="text" id="itemName" placeholder="e.g. Heinz Ketchup"></div>
+            <div class="fg" style="max-width:130px"><label>Category</label><input list="categoryList" id="itemCategory"
+                placeholder="e.g. Sauces"><datalist id="categoryList"></datalist></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Shelf №</label><input type="text" id="itemShelf" placeholder="A3"></div>
+            <div class="fg"><label>Section №</label><input type="text" id="itemSection" placeholder="12"></div>
+          </div>
+          <div class="photo-zone" id="photoZone">
+            <img id="photoPreview" src="" alt="">
+            <div class="photo-label"><strong>Tap to choose photo</strong><br>or keep captured frame</div>
+            <input type="file" id="itemPhotoInput" accept="image/*">
+            <input type="hidden" id="itemPhotoData">
+          </div>
+          <button class="btn-save" id="saveBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            <span>Save Item</span>
+          </button>
+        </div>
+      </div>
+    </div><!-- end main -->
+
+    <div id="photoModal"><img src="" alt="" id="modalPhoto"></div>
+
+  </div><!-- end phone-shell -->
+
+  <script>
+    const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
+    const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
+    const $ = id => document.getElementById(id);
+    const video = $('video'), mapImg = $('map'), mapCon = $('mapContainer'), scanOv = $('scanOverlay'),
+      itemCard = $('itemCard'), nameD = $('itemNameDisplay'), barD = $('barcodeDisplay'),
+      shelfD = $('shelfDisplay'), catD = $('categoryDisplay'), addForm = $('addForm'),
+      saveBtn = $('saveBtn'), nameI = $('itemName'), catI = $('itemCategory'), shelfI = $('itemShelf'),
+      secI = $('itemSection'), barI = $('itemBarcode'), listPage = $('listPage'),
+      searchForm = $('searchForm'), searchInput = $('searchInput'), catDL = $('categoryList'),
+      torchBtn = $('torchBtn'), photoPrev = $('photoPreview'), photoInput = $('itemPhotoInput'),
+      photoDataI = $('itemPhotoData'), photoDisp = $('itemPhotoDisplay'), photoZone = $('photoZone'),
+      mapCard = $('mapCard'), mapWrap = $('mapWrapper'), aisleH = $('aisleHighlight'),
+      shelfImg = $('shelfPhoto'), shelfH = $('shelfHighlight');
+
+    const AISLE_DATA = {
+      'A3': { x: 585, y: 350, w: 30, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } },
+      'Brød': { x: 230, y: 150, w: 100, h: 60, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 20, l: 10, w: 40, h: 60 } },
+      'Vin': { x: 350, y: 120, w: 80, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 15, l: 5, w: 30, h: 70 } },
+      'Chips': { x: 450, y: 250, w: 40, h: 120, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } }
+    };
+
+    let bDB = {}, cats = new Set(), stream = null, torchOn = false, CT = 3, lastC = null, cnt = 0, cool = false, PAGE = 100;
+
+    photoZone.addEventListener('click', () => photoInput.click());
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      mapCon.style.display = 'none'; video.style.display = 'none'; listPage.style.display = 'none';
+      addForm.style.display = 'none'; itemCard.classList.add('hidden');
+      torchBtn.style.display = 'none'; scanOv.classList.remove('on'); video.classList.remove('fullscreen');
+      if (tab.id === 'tab-map') {
+        mapCon.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
+      } else if (tab.id === 'tab-scan') {
+        video.style.display = 'block'; video.classList.add('fullscreen'); scanOv.classList.add('on'); startCam(); torchBtn.style.display = 'flex';
+      } else {
+        listPage.style.display = 'flex'; stopCam(); renderList(getAll(), 0);
+      }
+    }
+
+    $('tab-map').addEventListener('click', e => switchTab(e.currentTarget));
+    $('tab-scan').addEventListener('click', e => switchTab(e.currentTarget));
+    $('tab-add').addEventListener('click', e => switchTab(e.currentTarget));
+
+    function getAll() { return Object.entries(bDB).map(([b, it]) => ({ barcode: b, ...it })) }
+
+    function lev(a, b) { if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length; const m = []; for (let i = 0; i <= b.length; i++)m[i] = [i]; for (let j = 0; j <= a.length; j++)m[0][j] = j; for (let i = 1; i <= b.length; i++)for (let j = 1; j <= a.length; j++)m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1] : 1 + Math.min(m[i - 1][j - 1], m[i][j - 1], m[i - 1][j]); return m[b.length][a.length] }
+
+    function updateDL() { catDL.innerHTML = ''; Array.from(cats).filter(Boolean).sort((a, b) => a.localeCompare(b)).forEach(c => { const o = document.createElement('option'); o.value = c; catDL.appendChild(o) }) }
+
+    function esc(s) { return s ? String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" }[c])) : '' }
+
+    function showCard(barcode, item) {
+      const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
+      if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
+      nameD.textContent = name;
+      barD.style.display = 'none';
+      shelfD.innerHTML = `Shelf <b>${esc(shelf)}·${esc(sec)}</b>`;
+      catD.innerHTML = `<b>${esc(cat)}</b>`;
+      catD.className = 'chip hi';
+
+      // Aisle highlight
+      const ad = AISLE_DATA[shelf] || AISLE_DATA[cat];
+      if (ad) {
+        aisleH.style.left = ad.x + 'px';
+        aisleH.style.top = ad.y + 'px';
+        aisleH.style.width = ad.w + 'px';
+        aisleH.style.height = ad.h + 'px';
+        aisleH.classList.add('active');
+        shelfImg.src = ad.photo;
+        shelfH.style.top = ad.shelfH.t + '%';
+        shelfH.style.left = ad.shelfH.l + '%';
+        shelfH.style.width = ad.shelfH.w + '%';
+        shelfH.style.height = ad.shelfH.h + '%';
+
+        // Auto pan to aisle
+        const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
+        const il = (cw - mapImg.offsetWidth) / 2, it = (ch - mapImg.offsetHeight) / 2;
+        sc = 2; // zoom in
+        px = cw / 2 - il - (ad.x + ad.w / 2) * sc;
+        py = ch / 2 - it - (ad.y + ad.h / 2) * sc;
+        at();
+      } else {
+        aisleH.classList.remove('active');
+      }
+      mapCard.classList.remove('flipped');
+    }
+
+    function openEdit(barcode) {
+      const item = bDB[barcode];
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      $('tab-map').classList.add('active');
+      mapCon.style.display = 'flex'; video.style.display = 'none'; listPage.style.display = 'none';
+      itemCard.classList.remove('hidden'); addForm.style.display = 'flex';
+      torchBtn.style.display = 'none'; scanOv.classList.remove('on');
+      barI.value = barcode || ''; nameI.value = item?.name || ''; catI.value = item?.category || ''; shelfI.value = item?.shelf || ''; secI.value = item?.section || '';
+      showCard(barcode, item || {});
+      if (item?.photo) { photoPrev.src = item.photo; photoPrev.style.display = 'block'; photoDataI.value = '' }
+      else { photoPrev.style.display = 'none'; photoPrev.src = ''; photoDataI.value = '' }
+      saveBtn.querySelector('span').textContent = 'Save Changes';
+    }
+
+    function renderList(items, start = 0) {
+      if (start === 0) listPage.innerHTML = '';
+      const end = Math.min(start + PAGE, items.length);
+      if (!items.length) { listPage.innerHTML = `<div class="empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>No items found.</div>`; return }
+      for (let i = start; i < end; i++) {
+        const it = items[i], div = document.createElement('div');
+        div.className = 'list-item'; div.dataset.barcode = it.barcode;
+        const thumb = it.photo ? `<img class="list-thumb" src="${esc(it.photo)}" alt="">` : `<div class="list-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+        div.innerHTML = `${thumb}<div class="list-body"><h3>${esc(it.name || 'Unnamed')}</h3><div class="chips">${it.category ? `<span class="chip hi">${esc(it.category)}</span>` : ''}<span class="chip">${esc(it.barcode)}</span>${it.shelf ? `<span class="chip">${esc(it.shelf)}·${esc(it.section || '?')}</span>` : ''}</div></div><svg class="list-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+        const ov = document.createElement('div'); ov.className = 'press-overlay'; div.appendChild(ov);
+        div.addEventListener('click', () => { const item = bDB[div.dataset.barcode]; if (item) { showCard(div.dataset.barcode, item); switchTab($('tab-map')) } });
+        (function (el, bc, overlay) {
+          let timer = null, t0 = null, raf = null; const LP = 1250;
+          function upd() { if (!t0) return; const p = Math.min(1, (Date.now() - t0) / LP); overlay.style.opacity = .1 + p * .9; if (p < 1) raf = requestAnimationFrame(upd) }
+          function go() { clr(); t0 = Date.now(); overlay.style.transition = 'opacity 60ms'; raf = requestAnimationFrame(upd); timer = setTimeout(() => { timer = null; t0 = null; cancelAnimationFrame(raf); overlay.style.opacity = 0; openEdit(bc) }, LP) }
+          function clr() { if (timer) clearTimeout(timer); if (raf) cancelAnimationFrame(raf); timer = raf = t0 = null; overlay.style.transition = 'opacity 200ms'; overlay.style.opacity = 0 }
+          el.addEventListener('mousedown', e => { if (e.button) return; go() });
+          el.addEventListener('mouseup', clr); el.addEventListener('mouseleave', clr);
+          el.addEventListener('touchstart', e => { if (e.touches.length > 1) return; go() }, { passive: true });
+          el.addEventListener('touchend', clr); el.addEventListener('touchcancel', clr);
+          el.addEventListener('contextmenu', e => e.preventDefault());
+          el.addEventListener('selectstart', e => e.preventDefault());
+        })(div, it.barcode, ov);
+        listPage.appendChild(div);
+      }
+      if (end < items.length) { const btn = document.createElement('button'); btn.className = 'load-more'; btn.textContent = `Load more · ${items.length - end} remaining`; btn.addEventListener('click', () => { btn.remove(); renderList(items, end) }); listPage.appendChild(btn) }
+    }
+
+    function doSearch() {
+      const q = searchInput.value.trim().toLowerCase(), all = getAll();
+      if (!q) { renderList(all, 0); return }
+      const res = [];
+      for (const it of all) {
+        const n = (it.name || '').toLowerCase(), b = (it.barcode || '').toLowerCase(), c = (it.category || '').toLowerCase();
+        let s = 10000;
+        if (n === q) s = -1000; else if (b === q) s = -900; else if (c === q) s = -950;
+        else if (n.startsWith(q)) s = -100; else if (c.startsWith(q)) s = -120;
+        else if (n.includes(q)) s = 10 + n.indexOf(q); else if (c.includes(q)) s = 5 + c.indexOf(q);
+        else if (b.includes(q)) s = 20;
+        else { const l = lev(q, n); if (n && l <= Math.max(2, Math.floor(n.length * .25))) s = 50 + l }
+        if (s < 10000) res.push({ it, s });
+      }
+      res.sort((a, b) => a.s - b.s); renderList(res.map(r => r.it), 0);
+    }
+
+    searchForm.addEventListener('submit', e => { e.preventDefault(); switchTab($('tab-add')); doSearch() });
+    let dt = null; searchInput.addEventListener('input', () => { switchTab($('tab-add')); clearTimeout(dt); dt = setTimeout(doSearch, 150) });
+
+    function d2b(d) { const p = d.split(','), mime = p[0].match(/:(.*?);/)[1], bin = atob(p[1]), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++)u8[i] = bin.charCodeAt(i); return new Blob([u8], { type: mime }) }
+
+    async function uploadImg(barcode, dataURL) { if (!dataURL) return null; const blob = d2b(dataURL), fn = `${barcode}/${Date.now()}.jpg`; const { error } = await db.storage.from(BUCKET).upload(fn, blob, { cacheControl: '3600', upsert: true }); if (error) throw error; return db.storage.from(BUCKET).getPublicUrl(fn).data.publicUrl }
+
+    async function saveItem(barcode, item) { const { error } = await db.from('items').upsert({ barcode, name: item.name, category: item.category, shelf: item.shelf, section: item.section, image_url: item.image_url || null }, { onConflict: 'barcode' }); if (error) throw error }
+
+    async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '' }; if (r.category) cats.add(r.category) } updateDL() }
+
+    function captureFrame() { try { const c = document.createElement('canvas'); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); return c.toDataURL('image/png') } catch (e) { return null } }
+
+    photoInput.addEventListener('change', e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { photoDataI.value = ev.target.result; photoPrev.src = ev.target.result; photoPrev.style.display = 'block' }; r.readAsDataURL(f) });
+
+    function startScanner() {
+      lastC = null; cnt = 0; cool = false;
+      Quagga.init({ inputStream: { name: 'Live', type: 'LiveStream', target: video }, decoder: { readers: ['ean_reader', 'upc_reader', 'code_128_reader'] }, locate: true }, err => { if (err) { console.error(err); return } Quagga.start() });
+      Quagga.onDetected(res => {
+        if (!res?.codeResult || cool) return;
+        const code = res.codeResult.code;
+        if (lastC === code) cnt++; else { lastC = code; cnt = 1 }
+        if (cnt >= CT) {
+          cool = true; lastC = null; cnt = 0;
+          const item = bDB[code];
+          if (item) { showCard(code, item); switchTab($('tab-map')) }
+          else {
+            nameD.textContent = 'Not in database'; barD.innerHTML = `Barcode <b>${esc(code)}</b>`; shelfD.innerHTML = 'Shelf <b>—</b>'; catD.textContent = '—'; catD.className = 'chip';
+            barI.value = code;
+            const frame = captureFrame(); if (frame) { photoDataI.value = frame; photoPrev.src = frame; photoPrev.style.display = 'block' } else { photoDataI.value = ''; photoPrev.style.display = 'none' }
+            saveBtn.querySelector('span').textContent = 'Save Item';
+            video.style.display = 'none'; scanOv.classList.remove('on'); addForm.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
+          }
+          setTimeout(() => { cool = false }, 700);
+        }
+      });
+    }
+
+    function stopCam() { cool = false; lastC = null; cnt = 0; if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null } if (video.srcObject) { try { video.srcObject.getTracks().forEach(t => t.stop()) } catch (e) { } video.srcObject = null } if (window.Quagga) { try { Quagga.stop() } catch (e) { } } }
+
+    async function startCam() { cool = false; lastC = null; cnt = 0; try { const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); stream = s; video.srcObject = s; video.play().catch(() => { }); torchOn = false; torchBtn.classList.remove('on'); startScanner() } catch (err) { alert('Camera error: ' + err.message) } }
+
+    async function toggleTorch() { if (!stream) return; const t = stream.getVideoTracks()[0]; if (!t) return; try { await t.applyConstraints({ advanced: [{ torch: !torchOn }] }); torchOn = !torchOn; torchBtn.classList.toggle('on', torchOn) } catch (e) { alert('Torch not supported.') } }
+    torchBtn.addEventListener('click', toggleTorch);
+
+    async function resizeDURL(d, mw = 1024, q = .75) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const sc = Math.min(1, mw / img.width), w = img.width * sc, h = img.height * sc, c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); try { res(c.toDataURL('image/jpeg', q)) } catch (e) { rej(e) } }; img.onerror = () => rej(new Error('fail')); img.crossOrigin = 'anonymous'; img.src = d }) }
+
+    saveBtn.addEventListener('click', async () => {
+      try {
+        const name = nameI.value.trim(), cat = catI.value.trim(), shelf = shelfI.value.trim(), sec = secI.value.trim(), barcode = barI.value.trim();
+        if (!name || !cat || !shelf || !sec || !barcode) { alert('Please fill in all fields.'); return }
+        let photoUrl = null;
+        const raw = photoDataI.value || null;
+        if (raw) { let d; try { d = await resizeDURL(raw) } catch (e) { d = raw } photoUrl = await uploadImg(barcode, d) }
+        else if (bDB[barcode]?.photo) photoUrl = bDB[barcode].photo;
+        await saveItem(barcode, { name, category: cat, shelf, section: sec, image_url: photoUrl });
+        cats.add(cat); updateDL(); await loadDB();
+        showCard(barcode, bDB[barcode] || { name, shelf, section: sec, category: cat });
+        addForm.style.display = 'none'; switchTab($('tab-map'));
+      } catch (err) { alert('Save failed: ' + (err.message || err)) }
+    });
+
+    // Photo modal
+    const photoModal = $('photoModal'), modalPhoto = $('modalPhoto');
+    photoDisp.addEventListener('click', () => { if (photoDisp.src) { modalPhoto.src = photoDisp.src; photoModal.style.display = 'flex' } });
+    photoModal.addEventListener('click', () => { photoModal.style.display = 'none'; modalPhoto.src = '' });
+
+    // Map pan/zoom
+    let sc = 1, mn = 0.5, mx = 6, px = 0, py = 0, pan = false, psx = 0, psy = 0, lpx = 0, lpy = 0, ltd = null;
+    function at() {
+      if (!mapImg.offsetWidth) return;
+      const cw = mapCon.clientWidth, ch = mapCon.clientHeight, iw = mapImg.offsetWidth * sc, ih = mapImg.offsetHeight * sc;
+      const il = (cw - mapImg.offsetWidth) / 2, it = (ch - mapImg.offsetHeight) / 2, b = 100;
+      px = cl(px, b - il - iw, cw - b - il); py = cl(py, b - it - ih, ch - b - it);
+      mapWrap.style.transform = `translate(${px}px,${py}px) scale(${sc})`;
+    }
+    function cl(v, a, b) { return Math.max(a, Math.min(b, v)) }
+    mapCon.addEventListener('wheel', e => { e.preventDefault(); const r = mapImg.getBoundingClientRect(), zf = Math.exp(-e.deltaY * .0015), ns = cl(sc * zf, mn, mx), sr = ns / sc; px -= (e.clientX - r.left) * (sr - 1); py -= (e.clientY - r.top) * (sr - 1); sc = ns; at() }, { passive: false });
+    mapCon.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; pan = true; psx = e.clientX; psy = e.clientY; lpx = px; lpy = py; mapCon.setPointerCapture(e.pointerId) });
+    mapCon.addEventListener('pointermove', e => { if (!pan) return; px = lpx + (e.clientX - psx); py = lpy + (e.clientY - psy); at() });
+    mapCon.addEventListener('pointerup', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
+    mapCon.addEventListener('pointercancel', e => { pan = false; try { mapCon.releasePointerCapture(e.pointerId) } catch (_) { } });
+    mapCon.addEventListener('touchstart', e => { if (e.touches.length === 1) { ltd = null; pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py } else if (e.touches.length === 2) { pan = false; ltd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY) } }, { passive: false });
+    mapCon.addEventListener('touchmove', e => { if (e.touches.length === 1 && pan) { e.preventDefault(); px = lpx + (e.touches[0].clientX - psx); py = lpy + (e.touches[0].clientY - psy); at() } else if (e.touches.length === 2) { e.preventDefault(); const cd = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY); if (ltd) { const ns = cl(sc * (cd / ltd), mn, mx), r = mapImg.getBoundingClientRect(), cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top, sr = ns / sc; px -= cx * (sr - 1); py -= cy * (sr - 1); sc = ns; at() } ltd = cd } }, { passive: false });
+    mapCon.addEventListener('touchend', e => { if (!e.touches.length) { pan = false; ltd = null } else if (e.touches.length === 1) { pan = true; psx = e.touches[0].clientX; psy = e.touches[0].clientY; lpx = px; lpy = py; ltd = null } }, { passive: false });
+
+    mapCon.addEventListener('click', e => {
+      if (aisleH.classList.contains('active')) {
+        mapCard.classList.toggle('flipped');
+      }
+    });
+
+    // Init
+    mapCon.style.display = 'flex';
+    const MS = 'height:100%;width:auto;object-fit:contain;transform:none;display:block;';
+    mapImg.setAttribute('style', MS);
+    mapImg.addEventListener('load', () => mapImg.setAttribute('style', MS));
+    window.addEventListener('load', async () => { try { await loadDB() } catch (e) { console.warn(e) } });
+  </script>
+</body>
+
+</html>
