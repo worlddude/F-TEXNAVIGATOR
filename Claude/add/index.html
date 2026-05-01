@@ -720,7 +720,6 @@
       line-height:1.4;
     }
 
-    /* photo preview overlay polish */
     #page-photo .stage{ background:#000 }
     .photo-vignette{
       position:absolute;
@@ -730,64 +729,40 @@
         linear-gradient(180deg, rgba(0,0,0,.45) 0%, transparent 18%, transparent 70%, rgba(0,0,0,.65) 100%);
     }
 
-    /* card-flash legacy class — repurpose with subtle accent border flash */
-    .flash-card{
-      animation: flashAccent .55s ease;
-    }
+    .flash-card{ animation: flashAccent .55s ease; }
     @keyframes flashAccent{
       0%{box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 60px 140px rgba(0,0,0,.8)}
-      40%{box-shadow:
-        0 0 0 1px var(--accent),
-        0 0 38px rgba(61,142,255,.45),
-        0 60px 140px rgba(0,0,0,.8)}
+      40%{box-shadow: 0 0 0 1px var(--accent), 0 0 38px rgba(61,142,255,.45), 0 60px 140px rgba(0,0,0,.8)}
       100%{box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 60px 140px rgba(0,0,0,.8)}
     }
 
-    .small{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:500;
-    }
-
-    /* keep legacy hooks no-op */
+    .small{ font-size:12px; color:var(--muted); font-weight:500; }
     h1{display:none}
     .card{background:transparent}
   </style>
 </head>
 <body>
   <div class="app">
-
-    <!-- top header / wordmark -->
     <div class="top-bar">
       <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em></span>
       <span id="status" class="status-pill">Klar — tryk Start kamera</span>
     </div>
-
     <div class="body">
-
-      <!-- legacy h1 placeholder for any code expecting it -->
       <h1>Stregkode-scanner</h1>
-
-      <!-- ============ START ============ -->
       <div id="page-start" class="page active">
         <div class="step-head" style="padding:0 0 4px">
           <div class="step-tag">Step 01 · Capture</div>
           <div class="step-title">Scan a new product</div>
           <div class="step-sub">Aim the camera at any barcode. We'll fetch product info and let you tag its shelf in seconds.</div>
         </div>
-
         <div class="start-hero">
           <div class="start-inner">
             <div class="start-emblem">
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7V5a2 2 0 012-2h2"/>
-                <path d="M17 3h2a2 2 0 012 2v2"/>
-                <path d="M21 17v2a2 2 0 01-2 2h-2"/>
-                <path d="M7 21H5a2 2 0 01-2-2v-2"/>
-                <line x1="7" y1="12" x2="17" y2="12"/>
-                <line x1="9" y1="9" x2="9" y2="15"/>
-                <line x1="15" y1="9" x2="15" y2="15"/>
-                <line x1="12" y1="9" x2="12" y2="15"/>
+                <path d="M3 7V5a2 2 0 012-2h2"/><path d="M17 3h2a2 2 0 012 2v2"/>
+                <path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/>
+                <line x1="7" y1="12" x2="17" y2="12"/><line x1="9" y1="9" x2="9" y2="15"/>
+                <line x1="15" y1="9" x2="15" y2="15"/><line x1="12" y1="9" x2="12" y2="15"/>
               </svg>
             </div>
             <div class="start-title">Camera ready</div>
@@ -802,58 +777,44 @@
           </div>
         </div>
       </div>
-
-      <!-- ============ SCAN ============ -->
       <div id="page-scan" class="page">
         <div class="step-head" style="padding:0 0 4px">
           <div class="step-tag">Step 01 · Scan</div>
           <div class="step-title">Hold a barcode in frame</div>
         </div>
-
         <div class="stage">
           <video id="video" playsinline muted></video>
           <div class="overlay">
-
             <div class="reticle-wrap">
               <div class="sf"><span></span><div class="sf-inner"></div><div class="sl"></div></div>
               <div class="reticle-hint">Center barcode in frame</div>
             </div>
-
             <div class="topbar">
               <span class="chip live" id="chip-barcode">Scanning</span>
               <div style="display:flex;gap:8px">
                 <span id="barcodeTop" class="chip" style="display:none;pointer-events:none"></span>
-                <button id="stopCameraBtn" class="chip chip-btn" title="Stop kamera" style="background:rgba(12,12,14,.78);">Stop</button>
+                <button id="stopCameraBtn" class="chip chip-btn" style="background:rgba(12,12,14,.78);">Stop</button>
               </div>
             </div>
-
             <div id="scanMessage" class="message" style="display:none">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               <span id="scanStatus">Barcode fundet!</span>
             </div>
-
-            <div id="bottomArea" class="bottom">
-              <!-- bottom button area is dynamically filled when code is scanned -->
-            </div>
+            <div id="bottomArea" class="bottom"></div>
           </div>
         </div>
       </div>
-
-      <!-- ============ PHOTO PREVIEW ============ -->
       <div id="page-photo" class="page">
         <div class="step-head" style="padding:0 0 4px">
           <div class="step-tag">Step 02 · Preview</div>
           <div class="step-title">Looks good?</div>
           <div class="step-sub">Godkend billedet eller tag det om.</div>
         </div>
-
         <div class="stage">
           <img id="previewImg" class="preview" alt="Forhåndsvisning" />
           <div class="photo-vignette"></div>
           <div class="overlay">
-            <div class="topbar">
-              <span class="chip">Preview</span>
-            </div>
+            <div class="topbar"><span class="chip">Preview</span></div>
             <div class="bottom">
               <button id="retakeBtn" class="btn ghost">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -867,16 +828,12 @@
           </div>
         </div>
       </div>
-
-      <!-- ============ EDIT ============ -->
       <div id="page-edit" class="page">
         <div class="step-head" style="padding:0 0 4px">
           <div class="step-tag">Step 03 · Details</div>
           <div class="step-title">Add product details</div>
         </div>
-
         <div class="edit-card">
-
           <div class="edit-head">
             <img id="editPreview" alt="Produkt" />
             <div class="edit-meta">
@@ -885,75 +842,40 @@
               <div id="editTimestamp">—</div>
             </div>
           </div>
-
           <div class="field-grid">
-            <div class="field">
-              <label>Produktnavn</label>
-              <input id="field_name" type="text" placeholder="Produktnavn" />
-            </div>
-
-            <div class="field">
-              <label>Producent / brand</label>
-              <input id="field_brand" type="text" placeholder="Brand" />
-            </div>
-
-            <div class="field">
-              <label>Søgeord</label>
-              <input id="field_category" type="text" placeholder="fx ketchup" />
-            </div>
-
+            <div class="field"><label>Produktnavn</label><input id="field_name" type="text" placeholder="Produktnavn" /></div>
+            <div class="field"><label>Producent / brand</label><input id="field_brand" type="text" placeholder="Brand" /></div>
+            <div class="field"><label>Søgeord</label><input id="field_category" type="text" placeholder="fx ketchup" /></div>
             <div class="field-row-2">
-              <div class="field">
-                <label>Hylde</label>
-                <input id="field_shelf" type="text" placeholder="fx 42" />
-              </div>
-              <div class="field">
-                <label>Række</label>
-                <input id="field_row" type="text" placeholder="fx A" />
-              </div>
+              <div class="field"><label>Hylde</label><input id="field_shelf" type="text" placeholder="fx 42" /></div>
+              <div class="field"><label>Række</label><input id="field_row" type="text" placeholder="fx A" /></div>
             </div>
           </div>
-
           <div class="actions">
             <button id="saveProductBtn" class="save">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
+                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
               </svg>
               Gem i Supabase
             </button>
             <button id="backToScanBtn" class="secondary">Tilbage</button>
           </div>
-
           <div class="local-wrap">
             <div class="local-tag">Lokalt scannede</div>
             <ul id="localList" class="local-list"></ul>
           </div>
-
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- libs -->
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
-
   <script>
-    /*******************************
-     * --- KONFIGURER SUPABASE ----
-     * Udskift disse med dine værdier
-     *******************************/
-    const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+    const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
+    const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    /*******************************
-     * Elements & state
-     *******************************/
     const pageStart = document.getElementById('page-start');
     const pageScan = document.getElementById('page-scan');
     const pagePhoto = document.getElementById('page-photo');
@@ -964,47 +886,30 @@
     const editPreview = document.getElementById('editPreview');
     const editBarcodeLabel = document.getElementById('editBarcodeLabel');
     const editTimestamp = document.getElementById('editTimestamp');
-    const chipBarcode = document.getElementById('chip-barcode');
     const scanMessage = document.getElementById('scanMessage');
-    const scanStatus = document.getElementById('scanStatus');
     const bottomArea = document.getElementById('bottomArea');
     const barcodeTop = document.getElementById('barcodeTop');
-
     const startCameraBtn = document.getElementById('startCameraBtn');
     const stopCameraBtn = document.getElementById('stopCameraBtn');
-    const takePhotoBtnFromScan = null; // dynamic
     const acceptPhotoBtn = document.getElementById('acceptPhotoBtn');
     const retakeBtn = document.getElementById('retakeBtn');
     const backToScanBtn = document.getElementById('backToScanBtn');
     const saveProductBtn = document.getElementById('saveProductBtn');
-
     const field_name = document.getElementById('field_name');
     const field_brand = document.getElementById('field_brand');
     const field_category = document.getElementById('field_category');
     const field_shelf = document.getElementById('field_shelf');
     const field_row = document.getElementById('field_row');
-
     const localList = document.getElementById('localList');
 
-    // internal state
-    let stream = null;
-    let reader = null, controls = null;
+    let stream = null, reader = null, controls = null;
     let canvas = document.createElement('canvas');
-    let lastScanned = null;
-    let currentBarcode = '';
-    let openfoodData = null;
-    let localProducts = [];
-    let detectionPaused = false; // <-- important: pause detection but keep camera stream
+    let lastScanned = null, currentBarcode = '', openfoodData = null;
+    let localProducts = [], detectionPaused = false;
 
-    function showPage(el){
-      [pageStart,pageScan,pagePhoto,pageEdit].forEach(p=>p.classList.remove('active'));
-      el.classList.add('active');
-    }
+    function showPage(el){ [pageStart,pageScan,pagePhoto,pageEdit].forEach(p=>p.classList.remove('active')); el.classList.add('active'); }
     function setStatus(txt){ statusEl.textContent = txt; }
 
-    /*******************************
-     * Camera helpers
-     *******************************/
     async function findBackDeviceId(){
       try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -1014,304 +919,119 @@
     }
 
     async function startCamera(){
-      showPage(pageScan);
-      setStatus('Starter kamera — tillad adgang');
-      detectionPaused = false;
+      showPage(pageScan); setStatus('Starter kamera — tillad adgang'); detectionPaused = false;
       try{
         const deviceId = await findBackDeviceId();
-        if(deviceId){
-          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
-        } else {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
-        }
-        video.srcObject = stream;
-        await video.play();
-        setStatus('Scanner efter stregkoder...');
-        // clear bottom area (no hold button initially)
-        clearBottomButton();
-        runDetectionLoop();
-      }catch(e){
-        console.error(e);
-        setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
-        showPage(pageStart);
-      }
+        stream = deviceId
+          ? await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } })
+          : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+        video.srcObject = stream; await video.play();
+        setStatus('Scanner efter stregkoder...'); clearBottomButton(); runDetectionLoop();
+      }catch(e){ console.error(e); setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS'); showPage(pageStart); }
     }
 
     function stopCamera(){
-      // do not stop simply because a barcode was found — user must stop or accept/retake
       try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
       if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-      detectionPaused = true;
-      clearBottomButton();
-      barcodeTop.style.display = 'none';
-      showPage(pageStart);
-      setStatus('Kamera stoppet');
+      detectionPaused = true; clearBottomButton(); barcodeTop.style.display='none'; showPage(pageStart); setStatus('Kamera stoppet');
     }
 
-    /*******************************
-     * Detection loop (native BarcodeDetector or ZXing fallback)
-     * We respect detectionPaused: we DO NOT stop camera; we only ignore detections.
-     *******************************/
     async function runDetectionLoop(){
-      scanMessage.style.display = 'none';
-      barcodeTop.style.display = 'none';
-      detectionPaused = false;
-
+      scanMessage.style.display='none'; barcodeTop.style.display='none'; detectionPaused=false;
       if('BarcodeDetector' in window){
         try{
           const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
           const ctx = canvas.getContext('2d');
           (async function loop(){
             if(!stream) return;
-            try{
-              if(!detectionPaused){
-                canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
-                ctx.drawImage(video,0,0,canvas.width,canvas.height);
-                const codes = await detector.detect(canvas);
-                if(codes && codes.length){
-                  const code = codes[0].rawValue || codes[0].raw_text || '';
-                  if(code) await handleBarcode(code);
-                }
-              }
-            }catch(e){}
+            try{ if(!detectionPaused){ canvas.width=video.videoWidth||640; canvas.height=video.videoHeight||480; ctx.drawImage(video,0,0,canvas.width,canvas.height); const codes=await detector.detect(canvas); if(codes&&codes.length){ const code=codes[0].rawValue||codes[0].raw_text||''; if(code) await handleBarcode(code); } } }catch(e){}
             requestAnimationFrame(loop);
-          })();
-          return;
-        }catch(e){
-          console.warn('BarcodeDetector fejl — fallback', e);
-        }
+          })(); return;
+        }catch(e){ console.warn('BarcodeDetector fejl — fallback',e); }
       }
-
-      // ZXing fallback: ignore detections while detectionPaused === true
       if(window.ZXingBrowser){
         reader = new ZXingBrowser.BrowserMultiFormatReader();
         const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-        const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0]);
-        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl) => {
-          try{
-            if(detectionPaused) return; // ignore while paused
-            if(result && result.text) await handleBarcode(result.text);
-          }catch(e){}
+        const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label))||devices[devices.length-1]||devices[0]);
+        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result,err,ctrl) => {
+          try{ if(detectionPaused) return; if(result&&result.text) await handleBarcode(result.text); }catch(e){}
         });
-      } else {
-        setStatus('Ingen barcode-detektor tilgængelig');
-      }
+      } else { setStatus('Ingen barcode-detektor tilgængelig'); }
     }
 
-    /*******************************
-     * When barcode is found
-     *******************************/
     async function handleBarcode(code){
-      // debounce same code quickly
-      if(currentBarcode === code && Date.now() - (lastScanned?.time || 0) < 1200) return;
-      lastScanned = { code, time: Date.now() };
-      currentBarcode = code;
-
-      // Flash the app shell with accent border
-      const appCard = document.querySelector('.app');
-      appCard.classList.add('flash-card');
-      setTimeout(() => {
-        appCard.classList.remove('flash-card');
-      }, 600);
-      
-      // pause detection (but keep stream running)
-      detectionPaused = true;
-
-      // show code up top beside stop button
-      barcodeTop.textContent = code;
-      barcodeTop.style.display = 'inline-flex';
-
-      // show bottom "Tag billede" button (in same position as previous hold-knap)
-      showBottomPhotoButton();
-
-      // fill edit header values
-      editBarcodeLabel.textContent = code;
-      editTimestamp.textContent = new Date().toLocaleString();
-
-      // clear previous OFF data & preview
-      openfoodData = null;
-      editPreview.src = '';
-      previewImg.src = '';
-
-      // Fetch OpenFoodFacts to autofill name/brand (but DO NOT use their image)
+      if(currentBarcode===code && Date.now()-(lastScanned?.time||0)<1200) return;
+      lastScanned={code,time:Date.now()}; currentBarcode=code;
+      const appCard=document.querySelector('.app'); appCard.classList.add('flash-card'); setTimeout(()=>appCard.classList.remove('flash-card'),600);
+      detectionPaused=true; barcodeTop.textContent=code; barcodeTop.style.display='inline-flex';
+      showBottomPhotoButton(); editBarcodeLabel.textContent=code; editTimestamp.textContent=new Date().toLocaleString();
+      openfoodData=null; editPreview.src=''; previewImg.src='';
       try{
-        const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-        if(r.ok){
-          const j = await r.json();
-          if(j.status === 1){
-            openfoodData = j.product;
-            field_name.value = j.product.product_name_da || j.product.product_name || field_name.value || '';
-            field_brand.value = (j.product.brands || field_brand.value || '');
-            field_category.value = (j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' ');
-            setStatus('Produktforslag hentet fra OpenFoodFacts');
-          } else {
-            setStatus('Ingen info i OpenFoodFacts');
-          }
-        }
-      }catch(e){
-        console.warn('OFF fejl', e);
-        setStatus('OFF: kunne ikke hente info');
-      }
+        const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+        if(r.ok){ const j=await r.json(); if(j.status===1){ openfoodData=j.product; field_name.value=j.product.product_name_da||j.product.product_name||field_name.value||''; field_brand.value=(j.product.brands||field_brand.value||''); field_category.value=(j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' '); setStatus('Produktforslag hentet fra OpenFoodFacts'); } else { setStatus('Ingen info i OpenFoodFacts'); } }
+      }catch(e){ console.warn('OFF fejl',e); setStatus('OFF: kunne ikke hente info'); }
     }
 
-    /*******************************
-     * Bottom area helpers (dynamisk Tag billede knap)
-     *******************************/
-    function clearBottomButton(){
-      bottomArea.innerHTML = '';
-    }
-
+    function clearBottomButton(){ bottomArea.innerHTML=''; }
     function showBottomPhotoButton(){
       clearBottomButton();
-      const btn = document.createElement('button');
-      btn.id = 'dynamicTakePhoto';
-      btn.className = 'btn';
-      btn.style.pointerEvents = 'auto';
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Tag billede';
-      btn.addEventListener('click', () => {
-        // take snapshot for preview (but keep stream on until user accepts/retake)
-        takeSnapshotForPreview();
-      });
-      bottomArea.appendChild(btn);
+      const btn=document.createElement('button'); btn.className='btn'; btn.style.pointerEvents='auto';
+      btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Tag billede';
+      btn.addEventListener('click', takeSnapshotForPreview); bottomArea.appendChild(btn);
     }
 
-    /*******************************
-     * Snapshot & preview
-     *******************************/
     function takeSnapshotForPreview(){
-      if(!stream){
-        setStatus('Intet kamera aktivt');
-        return;
-      }
-      setStatus('Tager billede...');
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
-      // navigate to preview page (camera still running)
-      showPage(pagePhoto);
-      setStatus('Forhåndsvisning — godkend eller tag om');
+      if(!stream){ setStatus('Intet kamera aktivt'); return; }
+      setStatus('Tager billede...'); canvas.width=video.videoWidth||1280; canvas.height=video.videoHeight||720;
+      canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+      previewImg.src=canvas.toDataURL('image/jpeg',0.85); showPage(pagePhoto); setStatus('Forhåndsvisning — godkend eller tag om');
     }
 
-    // accept -> go to edit page and stop camera to save resources
     acceptPhotoBtn.addEventListener('click', () => {
-      editPreview.src = previewImg.src || '';
-      editBarcodeLabel.textContent = currentBarcode || editBarcodeLabel.textContent || '—';
-      editTimestamp.textContent = new Date().toLocaleString();
-      // stop the stream now (the user decided)
+      editPreview.src=previewImg.src||''; editBarcodeLabel.textContent=currentBarcode||editBarcodeLabel.textContent||'—'; editTimestamp.textContent=new Date().toLocaleString();
       try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
-      detectionPaused = true;
-      clearBottomButton();
-      showPage(pageEdit);
-      setStatus('Rediger produktinfo');
+      detectionPaused=true; clearBottomButton(); showPage(pageEdit); setStatus('Rediger produktinfo');
     });
 
-    // retake: go back to scan and restart detection (camera may already be active)
     retakeBtn.addEventListener('click', async () => {
-      // if camera is stopped, start it again; otherwise just resume detection
-      if(!stream){
-        await startCamera();
-      } else {
-        detectionPaused = false;
-        scanMessage.style.display = 'none';
-        barcodeTop.style.display = 'none';
-        clearBottomButton();
-        setStatus('Scanner efter stregkoder...');
-      }
+      if(!stream){ await startCamera(); } else { detectionPaused=false; scanMessage.style.display='none'; barcodeTop.style.display='none'; clearBottomButton(); setStatus('Scanner efter stregkoder...'); }
       showPage(pageScan);
     });
 
-    /*******************************
-     * Save product to Supabase
-     *******************************/
     saveProductBtn.addEventListener('click', async () => {
-      const barcode = editBarcodeLabel.textContent;
-      const name = field_name.value.trim();
-      const brand = field_brand.value.trim();
-      const category = field_category.value.trim();
-      const shelf = field_shelf.value.trim();
-      const row = field_row.value.trim();
-      const image_preview = editPreview.src || null;
-      
-
-      if(!barcode || !name || !brand){
-        alert('Udfyld venligst stregkode, navn og brand.');
-        return;
-      }
-
-      const productData = {
-        barcode,
-        name,
-        brand,
-        category,
-        shelf,
-        row,
-        image_preview
-      };
-
+      const barcode=editBarcodeLabel.textContent, name=field_name.value.trim(), brand=field_brand.value.trim();
+      const category=field_category.value.trim(), shelf=field_shelf.value.trim(), row=field_row.value.trim();
+      const image_preview=editPreview.src||null;
+      if(!barcode||!name||!brand){ alert('Udfyld venligst stregkode, navn og brand.'); return; }
       setStatus('Gemmer til Supabase...');
       try{
-        const { data, error } = await supabase
-          .from('products')
-          .insert([productData]);
-
-        if(error){
-          console.error('Supabase insert error:', error);
-          setStatus('Fejl ved gemning: ' + (error.message || 'ukendt fejl'));
-          return;
-        }
-
+        const { error } = await db.from('items').upsert({ barcode, name, category, shelf, section: row, image_url: image_preview||null }, { onConflict: 'barcode' });
+        if(error){ console.error('Supabase insert error:',error); setStatus('Fejl ved gemning: '+(error.message||'ukendt fejl')); return; }
         setStatus('Produkt gemt i Supabase ✅');
-        // also keep a local copy for quick list
-        localProducts.push(Object.assign({ created_at: new Date().toISOString() }, productData));
-        renderLocalList();
-
-        // reset UI
-        field_name.value = '';
-        field_brand.value = '';
-        field_category.value = '';
-        field_shelf.value = '';
-        editPreview.src = '';
-        editBarcodeLabel.textContent = '—';
-        editTimestamp.textContent = '—';
-        currentBarcode = '';
-        showPage(pageStart);
-      }catch(e){
-        console.error(e);
-        setStatus('Fejl ved gemning: ' + (e.message || e));
-      }
+        localProducts.push({ barcode, name, category, shelf, section: row, created_at: new Date().toISOString() }); renderLocalList();
+        field_name.value=''; field_brand.value=''; field_category.value=''; field_shelf.value='';
+        editPreview.src=''; editBarcodeLabel.textContent='—'; editTimestamp.textContent='—'; currentBarcode=''; showPage(pageStart);
+      }catch(e){ console.error(e); setStatus('Fejl ved gemning: '+(e.message||e)); }
     });
 
     function renderLocalList(){
-      localList.innerHTML = '';
+      localList.innerHTML='';
       [...localProducts].reverse().slice(0,20).forEach(p => {
-        const li = document.createElement('li');
-        li.textContent = `${p.barcode} • ${p.brand || '-'} • H:${p.shelf || '-'} • ${p.name || '-'}`;
+        const li=document.createElement('li');
+        li.textContent=`${p.barcode} • ${p.category||'-'} • H:${p.shelf||'-'} • ${p.name||'-'}`;
         localList.appendChild(li);
       });
     }
 
-    /*******************************
-     * One-shot "hold to scan" removed — user uses Tag billede when barcode found
-     *******************************/
-
-    // Start/Stop buttons
     startCameraBtn.addEventListener('click', startCamera);
     stopCameraBtn.addEventListener('click', stopCamera);
-    backToScanBtn.addEventListener('click', async () => {
-      // go back to scanning: restart camera
-      await startCamera();
-    });
-
-    // stop camera on page hide
+    backToScanBtn.addEventListener('click', async () => { await startCamera(); });
     window.addEventListener('pagehide', () => {
       try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
       if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-      detectionPaused = true;
+      detectionPaused=true;
     });
 
-    // initial state
     showPage(pageStart);
     setStatus('Klar — tryk Start kamera');
   </script>
