@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Stregkode-scanner + Supabase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root{
+      /* surfaces */
+      --bg: #0e1f3d;
+      --bg2: #162a50;
+      --bg3: #1e3460;
+      --surface:rgba(255,255,255,.045);
+      --surface2:rgba(255,255,255,.075);
+      --border:rgba(255,255,255,.08);
+      --border2:rgba(255,255,255,.14);
+      --border3:rgba(255,255,255,.22);
+      /* type */
+      --text:#eaf1ff;
+      --text-dim:rgba(234, 241, 255,.68);
+      --muted:rgba(234, 241, 255,.42);
+      --faint:rgba(234, 241, 255,.26);
+      /* accent — electric blue */
+      --accent:#3d8eff;
+      --accent-2:#7fb4ff;
+      --accent-bg:rgba(61,142,255,.1);
+      --accent-bg-2:rgba(61,142,255,.18);
+      --accent-glow:rgba(61,142,255,.35);
+      /* radii */
+      --r:16px;
+      --r-md:12px;
+      --r-sm:10px;
+      --r-xs:8px;
+    }
+
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;margin:0;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden}
+    body{
+      background: radial-gradient(ellipse at top, #244680 0%, #112a55 55%, #081a3a 100%);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+
+    /* phone shell — sibling of Home_index */
+    .app{
+      width:100%;
+      max-width:420px;
+      min-height:100vh;
+      background:var(--bg);
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.06),
+        0 1px 0 0 rgba(255,255,255,.04) inset,
+        0 60px 140px rgba(0,0,0,.8);
+    }
+    @media(min-width:500px){
+      .app{
+        margin:24px auto;
+        min-height:840px;
+        max-height:880px;
+        border-radius:44px;
+        overflow:hidden;
+      }
+    }
+
+    .app::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity:.025;
+      pointer-events:none;
+      z-index:9999;
+      border-radius:inherit;
+      mix-blend-mode:overlay;
+    }
+
+    /* ============ HEADER ============ */
+    .top-bar{
+      padding:18px 16px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-shrink:0;
+      position:relative;
+      z-index:5;
+    }
+    @media(min-width:500px){.top-bar{padding-top:24px}}
+
+    .wordmark{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      font-size:13px;
+      font-weight:800;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      color:var(--text);
+    }
+    .wordmark-dot{
+      width:7px;height:7px;border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 10px var(--accent-glow), 0 0 0 2px rgba(61,142,255,.15);
+      animation:brandPulse 2.6s ease-in-out infinite;
+    }
+    @keyframes brandPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    .wordmark em{color:var(--muted);font-style:normal;font-weight:600}
+
+    .status-pill{
+      font-family:'Geist Mono', monospace;
+      font-size:9.5px;
+      font-weight:500;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color:var(--text-dim);
+      padding:6px 11px;
+      background:var(--surface2);
+      border:1px solid var(--border2);
+      border-radius:50px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      max-width:62%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .status-pill::before{
+      content:'';
+      width:5px;height:5px;border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 8px var(--accent-glow);
+      flex-shrink:0;
+      animation:brandPulse 1.6s ease-in-out infinite;
+    }
+
+    /* ============ STEP HEADER ============ */
+    .step-head{
+      padding:0 16px 14px;
+      flex-shrink:0;
+    }
+    .step-tag{
+      font-family:'Geist Mono', monospace;
+      font-size:9.5px;
+      font-weight:500;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+      color:var(--accent);
+      margin-bottom:8px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .step-tag::after{
+      content:'';
+      flex:1;
+      height:1px;
+      background:linear-gradient(90deg, rgba(61,142,255,.3), transparent);
+    }
+    .step-title{
+      font-size:22px;
+      font-weight:700;
+      letter-spacing:-.015em;
+      color:var(--text);
+      line-height:1.15;
+    }
+    .step-sub{
+      font-size:12.5px;
+      color:var(--muted);
+      margin-top:6px;
+      line-height:1.45;
+      font-weight:500;
+    }
+
+    /* ============ PAGES ============ */
+    .body{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      padding:0 16px 24px;
+      gap:14px;
+      position:relative;
+    }
+    .page{display:none}
+    .page.active{display:flex;flex-direction:column;gap:14px;flex:1}
+
+    /* ============ START PAGE ============ */
+    #page-start .start-hero{
+      flex:1;
+      min-height:420px;
+      border-radius:var(--r);
+      border:1px solid var(--border2);
+      background:
+        radial-gradient(ellipse at center, rgba(61,142,255,.06) 0%, transparent 60%),
+        linear-gradient(180deg, #1c3260 0%, #0e1f3d 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+      padding:32px 22px;
+    }
+    #page-start .start-hero::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size:32px 32px;
+      mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      pointer-events:none;
+    }
+    .start-inner{
+      text-align:center;
+      position:relative;
+      z-index:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:18px;
+    }
+    .start-emblem{
+      width:88px;height:88px;
+      border-radius:24px;
+      background:
+        linear-gradient(180deg, rgba(61,142,255,.12) 0%, rgba(61,142,255,.04) 100%);
+      border:1px solid rgba(61,142,255,.35);
+      display:flex;align-items:center;justify-content:center;
+      color:var(--accent);
+      box-shadow:
+        0 0 0 6px rgba(61,142,255,.06),
+        0 0 32px rgba(61,142,255,.22),
+        inset 0 1px 0 rgba(255,255,255,.08);
+      position:relative;
+    }
+    .start-emblem::after{
+      content:'';
+      position:absolute;
+      inset:-12px;
+      border-radius:36px;
+      border:1px dashed rgba(61,142,255,.25);
+      animation:rotateRing 14s linear infinite;
+    }
+    @keyframes rotateRing{to{transform:rotate(360deg)}}
+    .start-title{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.01em;
+      color:var(--text);
+    }
+    .start-sub{
+      font-size:12.5px;
+      color:var(--muted);
+      max-width:240px;
+      line-height:1.5;
+      font-weight:500;
+    }
+
+    /* ============ STAGE (camera + photo) ============ */
+    .stage{
+      height:480px;
+      border-radius:var(--r);
+      overflow:hidden;
+      position:relative;
+      background:#000;
+      border:1px solid var(--border2);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.05) inset,
+        0 18px 38px rgba(0,0,0,.55);
+    }
+    video, img.preview{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .overlay{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+
+    /* topbar inside stage */
+    .topbar{
+      position:absolute;
+      top:12px;left:12px;right:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      pointer-events:auto;
+      z-index:5;
+    }
+
+    .chip{
+      font-family:'Geist Mono', monospace;
+      font-size:10px;
+      padding:7px 11px;
+      background:rgba(12,12,14,.72);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      border:1px solid var(--border2);
+      border-radius:50px;
+      color:var(--text);
+      letter-spacing:.06em;
+      font-weight:500;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      line-height:1;
+    }
+    .chip.live{
+      background:rgba(61,142,255,.14);
+      border-color:rgba(61,142,255,.45);
+      color:var(--accent);
+    }
+    .chip.live::before{
+      content:'';
+      width:5px;height:5px;border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 8px var(--accent-glow);
+      animation:brandPulse 1.4s ease-in-out infinite;
+    }
+    .chip-btn{
+      cursor:pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .chip-btn:hover{
+      background:rgba(20,20,24,.85);
+      border-color:var(--border3);
+    }
+
+    /* scan reticle (refined — same as Home) */
+    .reticle-wrap{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      pointer-events:none;
+      z-index:2;
+    }
+    .reticle-wrap::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background: radial-gradient(ellipse 280px 200px at center, transparent 30%, rgba(0,0,0,.55) 75%, rgba(0,0,0,.82) 100%);
+      pointer-events:none;
+    }
+    .sf{
+      width:260px;
+      height:180px;
+      position:relative;
+      z-index:1;
+    }
+    .sf::before, .sf::after, .sf span::before, .sf span::after{
+      content:'';
+      position:absolute;
+      width:30px;
+      height:30px;
+      border-color:var(--accent);
+      border-style:solid;
+      filter: drop-shadow(0 0 6px var(--accent-glow));
+      animation: cornerBreathe 2.4s ease-in-out infinite;
+    }
+    .sf::before{top:0;left:0;border-width:2.5px 0 0 2.5px;border-radius:8px 0 0 0}
+    .sf::after{top:0;right:0;border-width:2.5px 2.5px 0 0;border-radius:0 8px 0 0}
+    .sf span::before{bottom:0;left:0;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 8px}
+    .sf span::after{bottom:0;right:0;border-width:0 2.5px 2.5px 0;border-radius:0 0 8px 0}
+    .sf-inner{
+      position:absolute;inset:0;
+      border:1px solid rgba(61,142,255,.14);
+      border-radius:6px;
+    }
+    @keyframes cornerBreathe{0%,100%{opacity:1}50%{opacity:.65}}
+    .sl{
+      position:absolute;
+      left:8px;right:8px;
+      height:2px;
+      background:linear-gradient(90deg, transparent 0%, var(--accent) 20%, var(--accent-2) 50%, var(--accent) 80%, transparent 100%);
+      box-shadow:
+        0 0 14px 1px rgba(61,142,255,.65),
+        0 0 32px rgba(61,142,255,.25);
+      animation: scan 2.4s cubic-bezier(.4,0,.6,1) infinite;
+      border-radius:2px;
+    }
+    .sl::before{
+      content:'';
+      position:absolute;
+      inset:-16px 0;
+      background:linear-gradient(180deg, transparent 0%, rgba(61,142,255,.14) 50%, transparent 100%);
+      pointer-events:none;
+    }
+    @keyframes scan{
+      0%{top:8px;opacity:.9}
+      48%{top:calc(100% - 10px);opacity:1}
+      52%{top:calc(100% - 10px);opacity:1}
+      100%{top:8px;opacity:.9}
+    }
+
+    .reticle-hint{
+      margin-top:24px;
+      color:var(--text);
+      font-size:10px;
+      font-family:'Geist Mono',monospace;
+      font-weight:500;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      padding:7px 13px;
+      background:rgba(12,12,14,.72);
+      backdrop-filter:blur(14px);
+      border:1px solid var(--border2);
+      border-radius:50px;
+      position:relative;
+      z-index:1;
+    }
+
+    /* message shown when code found */
+    .message{
+      position:absolute;
+      left:14px;right:14px;
+      bottom:96px;
+      background:rgba(61,142,255,.14);
+      border:1px solid rgba(61,142,255,.45);
+      backdrop-filter:blur(14px);
+      color:var(--accent);
+      padding:10px 13px;
+      border-radius:var(--r-sm);
+      pointer-events:auto;
+      font-size:12px;
+      font-weight:600;
+      letter-spacing:-.005em;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 0 22px rgba(61,142,255,.18);
+      display:flex;align-items:center;gap:8px;
+      z-index:5;
+    }
+
+    /* bottom action area inside stage */
+    .bottom{
+      position:absolute;
+      left:0;right:0;
+      bottom:18px;
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      pointer-events:auto;
+      z-index:5;
+      padding:0 16px;
+    }
+
+    /* ============ BUTTONS ============ */
+    .btn{
+      height:44px;
+      padding:0 22px;
+      border-radius:50px;
+      border:0;
+      background: linear-gradient(180deg, var(--accent) 0%, #2a78f0 100%);
+      color:#0e1f3d;
+      font-family:'Syne',sans-serif;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      box-shadow:
+        0 0 0 1px rgba(61,142,255,.35),
+        0 6px 18px rgba(61,142,255,.28),
+        0 0 32px rgba(61,142,255,.15),
+        inset 0 1px 0 rgba(255,255,255,.35);
+      transition: transform .12s, box-shadow .2s, filter .2s;
+      white-space:nowrap;
+    }
+    .btn:hover{
+      box-shadow:
+        0 0 0 1px rgba(61,142,255,.5),
+        0 8px 24px rgba(61,142,255,.42),
+        0 0 44px rgba(61,142,255,.3),
+        inset 0 1px 0 rgba(255,255,255,.4);
+      filter:brightness(1.04);
+    }
+    .btn:active{transform:scale(.985)}
+
+    .btn.ghost{
+      background: rgba(12,12,14,.78);
+      backdrop-filter:blur(16px);
+      color:var(--text);
+      border:1px solid var(--border2);
+      box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    }
+    .btn.ghost:hover{
+      background:rgba(20,20,24,.85);
+      border-color:var(--border3);
+      filter:none;
+      box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    }
+
+    /* ============ EDIT FORM ============ */
+    .edit-card{
+      background: linear-gradient(180deg, rgba(22,22,26,.82) 0%, rgba(12,12,14,.88) 100%);
+      backdrop-filter: blur(28px) saturate(1.4);
+      border-radius:var(--r);
+      border:1px solid var(--border2);
+      padding:14px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.06) inset,
+        0 18px 38px rgba(0,0,0,.55);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .edit-head{
+      display:flex;
+      gap:13px;
+      align-items:center;
+      padding-bottom:14px;
+      border-bottom:1px solid var(--border);
+    }
+    #editPreview{
+      width:72px;height:72px;
+      object-fit:cover;
+      border-radius:var(--r-md);
+      border:1px solid var(--border3);
+      flex-shrink:0;
+      background:var(--surface2);
+      box-shadow: 0 6px 18px rgba(0,0,0,.4);
+    }
+    .edit-meta{
+      flex:1;
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
+    .edit-meta-tag{
+      font-family:'Geist Mono', monospace;
+      font-size:9px;
+      font-weight:500;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    #editBarcodeLabel{
+      font-family:'Geist Mono', monospace;
+      font-size:15px;
+      font-weight:600;
+      color:var(--text);
+      letter-spacing:.04em;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    #editTimestamp{
+      font-family:'Geist Mono', monospace;
+      font-size:10.5px;
+      color:var(--muted);
+      font-weight:400;
+    }
+
+    .field-grid{
+      display:flex;
+      flex-direction:column;
+      gap:11px;
+    }
+    .field-row-2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .field label{
+      font-family:'Geist Mono', monospace;
+      font-size:9px;
+      font-weight:500;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .field input{
+      height:42px;
+      padding:0 13px;
+      font-size:13.5px;
+      font-family:'Syne',sans-serif;
+      font-weight:500;
+      background: rgba(255,255,255,.035);
+      border:1px solid var(--border2);
+      border-radius:var(--r-sm);
+      color:var(--text);
+      outline:none;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      width:100%;
+    }
+    .field input::placeholder{color:var(--muted)}
+    .field input:focus{
+      border-color:var(--accent);
+      background: rgba(61,142,255,.04);
+      box-shadow: 0 0 0 3px rgba(61,142,255,.18);
+    }
+
+    .actions{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px;
+      margin-top:4px;
+    }
+    .save{
+      height:46px;
+      border:0;
+      border-radius:var(--r-sm);
+      background: linear-gradient(180deg, var(--accent) 0%, #2a78f0 100%);
+      color:#0e1f3d;
+      font-family:'Syne',sans-serif;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      box-shadow:
+        0 0 0 1px rgba(61,142,255,.35),
+        0 6px 18px rgba(61,142,255,.28),
+        0 0 32px rgba(61,142,255,.15),
+        inset 0 1px 0 rgba(255,255,255,.35);
+      transition: transform .12s, box-shadow .2s, filter .2s;
+    }
+    .save:hover{
+      filter: brightness(1.04);
+      box-shadow:
+        0 0 0 1px rgba(61,142,255,.5),
+        0 8px 24px rgba(61,142,255,.42),
+        0 0 44px rgba(61,142,255,.3),
+        inset 0 1px 0 rgba(255,255,255,.4);
+    }
+    .save:active{transform:scale(.985)}
+    .secondary{
+      height:46px;
+      padding:0 18px;
+      border-radius:var(--r-sm);
+      background:transparent;
+      border:1px solid var(--border2);
+      color:var(--text);
+      font-family:'Syne',sans-serif;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+      transition: background .14s, border-color .14s;
+    }
+    .secondary:hover{
+      background:var(--surface2);
+      border-color:var(--border3);
+    }
+
+    /* local list */
+    .local-wrap{
+      margin-top:6px;
+      padding-top:14px;
+      border-top:1px solid var(--border);
+    }
+    .local-tag{
+      font-family:'Geist Mono', monospace;
+      font-size:9px;
+      font-weight:500;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:8px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .local-tag::after{
+      content:'';
+      flex:1;
+      height:1px;
+      background:linear-gradient(90deg, var(--border2), transparent);
+    }
+    ul.local-list{
+      list-style:none;
+      padding:0;margin:0;
+      max-height:140px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
+    ul.local-list::-webkit-scrollbar{width:3px}
+    ul.local-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+    ul.local-list li{
+      font-family:'Geist Mono', monospace;
+      font-size:10.5px;
+      color:var(--text-dim);
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r-xs);
+      padding:7px 10px;
+      letter-spacing:.02em;
+      line-height:1.4;
+    }
+
+    /* photo preview overlay polish */
+    #page-photo .stage{ background:#000 }
+    .photo-vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.45) 0%, transparent 18%, transparent 70%, rgba(0,0,0,.65) 100%);
+    }
+
+    /* card-flash legacy class — repurpose with subtle accent border flash */
+    .flash-card{
+      animation: flashAccent .55s ease;
+    }
+    @keyframes flashAccent{
+      0%{box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 60px 140px rgba(0,0,0,.8)}
+      40%{box-shadow:
+        0 0 0 1px var(--accent),
+        0 0 38px rgba(61,142,255,.45),
+        0 60px 140px rgba(0,0,0,.8)}
+      100%{box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 60px 140px rgba(0,0,0,.8)}
+    }
+
+    .small{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:500;
+    }
+
+    /* keep legacy hooks no-op */
+    h1{display:none}
+    .card{background:transparent}
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- top header / wordmark -->
+    <div class="top-bar">
+      <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em></span>
+      <span id="status" class="status-pill">Klar — tryk Start kamera</span>
+    </div>
+
+    <div class="body">
+
+      <!-- legacy h1 placeholder for any code expecting it -->
+      <h1>Stregkode-scanner</h1>
+
+      <!-- ============ START ============ -->
+      <div id="page-start" class="page active">
+        <div class="step-head" style="padding:0 0 4px">
+          <div class="step-tag">Step 01 · Capture</div>
+          <div class="step-title">Scan a new product</div>
+          <div class="step-sub">Aim the camera at any barcode. We'll fetch product info and let you tag its shelf in seconds.</div>
+        </div>
+
+        <div class="start-hero">
+          <div class="start-inner">
+            <div class="start-emblem">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7V5a2 2 0 012-2h2"/>
+                <path d="M17 3h2a2 2 0 012 2v2"/>
+                <path d="M21 17v2a2 2 0 01-2 2h-2"/>
+                <path d="M7 21H5a2 2 0 01-2-2v-2"/>
+                <line x1="7" y1="12" x2="17" y2="12"/>
+                <line x1="9" y1="9" x2="9" y2="15"/>
+                <line x1="15" y1="9" x2="15" y2="15"/>
+                <line x1="12" y1="9" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div class="start-title">Camera ready</div>
+            <div class="start-sub">Tryk for at starte kameraet og scanne stregkoder</div>
+            <button id="startCameraBtn" class="btn" style="margin-top:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Start kamera
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SCAN ============ -->
+      <div id="page-scan" class="page">
+        <div class="step-head" style="padding:0 0 4px">
+          <div class="step-tag">Step 01 · Scan</div>
+          <div class="step-title">Hold a barcode in frame</div>
+        </div>
+
+        <div class="stage">
+          <video id="video" playsinline muted></video>
+          <div class="overlay">
+
+            <div class="reticle-wrap">
+              <div class="sf"><span></span><div class="sf-inner"></div><div class="sl"></div></div>
+              <div class="reticle-hint">Center barcode in frame</div>
+            </div>
+
+            <div class="topbar">
+              <span class="chip live" id="chip-barcode">Scanning</span>
+              <div style="display:flex;gap:8px">
+                <span id="barcodeTop" class="chip" style="display:none;pointer-events:none"></span>
+                <button id="stopCameraBtn" class="chip chip-btn" title="Stop kamera" style="background:rgba(12,12,14,.78);">Stop</button>
+              </div>
+            </div>
+
+            <div id="scanMessage" class="message" style="display:none">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span id="scanStatus">Barcode fundet!</span>
+            </div>
+
+            <div id="bottomArea" class="bottom">
+              <!-- bottom button area is dynamically filled when code is scanned -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PHOTO PREVIEW ============ -->
+      <div id="page-photo" class="page">
+        <div class="step-head" style="padding:0 0 4px">
+          <div class="step-tag">Step 02 · Preview</div>
+          <div class="step-title">Looks good?</div>
+          <div class="step-sub">Godkend billedet eller tag det om.</div>
+        </div>
+
+        <div class="stage">
+          <img id="previewImg" class="preview" alt="Forhåndsvisning" />
+          <div class="photo-vignette"></div>
+          <div class="overlay">
+            <div class="topbar">
+              <span class="chip">Preview</span>
+            </div>
+            <div class="bottom">
+              <button id="retakeBtn" class="btn ghost">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                Tag om
+              </button>
+              <button id="acceptPhotoBtn" class="btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Godkend
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ EDIT ============ -->
+      <div id="page-edit" class="page">
+        <div class="step-head" style="padding:0 0 4px">
+          <div class="step-tag">Step 03 · Details</div>
+          <div class="step-title">Add product details</div>
+        </div>
+
+        <div class="edit-card">
+
+          <div class="edit-head">
+            <img id="editPreview" alt="Produkt" />
+            <div class="edit-meta">
+              <span class="edit-meta-tag">Barcode</span>
+              <div id="editBarcodeLabel">—</div>
+              <div id="editTimestamp">—</div>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Produktnavn</label>
+              <input id="field_name" type="text" placeholder="Produktnavn" />
+            </div>
+
+            <div class="field">
+              <label>Producent / brand</label>
+              <input id="field_brand" type="text" placeholder="Brand" />
+            </div>
+
+            <div class="field">
+              <label>Søgeord</label>
+              <input id="field_category" type="text" placeholder="fx ketchup" />
+            </div>
+
+            <div class="field-row-2">
+              <div class="field">
+                <label>Hylde</label>
+                <input id="field_shelf" type="text" placeholder="fx 42" />
+              </div>
+              <div class="field">
+                <label>Række</label>
+                <input id="field_row" type="text" placeholder="fx A" />
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="saveProductBtn" class="save">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              Gem i Supabase
+            </button>
+            <button id="backToScanBtn" class="secondary">Tilbage</button>
+          </div>
+
+          <div class="local-wrap">
+            <div class="local-tag">Lokalt scannede</div>
+            <ul id="localList" class="local-list"></ul>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- libs -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+
+  <script>
+    /*******************************
+     * --- KONFIGURER SUPABASE ----
+     * Udskift disse med dine værdier
+     *******************************/
+    const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /*******************************
+     * Elements & state
+     *******************************/
+    const pageStart = document.getElementById('page-start');
+    const pageScan = document.getElementById('page-scan');
+    const pagePhoto = document.getElementById('page-photo');
+    const pageEdit = document.getElementById('page-edit');
+    const statusEl = document.getElementById('status');
+    const video = document.getElementById('video');
+    const previewImg = document.getElementById('previewImg');
+    const editPreview = document.getElementById('editPreview');
+    const editBarcodeLabel = document.getElementById('editBarcodeLabel');
+    const editTimestamp = document.getElementById('editTimestamp');
+    const chipBarcode = document.getElementById('chip-barcode');
+    const scanMessage = document.getElementById('scanMessage');
+    const scanStatus = document.getElementById('scanStatus');
+    const bottomArea = document.getElementById('bottomArea');
+    const barcodeTop = document.getElementById('barcodeTop');
+
+    const startCameraBtn = document.getElementById('startCameraBtn');
+    const stopCameraBtn = document.getElementById('stopCameraBtn');
+    const takePhotoBtnFromScan = null; // dynamic
+    const acceptPhotoBtn = document.getElementById('acceptPhotoBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const backToScanBtn = document.getElementById('backToScanBtn');
+    const saveProductBtn = document.getElementById('saveProductBtn');
+
+    const field_name = document.getElementById('field_name');
+    const field_brand = document.getElementById('field_brand');
+    const field_category = document.getElementById('field_category');
+    const field_shelf = document.getElementById('field_shelf');
+    const field_row = document.getElementById('field_row');
+
+    const localList = document.getElementById('localList');
+
+    // internal state
+    let stream = null;
+    let reader = null, controls = null;
+    let canvas = document.createElement('canvas');
+    let lastScanned = null;
+    let currentBarcode = '';
+    let openfoodData = null;
+    let localProducts = [];
+    let detectionPaused = false; // <-- important: pause detection but keep camera stream
+
+    function showPage(el){
+      [pageStart,pageScan,pagePhoto,pageEdit].forEach(p=>p.classList.remove('active'));
+      el.classList.add('active');
+    }
+    function setStatus(txt){ statusEl.textContent = txt; }
+
+    /*******************************
+     * Camera helpers
+     *******************************/
+    async function findBackDeviceId(){
+      try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d=>d.kind==='videoinput');
+      const back = videoDevices.find(d=>/back|rear|environment/i.test(d.label));
+      return back ? back.deviceId : (videoDevices.length ? videoDevices[videoDevices.length-1].deviceId : null);
+    }
+
+    async function startCamera(){
+      showPage(pageScan);
+      setStatus('Starter kamera — tillad adgang');
+      detectionPaused = false;
+      try{
+        const deviceId = await findBackDeviceId();
+        if(deviceId){
+          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+        }
+        video.srcObject = stream;
+        await video.play();
+        setStatus('Scanner efter stregkoder...');
+        // clear bottom area (no hold button initially)
+        clearBottomButton();
+        runDetectionLoop();
+      }catch(e){
+        console.error(e);
+        setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
+        showPage(pageStart);
+      }
+    }
+
+    function stopCamera(){
+      // do not stop simply because a barcode was found — user must stop or accept/retake
+      try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      detectionPaused = true;
+      clearBottomButton();
+      barcodeTop.style.display = 'none';
+      showPage(pageStart);
+      setStatus('Kamera stoppet');
+    }
+
+    /*******************************
+     * Detection loop (native BarcodeDetector or ZXing fallback)
+     * We respect detectionPaused: we DO NOT stop camera; we only ignore detections.
+     *******************************/
+    async function runDetectionLoop(){
+      scanMessage.style.display = 'none';
+      barcodeTop.style.display = 'none';
+      detectionPaused = false;
+
+      if('BarcodeDetector' in window){
+        try{
+          const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+          const ctx = canvas.getContext('2d');
+          (async function loop(){
+            if(!stream) return;
+            try{
+              if(!detectionPaused){
+                canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+                ctx.drawImage(video,0,0,canvas.width,canvas.height);
+                const codes = await detector.detect(canvas);
+                if(codes && codes.length){
+                  const code = codes[0].rawValue || codes[0].raw_text || '';
+                  if(code) await handleBarcode(code);
+                }
+              }
+            }catch(e){}
+            requestAnimationFrame(loop);
+          })();
+          return;
+        }catch(e){
+          console.warn('BarcodeDetector fejl — fallback', e);
+        }
+      }
+
+      // ZXing fallback: ignore detections while detectionPaused === true
+      if(window.ZXingBrowser){
+        reader = new ZXingBrowser.BrowserMultiFormatReader();
+        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+        const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1] || devices[0]);
+        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result, err, ctrl) => {
+          try{
+            if(detectionPaused) return; // ignore while paused
+            if(result && result.text) await handleBarcode(result.text);
+          }catch(e){}
+        });
+      } else {
+        setStatus('Ingen barcode-detektor tilgængelig');
+      }
+    }
+
+    /*******************************
+     * When barcode is found
+     *******************************/
+    async function handleBarcode(code){
+      // debounce same code quickly
+      if(currentBarcode === code && Date.now() - (lastScanned?.time || 0) < 1200) return;
+      lastScanned = { code, time: Date.now() };
+      currentBarcode = code;
+
+      // Flash the app shell with accent border
+      const appCard = document.querySelector('.app');
+      appCard.classList.add('flash-card');
+      setTimeout(() => {
+        appCard.classList.remove('flash-card');
+      }, 600);
+      
+      // pause detection (but keep stream running)
+      detectionPaused = true;
+
+      // show code up top beside stop button
+      barcodeTop.textContent = code;
+      barcodeTop.style.display = 'inline-flex';
+
+      // show bottom "Tag billede" button (in same position as previous hold-knap)
+      showBottomPhotoButton();
+
+      // fill edit header values
+      editBarcodeLabel.textContent = code;
+      editTimestamp.textContent = new Date().toLocaleString();
+
+      // clear previous OFF data & preview
+      openfoodData = null;
+      editPreview.src = '';
+      previewImg.src = '';
+
+      // Fetch OpenFoodFacts to autofill name/brand (but DO NOT use their image)
+      try{
+        const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+        if(r.ok){
+          const j = await r.json();
+          if(j.status === 1){
+            openfoodData = j.product;
+            field_name.value = j.product.product_name_da || j.product.product_name || field_name.value || '';
+            field_brand.value = (j.product.brands || field_brand.value || '');
+            field_category.value = (j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' ');
+            setStatus('Produktforslag hentet fra OpenFoodFacts');
+          } else {
+            setStatus('Ingen info i OpenFoodFacts');
+          }
+        }
+      }catch(e){
+        console.warn('OFF fejl', e);
+        setStatus('OFF: kunne ikke hente info');
+      }
+    }
+
+    /*******************************
+     * Bottom area helpers (dynamisk Tag billede knap)
+     *******************************/
+    function clearBottomButton(){
+      bottomArea.innerHTML = '';
+    }
+
+    function showBottomPhotoButton(){
+      clearBottomButton();
+      const btn = document.createElement('button');
+      btn.id = 'dynamicTakePhoto';
+      btn.className = 'btn';
+      btn.style.pointerEvents = 'auto';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Tag billede';
+      btn.addEventListener('click', () => {
+        // take snapshot for preview (but keep stream on until user accepts/retake)
+        takeSnapshotForPreview();
+      });
+      bottomArea.appendChild(btn);
+    }
+
+    /*******************************
+     * Snapshot & preview
+     *******************************/
+    function takeSnapshotForPreview(){
+      if(!stream){
+        setStatus('Intet kamera aktivt');
+        return;
+      }
+      setStatus('Tager billede...');
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
+      // navigate to preview page (camera still running)
+      showPage(pagePhoto);
+      setStatus('Forhåndsvisning — godkend eller tag om');
+    }
+
+    // accept -> go to edit page and stop camera to save resources
+    acceptPhotoBtn.addEventListener('click', () => {
+      editPreview.src = previewImg.src || '';
+      editBarcodeLabel.textContent = currentBarcode || editBarcodeLabel.textContent || '—';
+      editTimestamp.textContent = new Date().toLocaleString();
+      // stop the stream now (the user decided)
+      try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
+      detectionPaused = true;
+      clearBottomButton();
+      showPage(pageEdit);
+      setStatus('Rediger produktinfo');
+    });
+
+    // retake: go back to scan and restart detection (camera may already be active)
+    retakeBtn.addEventListener('click', async () => {
+      // if camera is stopped, start it again; otherwise just resume detection
+      if(!stream){
+        await startCamera();
+      } else {
+        detectionPaused = false;
+        scanMessage.style.display = 'none';
+        barcodeTop.style.display = 'none';
+        clearBottomButton();
+        setStatus('Scanner efter stregkoder...');
+      }
+      showPage(pageScan);
+    });
+
+    /*******************************
+     * Save product to Supabase
+     *******************************/
+    saveProductBtn.addEventListener('click', async () => {
+      const barcode = editBarcodeLabel.textContent;
+      const name = field_name.value.trim();
+      const brand = field_brand.value.trim();
+      const category = field_category.value.trim();
+      const shelf = field_shelf.value.trim();
+      const row = field_row.value.trim();
+      const image_preview = editPreview.src || null;
+      
+
+      if(!barcode || !name || !brand){
+        alert('Udfyld venligst stregkode, navn og brand.');
+        return;
+      }
+
+      const productData = {
+        barcode,
+        name,
+        brand,
+        category,
+        shelf,
+        row,
+        image_preview
+      };
+
+      setStatus('Gemmer til Supabase...');
+      try{
+        const { data, error } = await supabase
+          .from('products')
+          .insert([productData]);
+
+        if(error){
+          console.error('Supabase insert error:', error);
+          setStatus('Fejl ved gemning: ' + (error.message || 'ukendt fejl'));
+          return;
+        }
+
+        setStatus('Produkt gemt i Supabase ✅');
+        // also keep a local copy for quick list
+        localProducts.push(Object.assign({ created_at: new Date().toISOString() }, productData));
+        renderLocalList();
+
+        // reset UI
+        field_name.value = '';
+        field_brand.value = '';
+        field_category.value = '';
+        field_shelf.value = '';
+        editPreview.src = '';
+        editBarcodeLabel.textContent = '—';
+        editTimestamp.textContent = '—';
+        currentBarcode = '';
+        showPage(pageStart);
+      }catch(e){
+        console.error(e);
+        setStatus('Fejl ved gemning: ' + (e.message || e));
+      }
+    });
+
+    function renderLocalList(){
+      localList.innerHTML = '';
+      [...localProducts].reverse().slice(0,20).forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = `${p.barcode} • ${p.brand || '-'} • H:${p.shelf || '-'} • ${p.name || '-'}`;
+        localList.appendChild(li);
+      });
+    }
+
+    /*******************************
+     * One-shot "hold to scan" removed — user uses Tag billede when barcode found
+     *******************************/
+
+    // Start/Stop buttons
+    startCameraBtn.addEventListener('click', startCamera);
+    stopCameraBtn.addEventListener('click', stopCamera);
+    backToScanBtn.addEventListener('click', async () => {
+      // go back to scanning: restart camera
+      await startCamera();
+    });
+
+    // stop camera on page hide
+    window.addEventListener('pagehide', () => {
+      try{ if(controls && typeof controls.stop==='function') controls.stop(); }catch(e){}
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      detectionPaused = true;
+    });
+
+    // initial state
+    showPage(pageStart);
+    setStatus('Klar — tryk Start kamera');
+  </script>
+</body>
+</html>
