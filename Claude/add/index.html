@@ -946,10 +946,8 @@
      * --- KONFIGURER SUPABASE ----
      * Udskift disse med dine værdier
      *******************************/
-    const SUPABASE_URL = 'https://lpcygniycyffeswzrnms.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ';
-
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
+    const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
 
     /*******************************
      * Elements & state
@@ -1243,18 +1241,17 @@
       const productData = {
         barcode,
         name,
-        brand,
         category,
         shelf,
-        row,
-        image_preview
+        section: row,
+        image_url: image_preview || null
       };
 
       setStatus('Gemmer til Supabase...');
       try{
-        const { data, error } = await supabase
-          .from('products')
-          .insert([productData]);
+        const { error } = await db
+          .from('items')
+          .upsert(productData, { onConflict: 'barcode' });
 
         if(error){
           console.error('Supabase insert error:', error);
