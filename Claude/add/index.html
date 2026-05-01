@@ -38,6 +38,7 @@
     }
 
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html{background:#081a3a}
     html,body{height:100%;margin:0;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden}
     body{
       background: radial-gradient(ellipse at top, #244680 0%, #112a55 55%, #081a3a 100%);
@@ -268,6 +269,11 @@
     }
 
     /* ============ STAGE (camera + photo) ============ */
+    #page-scan .stage{
+      flex:1;
+      min-height:0;
+      height:auto;
+    }
     .stage{
       height:480px;
       border-radius:var(--r);
@@ -357,7 +363,7 @@
       content:'';
       position:absolute;
       inset:0;
-      background: radial-gradient(ellipse 280px 200px at center, transparent 30%, rgba(0,0,0,.55) 75%, rgba(0,0,0,.82) 100%);
+      background: radial-gradient(ellipse 320px 240px at center, transparent 55%, rgba(0,0,0,.18) 100%);
       pointer-events:none;
     }
     .sf{
@@ -1018,10 +1024,19 @@
       try{
         const deviceId = await findBackDeviceId();
         if(deviceId){
-          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } } });
+          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
         } else {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } });
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
         }
+        // enable continuous autofocus
+        try{
+          const track = stream.getVideoTracks()[0];
+          const caps = track.getCapabilities?.() || {};
+          const constraints = {};
+          if(caps.focusMode?.includes('continuous')) constraints.focusMode = 'continuous';
+          if(caps.focusDistance) constraints.focusDistance = { ideal: 0 };
+          if(Object.keys(constraints).length) await track.applyConstraints({ advanced: [constraints] });
+        }catch(e){}
         video.srcObject = stream;
         await video.play();
         setStatus('Scanner efter stregkoder...');
