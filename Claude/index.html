@@ -49,13 +49,12 @@
     html {
       height: 100%;
       font-family: 'Syne', sans-serif;
-      background: #000;
+      background: #081a3a;
       overflow: hidden;
     }
 
     body {
-      height: 100vh;
-      height: 100dvh;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -66,8 +65,7 @@
     .phone-shell {
       width: 100%;
       max-width: 430px;
-      height: 100vh;
-      height: 100dvh;
+      min-height: 100vh;
       background: var(--bg);
       display: flex;
       flex-direction: column;
@@ -83,7 +81,8 @@
     @media(min-width:500px) {
       .phone-shell {
         border-radius: 44px;
-        max-height: 860px;
+        min-height: 840px;
+        max-height: 880px;
       }
     }
 
@@ -1413,7 +1412,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.1</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.2</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
