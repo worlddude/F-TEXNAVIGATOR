@@ -274,6 +274,14 @@
       min-height:0;
       height:auto;
     }
+    /* make the live camera fill the whole stage (no black bar at the bottom) */
+    #page-scan video{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
     .stage{
       height:480px;
       border-radius:var(--r);
@@ -940,13 +948,12 @@
         } else {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
         }
-        // enable continuous autofocus
+        // enable continuous autofocus (focus at any distance, like the main app)
         try{
           const track = stream.getVideoTracks()[0];
           const caps = track.getCapabilities?.() || {};
           const constraints = {};
           if(caps.focusMode?.includes('continuous')) constraints.focusMode = 'continuous';
-          if(caps.focusDistance) constraints.focusDistance = { ideal: 0 };
           if(Object.keys(constraints).length) await track.applyConstraints({ advanced: [constraints] });
         }catch(e){}
         video.srcObject = stream;
