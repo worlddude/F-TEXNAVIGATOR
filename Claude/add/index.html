@@ -269,7 +269,11 @@
     }
 
     /* ============ STAGE (camera + photo) ============ */
-    #page-scan .stage{ flex:1; min-height:0; height:auto; }
+    #page-scan .stage{
+      flex:1;
+      min-height:0;
+      height:auto;
+    }
     .stage{
       height:480px;
       border-radius:var(--r);
@@ -875,9 +879,16 @@
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
   <script>
+    /*******************************
+     * --- KONFIGURER SUPABASE ----
+     * Udskift disse med dine værdier
+     *******************************/
     const SB_URL = 'https://lpcygniycyffeswzrnms.supabase.co/', SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY3lnbml5Y3lmZmVzd3pybm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODA5NDIsImV4cCI6MjA3MjY1Njk0Mn0.4bVTsLEwvjyPllLU1-U2vcw3yHkzqj69TZOfuJvSvDQ', BUCKET = 'item_images';
     const { createClient } = supabase, db = createClient(SB_URL, SB_KEY);
 
+    /*******************************
+     * Elements & state
+     *******************************/
     const pageStart = document.getElementById('page-start');
     const pageScan = document.getElementById('page-scan');
     const pagePhoto = document.getElementById('page-photo');
@@ -924,19 +935,31 @@
       showPage(pageScan); setStatus('Starter kamera — tillad adgang'); detectionPaused = false;
       try{
         const deviceId = await findBackDeviceId();
-        stream = deviceId
-          ? await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } })
-          : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+        if(deviceId){
+          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+        }
+        // enable continuous autofocus
         try{
           const track = stream.getVideoTracks()[0];
           const caps = track.getCapabilities?.() || {};
-          const adv = {};
-          if(caps.focusMode?.includes('continuous')) adv.focusMode = 'continuous';
-          if(Object.keys(adv).length) await track.applyConstraints({ advanced: [adv] });
+          const constraints = {};
+          if(caps.focusMode?.includes('continuous')) constraints.focusMode = 'continuous';
+          if(caps.focusDistance) constraints.focusDistance = { ideal: 0 };
+          if(Object.keys(constraints).length) await track.applyConstraints({ advanced: [constraints] });
         }catch(e){}
-        video.srcObject = stream; await video.play();
-        setStatus('Scanner efter stregkoder...'); clearBottomButton(); runDetectionLoop();
-      }catch(e){ console.error(e); setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS'); showPage(pageStart); }
+        video.srcObject = stream;
+        await video.play();
+        setStatus('Scanner efter stregkoder...');
+        // clear bottom area (no hold button initially)
+        clearBottomButton();
+        runDetectionLoop();
+      }catch(e){
+        console.error(e);
+        setStatus('Fejl ved kameraadgang — tjek tilladelser og HTTPS');
+        showPage(pageStart);
+      }
     }
 
     function stopCamera(){
@@ -1008,14 +1031,41 @@
     });
 
     saveProductBtn.addEventListener('click', async () => {
-      const barcode=editBarcodeLabel.textContent, name=field_name.value.trim(), brand=field_brand.value.trim();
-      const category=field_category.value.trim(), shelf=field_shelf.value.trim(), row=field_row.value.trim();
-      const image_preview=editPreview.src||null;
-      if(!barcode||!name||!brand){ alert('Udfyld venligst stregkode, navn og brand.'); return; }
+      const barcode = editBarcodeLabel.textContent;
+      const name = field_name.value.trim();
+      const brand = field_brand.value.trim();
+      const category = field_category.value.trim();
+      const shelf = field_shelf.value.trim();
+      const row = field_row.value.trim();
+      const image_preview = editPreview.src || null;
+
+
+      if(!barcode || !name || !brand){
+        alert('Udfyld venligst stregkode, navn og brand.');
+        return;
+      }
+
+      const productData = {
+        barcode,
+        name,
+        category,
+        shelf,
+        section: row,
+        image_url: image_preview || null
+      };
+
       setStatus('Gemmer til Supabase...');
       try{
-        const { error } = await db.from('items').upsert({ barcode, name, category, shelf, section: row, image_url: image_preview||null }, { onConflict: 'barcode' });
-        if(error){ console.error('Supabase insert error:',error); setStatus('Fejl ved gemning: '+(error.message||'ukendt fejl')); return; }
+        const { error } = await db
+          .from('items')
+          .upsert(productData, { onConflict: 'barcode' });
+
+        if(error){
+          console.error('Supabase insert error:', error);
+          setStatus('Fejl ved gemning: ' + (error.message || 'ukendt fejl'));
+          return;
+        }
+
         setStatus('Produkt gemt i Supabase ✅');
         localProducts.push({ barcode, name, category, shelf, section: row, created_at: new Date().toISOString() }); renderLocalList();
         field_name.value=''; field_brand.value=''; field_category.value=''; field_shelf.value='';
