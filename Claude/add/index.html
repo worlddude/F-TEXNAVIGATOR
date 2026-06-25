@@ -115,6 +115,12 @@
     }
     @keyframes brandPulse{0%,100%{opacity:1}50%{opacity:.55}}
     .wordmark em{color:var(--muted);font-style:normal;font-weight:600}
+    .appver{
+      font-family:'Geist Mono', ui-monospace, monospace;
+      font-size:9px;font-weight:500;letter-spacing:.5px;
+      color:rgba(234,241,255,.4);
+      margin-left:6px;align-self:flex-end;padding-bottom:2px;
+    }
 
     .status-pill{
       font-family:'Geist Mono', monospace;
@@ -758,7 +764,7 @@
 <body>
   <div class="app">
     <div class="top-bar">
-      <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em></span>
+      <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em><span class="appver">v0.1.0</span></span>
       <span id="status" class="status-pill">Klar — tryk Start kamera</span>
     </div>
     <div class="body">
