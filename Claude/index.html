@@ -103,7 +103,7 @@
       padding: 14px 13px 10px;
       flex-shrink: 0;
       z-index: 10;
-      background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 70%, rgba(12, 12, 14, .85) 100%);
+      background: var(--bg);
       touch-action: none;
       position: relative;
     }
@@ -564,7 +564,7 @@
       right: 0;
       background: transparent;
       border-top: none;
-      padding: 14px 13px 16px;
+      padding: 14px 13px calc(16px + env(safe-area-inset-bottom, 0px) + 58px);
       flex-shrink: 0;
       z-index: 20;
       pointer-events: none;
@@ -1412,7 +1412,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.2</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.3</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1903,8 +1903,9 @@
       function at() {
         if (!mapImg.offsetWidth) return;
         const cw = mapCon.clientWidth, ch = mapCon.clientHeight, iw = mapImg.offsetWidth * sc, ih = mapImg.offsetHeight * sc;
-        const b = 100;
-        px = cl(px, b - iw, cw - b); py = cl(py, b - ih, ch - b);
+        // keep the map covering the whole view (no blue edges); center on an axis if the map is smaller than the view
+        px = iw >= cw ? cl(px, cw - iw, 0) : (cw - iw) / 2;
+        py = ih >= ch ? cl(py, ch - ih, 0) : (ch - ih) / 2;
         mapWrap.style.transform = `translate(${px}px,${py}px) scale(${sc})`;
       }
       function atNoTrans() {
