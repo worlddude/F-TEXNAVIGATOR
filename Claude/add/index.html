@@ -942,20 +942,11 @@
     async function startCamera(){
       showPage(pageScan); setStatus('Starter kamera — tillad adgang'); detectionPaused = false;
       try{
-        const deviceId = await findBackDeviceId();
-        if(deviceId){
-          stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-        } else {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-        }
-        // enable continuous autofocus (focus at any distance, like the main app)
-        try{
-          const track = stream.getVideoTracks()[0];
-          const caps = track.getCapabilities?.() || {};
-          const constraints = {};
-          if(caps.focusMode?.includes('continuous')) constraints.focusMode = 'continuous';
-          if(Object.keys(constraints).length) await track.applyConstraints({ advanced: [constraints] });
-        }catch(e){}
+        // Use the exact same camera setup as the main app: just ask for the
+        // back camera and let the device pick the lens/mode. No forced deviceId,
+        // resolution, or focus constraints — this keeps native continuous
+        // autofocus so it focuses at any distance, including close-up barcodes.
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         video.srcObject = stream;
         await video.play();
         setStatus('Scanner efter stregkoder...');
@@ -990,9 +981,11 @@
       }
       if(window.ZXingBrowser){
         reader = new ZXingBrowser.BrowserMultiFormatReader();
-        const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
-        const chosen = (devices.find(d=>/back|rear|environment/i.test(d.label))||devices[devices.length-1]||devices[0]);
-        controls = await reader.decodeFromVideoDevice(chosen.deviceId, video, async (result,err,ctrl) => {
+        // Decode from the stream we already opened with facingMode:'environment'
+        // (same as the main app) instead of re-grabbing a hand-picked deviceId.
+        // This keeps the device's native continuous autofocus, so it focuses at
+        // any distance — including close-up barcodes.
+        controls = await reader.decodeFromStream(stream, video, async (result,err,ctrl) => {
           try{ if(detectionPaused) return; if(result&&result.text) await handleBarcode(result.text); }catch(e){}
         });
       } else { setStatus('Ingen barcode-detektor tilgængelig'); }
