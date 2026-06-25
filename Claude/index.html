@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Locator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
@@ -100,7 +100,7 @@
 
     /* ============ HEADER ============ */
     .header {
-      padding: 14px 13px 10px;
+      padding: calc(14px + env(safe-area-inset-top, 0px)) 13px 10px;
       flex-shrink: 0;
       z-index: 10;
       background: var(--bg);
@@ -1412,7 +1412,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.5</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.6</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
