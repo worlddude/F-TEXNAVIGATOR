@@ -1004,9 +1004,25 @@
       z-index: 1000;
       background: rgba(0, 0, 0, .9);
       backdrop-filter: blur(18px);
+      flex-direction: column;
       justify-content: center;
       align-items: center;
+      gap: 16px;
+      padding: 24px;
       animation: fi .18s ease;
+    }
+
+    .modal-note {
+      max-width: 320px;
+      text-align: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: #ffd9a0;
+      background: rgba(255, 170, 60, .1);
+      border: 1px solid rgba(255, 170, 60, .28);
+      border-radius: 12px;
+      padding: 10px 14px;
     }
 
     @keyframes fi {
@@ -1021,7 +1037,7 @@
 
     #photoModal img {
       max-width: 90%;
-      max-height: 90%;
+      max-height: 78%;
       border-radius: var(--r);
       box-shadow: 0 32px 80px rgba(0, 0, 0, .7);
       cursor: zoom-out;
@@ -1432,9 +1448,9 @@
       width: 46px;
       height: 46px;
       border-radius: 50%;
-      background: rgba(12, 12, 14, .72);
+      background: rgba(46, 51, 61, .92);
       backdrop-filter: blur(16px);
-      border: 1px solid var(--border2);
+      border: 1px solid var(--border3);
       color: var(--accent-2);
       font-family: 'Syne', sans-serif;
       font-size: 22px;
@@ -1568,7 +1584,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.2</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.3</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1659,6 +1675,7 @@
               <span class="chip" id="barcodeDisplay" style="display:none">Barcode —</span>
               <span class="chip" id="shelfDisplay" style="display:none"></span>
               <span class="chip hi" id="categoryDisplay">—</span>
+              <span class="chip" id="dateDisplay" style="display:none"></span>
             </div>
           </div>
         </div>
@@ -1709,7 +1726,7 @@
       </div>
     </div>
 
-    <div id="photoModal"><img alt="" id="modalPhoto"></div>
+    <div id="photoModal"><img alt="" id="modalPhoto"><div class="modal-note">Vær opmærksom på, at emballagen kan have ændret sig</div></div>
 
     <div id="gptModal">
       <div class="gpt-input-wrap">
@@ -1935,6 +1952,14 @@
         mapCard.classList.remove('flipped');
       }
 
+      function fmtDate(ts) {
+        if (!ts) return '';
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return '';
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+      }
+
       function showCard(barcode, item) {
         $('tourBtn').style.display = 'none';
         const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
@@ -1946,6 +1971,9 @@
         shelfD.style.display = 'none';
         catD.innerHTML = `<b>${esc(cat)}</b>`;
         catD.className = 'chip hi';
+
+        const dateD = $('dateDisplay'), created = fmtDate(item?.created_at);
+        if (created) { dateD.textContent = created; dateD.style.display = ''; } else { dateD.style.display = 'none'; }
 
         // Aisle highlight
         if (currentAd) {
@@ -2074,7 +2102,7 @@
 
       async function saveItem(barcode, item) { const { error } = await db.from('items').upsert({ barcode, name: item.name, category: item.category, shelf: item.shelf, section: item.section, image_url: item.image_url || null }, { onConflict: 'barcode' }); if (error) throw error }
 
-      async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '' }; if (r.category) cats.add(r.category) } updateDL() }
+      async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '', created_at: r.created_at || '' }; if (r.category) cats.add(r.category) } updateDL() }
 
       function captureFrame() { try { const c = document.createElement('canvas'); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); return c.toDataURL('image/png') } catch (e) { return null } }
 
