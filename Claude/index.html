@@ -706,6 +706,39 @@
       color: var(--accent);
     }
 
+    /* temperature-zone chips (in the item card) */
+    .chip.t-frost { background: rgba(80, 160, 255, .14); border-color: rgba(80, 160, 255, .4); color: #9fc8ff; }
+    .chip.t-kol { background: rgba(52, 200, 200, .13); border-color: rgba(52, 200, 200, .38); color: #8fe3e3; }
+    .chip.t-kolo { background: rgba(190, 190, 200, .12); border-color: rgba(200, 200, 210, .32); color: #dce0ea; }
+
+    /* temperature filter (in the list) */
+    .temp-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .temp-chip {
+      flex: 1;
+      padding: 9px 0;
+      text-align: center;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .06em;
+      border-radius: 50px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    .temp-chip.active {
+      background: var(--accent-bg);
+      border-color: rgba(61, 142, 255, .4);
+      color: var(--accent);
+    }
+
     /* ============ FORM ============ */
     #addForm {
       display: none;
@@ -1584,7 +1617,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.3</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.4</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1675,6 +1708,7 @@
               <span class="chip" id="barcodeDisplay" style="display:none">Barcode —</span>
               <span class="chip" id="shelfDisplay" style="display:none"></span>
               <span class="chip hi" id="categoryDisplay">—</span>
+              <span class="chip" id="tempDisplay" style="display:none"></span>
               <span class="chip" id="dateDisplay" style="display:none"></span>
             </div>
           </div>
@@ -1854,6 +1888,16 @@
       };
 
       let bDB = {}, cats = new Set(), stream = null, torchOn = false, CT = 3, lastC = null, cnt = 0, cool = false, PAGE = 100;
+      let tempFilter = '', hasTemp = false, TEMP_KEY = null;
+      const TEMP_LABELS = { kolo: 'Kolo', 'køl': 'Køl', frost: 'Frost' };
+      function tempKey(v) {
+        v = (v || '').trim().toLowerCase();
+        if (!v) return '';
+        if (v.startsWith('frost') || v.startsWith('frys')) return 'frost';
+        if (v.startsWith('kø')) return 'køl';
+        if (v.startsWith('kol')) return 'kolo';
+        return '';
+      }
 
       photoZone.addEventListener('click', () => photoInput.click());
 
@@ -1972,8 +2016,11 @@
         catD.innerHTML = `<b>${esc(cat)}</b>`;
         catD.className = 'chip hi';
 
+        const tempD = $('tempDisplay'), tk = tempKey(item?.temp);
+        if (tk) { tempD.textContent = TEMP_LABELS[tk]; tempD.className = 'chip t-' + (tk === 'køl' ? 'kol' : tk); tempD.style.display = ''; } else { tempD.style.display = 'none'; }
+
         const dateD = $('dateDisplay'), created = fmtDate(item?.created_at);
-        if (created) { dateD.textContent = created; dateD.style.display = ''; } else { dateD.style.display = 'none'; }
+        if (created) { dateD.textContent = 'Sidst set ' + created; dateD.style.display = ''; } else { dateD.style.display = 'none'; }
 
         // Aisle highlight
         if (currentAd) {
@@ -2030,8 +2077,17 @@
             </div>
             <svg class="gpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
+          ${hasTemp ? `<div class="temp-filter" id="tempFilter">
+            <button class="temp-chip${tempFilter === '' ? ' active' : ''}" data-t="">Alle</button>
+            <button class="temp-chip${tempFilter === 'kolo' ? ' active' : ''}" data-t="kolo">Kolo</button>
+            <button class="temp-chip${tempFilter === 'køl' ? ' active' : ''}" data-t="køl">Køl</button>
+            <button class="temp-chip${tempFilter === 'frost' ? ' active' : ''}" data-t="frost">Frost</button>
+          </div>` : ''}
           ${searching ? '' : '<div class="cat-grid" id="catGrid"></div>'}
         `;
+          if (hasTemp) {
+            document.querySelectorAll('#tempFilter .temp-chip').forEach(b => { b.onclick = () => { tempFilter = b.dataset.t; doSearch(); }; });
+          }
           if (!searching) {
             const cg = $('catGrid'), sCats = Array.from(cats).sort();
             sCats.forEach(c => {
@@ -2044,8 +2100,9 @@
           $('gptBtn').onclick = () => $('gptModal').classList.add('on');
         }
 
+        const shown = tempFilter ? items.filter(it => tempKey(it.temp) === tempFilter) : items;
         const grouped = {};
-        items.forEach(it => { const c = it.category || 'Andre'; if (!grouped[c]) grouped[c] = []; grouped[c].push(it) });
+        shown.forEach(it => { const c = it.category || 'Andre'; if (!grouped[c]) grouped[c] = []; grouped[c].push(it) });
 
         Object.entries(grouped).sort().forEach(([cat, cItems]) => {
           const sect = document.createElement('div'); sect.className = 'cat-section';
@@ -2102,7 +2159,24 @@
 
       async function saveItem(barcode, item) { const { error } = await db.from('items').upsert({ barcode, name: item.name, category: item.category, shelf: item.shelf, section: item.section, image_url: item.image_url || null }, { onConflict: 'barcode' }); if (error) throw error }
 
-      async function loadDB() { const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false }); if (error) throw error; bDB = {}; cats = new Set(); for (const r of data) { bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '', created_at: r.created_at || '' }; if (r.category) cats.add(r.category) } updateDL() }
+      async function loadDB() {
+        const { data, error } = await db.from('items').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        bDB = {}; cats = new Set(); hasTemp = false; TEMP_KEY = null;
+        // auto-detect which column holds the temperature zone (Kolo / Køl / Frost)
+        const knownCols = new Set(['barcode', 'name', 'category', 'shelf', 'section', 'image_url', 'created_at', 'updated_at', 'id']);
+        outer: for (const r of data) for (const k of Object.keys(r)) {
+          if (knownCols.has(k)) continue;
+          if (typeof r[k] === 'string' && tempKey(r[k])) { TEMP_KEY = k; break outer; }
+        }
+        for (const r of data) {
+          const temp = TEMP_KEY ? (r[TEMP_KEY] || '') : '';
+          if (tempKey(temp)) hasTemp = true;
+          bDB[r.barcode] = { name: r.name || '', category: r.category || '', shelf: r.shelf || '', section: r.section || '', photo: r.image_url || '', created_at: r.created_at || '', temp };
+          if (r.category) cats.add(r.category);
+        }
+        updateDL();
+      }
 
       function captureFrame() { try { const c = document.createElement('canvas'); c.width = video.videoWidth || 640; c.height = video.videoHeight || 480; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height); return c.toDataURL('image/png') } catch (e) { return null } }
 
