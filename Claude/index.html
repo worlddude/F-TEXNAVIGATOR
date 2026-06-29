@@ -845,6 +845,11 @@
       gap: 4px;
     }
 
+    /* keep list children at their natural size and scroll instead of squeezing */
+    #listPage > * {
+      flex-shrink: 0;
+    }
+
     #listPage::-webkit-scrollbar {
       width: 3px;
     }
@@ -1097,7 +1102,7 @@
         linear-gradient(135deg, rgba(61,142,255, .07) 0%, rgba(61,142,255, .02) 50%, rgba(120, 200, 255, .05) 100%);
       border: 1px solid var(--border2);
       border-radius: var(--r);
-      padding: 40px 30px;
+      padding: 24px 30px;
       margin-bottom: 26px;
       display: flex;
       align-items: center;
@@ -1413,7 +1418,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.7</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.8</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
