@@ -1423,6 +1423,141 @@
       border-radius: 10px;
       pointer-events: none;
     }
+
+    /* ============ HELP / WALKTHROUGH ============ */
+    #tourBtn {
+      position: absolute;
+      right: 16px;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(12, 12, 14, .72);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border2);
+      color: var(--accent-2);
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+      transition: transform .18s, border-color .18s;
+    }
+
+    #tourBtn:active {
+      transform: scale(.93);
+    }
+
+    #tour {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: none;
+      pointer-events: auto;
+    }
+
+    #tour.on {
+      display: block;
+    }
+
+    #tourSpot {
+      position: absolute;
+      border-radius: 14px;
+      box-shadow: 0 0 0 9999px rgba(8, 12, 24, .8), 0 0 0 2px var(--accent), 0 0 26px rgba(61, 142, 255, .55);
+      transition: left .35s cubic-bezier(.4, 0, .2, 1), top .35s cubic-bezier(.4, 0, .2, 1), width .35s cubic-bezier(.4, 0, .2, 1), height .35s cubic-bezier(.4, 0, .2, 1);
+      pointer-events: none;
+    }
+
+    #tourTip {
+      position: absolute;
+      width: 300px;
+      max-width: calc(100vw - 24px);
+      background: linear-gradient(180deg, rgba(22, 22, 26, .97), rgba(12, 12, 14, .98));
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+      transition: left .3s cubic-bezier(.4, 0, .2, 1), top .3s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .tour-count {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin-bottom: 8px;
+    }
+
+    #tourTip h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    #tourTip p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-dim);
+    }
+
+    .tour-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .tour-skip {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+      padding: 6px 2px;
+    }
+
+    .tour-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tour-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+    }
+
+    .tour-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: 50px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+    }
+
+    .tour-ghost:disabled {
+      opacity: .35;
+      cursor: default;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
@@ -1433,7 +1568,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.1</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.2</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1555,7 +1690,24 @@
           </button>
         </div>
       </div>
+      <button id="tourBtn" aria-label="Hjælp / rundvisning">?</button>
     </div><!-- end main -->
+
+    <div id="tour" aria-hidden="true">
+      <div id="tourSpot"></div>
+      <div id="tourTip">
+        <div class="tour-count" id="tourCount"></div>
+        <h3 id="tourTitle"></h3>
+        <p id="tourText"></p>
+        <div class="tour-actions">
+          <button class="tour-skip" id="tourSkip">Spring over</button>
+          <div class="tour-nav">
+            <button class="tour-ghost" id="tourPrev">Tilbage</button>
+            <button class="tour-btn" id="tourNext">Næste</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="photoModal"><img alt="" id="modalPhoto"></div>
 
@@ -1693,9 +1845,9 @@
         tab.classList.add('active');
         mapCon.style.display = 'none'; video.style.display = 'none'; listPage.style.display = 'none';
         addForm.style.display = 'none'; itemCard.classList.add('hidden');
-        torchBtn.style.display = 'none'; scanOv.classList.remove('on'); video.classList.remove('fullscreen');
+        torchBtn.style.display = 'none'; $('tourBtn').style.display = 'none'; scanOv.classList.remove('on'); video.classList.remove('fullscreen');
         if (tab.id === 'tab-map') {
-          mapCon.style.display = 'flex'; itemCard.classList.remove('hidden'); stopCam();
+          mapCon.style.display = 'flex'; itemCard.classList.remove('hidden'); $('tourBtn').style.display = 'flex'; stopCam();
         } else if (tab.id === 'tab-scan') {
           const sh = $('scanHint'); if (sh) { sh.textContent = 'Hold stregkoden inden for rammen'; sh.classList.remove('notfound'); }
           video.style.display = 'block'; video.classList.add('fullscreen'); scanOv.classList.add('on'); startCam(); torchBtn.style.display = 'flex';
@@ -1707,6 +1859,62 @@
       $('tab-map').addEventListener('click', e => switchTab(e.currentTarget));
       $('tab-scan').addEventListener('click', e => switchTab(e.currentTarget));
       $('tab-add').addEventListener('click', e => switchTab(e.currentTarget));
+
+      /* ============ WALKTHROUGH / GUIDED TOUR ============ */
+      const TOUR_STEPS = [
+        { target: null, title: 'Velkommen til Locator 👋', text: 'Locator hjælper dig med hurtigt at finde varer i butikken. Lad mig vise dig de fire måder at finde en vare på.' },
+        { target: '#searchForm', title: 'Søg', text: 'Skriv navnet på en vare eller en kategori her, så filtreres listen med det samme.' },
+        { target: '#tab-add', title: 'Listen', text: 'Se alle varer samlet i kategorier. Tryk på en vare for at se, hvor den står på kortet.' },
+        { target: '#tab-map', title: 'Kortet', text: 'Find varen visuelt på butikskortet. Tryk på en hylde for at zoome ind på den.' },
+        { target: '#tab-scan', title: 'Scan', text: 'Scan stregkoden på en vare, så viser appen straks, hvor den hører til.' },
+        { target: null, title: 'ItemGPT 🤖', text: 'Inde på Listen finder du også ItemGPT — beskriv en vare med dine egne ord, så finder den det rette for dig. Det var det — god fornøjelse!' }
+      ];
+      let tourIdx = 0;
+      const tourEl = $('tour'), tourSpot = $('tourSpot'), tourTip = $('tourTip'),
+        tourTitle = $('tourTitle'), tourText = $('tourText'), tourCount = $('tourCount'),
+        tourPrev = $('tourPrev'), tourNext = $('tourNext');
+
+      function showTourStep(i) {
+        tourIdx = i;
+        const step = TOUR_STEPS[i];
+        tourCount.textContent = `Trin ${i + 1} af ${TOUR_STEPS.length}`;
+        tourTitle.textContent = step.title;
+        tourText.textContent = step.text;
+        tourPrev.disabled = i === 0;
+        tourNext.textContent = i === TOUR_STEPS.length - 1 ? 'Færdig' : 'Næste';
+        const tgt = step.target ? document.querySelector(step.target) : null;
+        const vw = window.innerWidth, vh = window.innerHeight, tipW = Math.min(300, vw - 24);
+        if (tgt) {
+          const r = tgt.getBoundingClientRect(), pad = 8;
+          tourSpot.style.left = (r.left - pad) + 'px';
+          tourSpot.style.top = (r.top - pad) + 'px';
+          tourSpot.style.width = (r.width + pad * 2) + 'px';
+          tourSpot.style.height = (r.height + pad * 2) + 'px';
+          // place the tip just below the highlighted element, clamped on-screen
+          const tipTop = r.bottom + pad + 14;
+          let tipLeft = r.left + r.width / 2 - tipW / 2;
+          tipLeft = Math.max(12, Math.min(tipLeft, vw - tipW - 12));
+          tourTip.style.left = tipLeft + 'px';
+          tourTip.style.top = tipTop + 'px';
+        } else {
+          // no target: dim whole screen (0-size spot at centre) and centre the tip
+          tourSpot.style.left = (vw / 2) + 'px';
+          tourSpot.style.top = (vh / 2) + 'px';
+          tourSpot.style.width = '0px';
+          tourSpot.style.height = '0px';
+          tourTip.style.left = (vw / 2 - tipW / 2) + 'px';
+          tourTip.style.top = Math.max(80, vh / 2 - 90) + 'px';
+        }
+      }
+      function startTour() { tourEl.classList.add('on'); showTourStep(0); }
+      function endTour() { tourEl.classList.remove('on'); }
+      $('tourBtn').addEventListener('click', startTour);
+      $('tourSkip').addEventListener('click', endTour);
+      tourPrev.addEventListener('click', () => { if (tourIdx > 0) showTourStep(tourIdx - 1); });
+      tourNext.addEventListener('click', () => { if (tourIdx < TOUR_STEPS.length - 1) showTourStep(tourIdx + 1); else endTour(); });
+      window.addEventListener('resize', () => { if (tourEl.classList.contains('on')) showTourStep(tourIdx); });
+      // Map is the default view on load, so reveal the help button right away.
+      $('tourBtn').style.display = 'flex';
 
       function getAll() { return Object.entries(bDB).map(([b, it]) => ({ barcode: b, ...it })) }
 
@@ -1728,6 +1936,7 @@
       }
 
       function showCard(barcode, item) {
+        $('tourBtn').style.display = 'none';
         const name = item?.name || 'Unknown item', shelf = item?.shelf || '—', sec = item?.section || '—', cat = item?.category || '—';
         if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
         nameD.textContent = name;
