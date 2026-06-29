@@ -4,6 +4,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Locator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
@@ -355,6 +358,7 @@
       justify-content: center;
       flex-direction: column;
       gap: 0;
+      transform: translateY(-46px);
     }
 
     #scanOverlay.on {
@@ -362,13 +366,8 @@
     }
 
     #scanOverlay::before {
-      /* vignette so the reticle pops */
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 280px 200px at center, transparent 30%, rgba(0, 0, 0, .55) 75%, rgba(0, 0, 0, .82) 100%);
-      pointer-events: none;
+      /* vignette removed — no darkening on the scan view */
+      display: none;
     }
 
     #scanHint {
@@ -522,7 +521,7 @@
     /* ============ TORCH ============ */
     #torchBtn {
       position: absolute;
-      bottom: 22px;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
       left: 50%;
       transform: translateX(-50%);
       z-index: 60;
@@ -836,9 +835,11 @@
 
     /* ============ LIST PAGE ============ */
     #listPage {
-      flex: 1;
+      position: absolute;
+      inset: 0;
       overflow-y: auto;
-      padding: 12px 12px 24px;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px));
       display: none;
       flex-direction: column;
       gap: 4px;
@@ -1412,7 +1413,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.6</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.1.7</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
