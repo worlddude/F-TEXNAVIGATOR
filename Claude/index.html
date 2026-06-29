@@ -739,6 +739,14 @@
       color: var(--accent);
     }
 
+    /* temp filter buttons colored to match the card chips */
+    .temp-chip[data-t="frost"] { background: rgba(80, 160, 255, .14); border-color: rgba(80, 160, 255, .4); color: #9fc8ff; }
+    .temp-chip[data-t="frost"].active { background: rgba(80, 160, 255, .3); border-color: rgba(80, 160, 255, .72); color: #cfe2ff; }
+    .temp-chip[data-t="køl"] { background: rgba(52, 200, 200, .13); border-color: rgba(52, 200, 200, .38); color: #8fe3e3; }
+    .temp-chip[data-t="køl"].active { background: rgba(52, 200, 200, .28); border-color: rgba(52, 200, 200, .68); color: #c4f3f3; }
+    .temp-chip[data-t="kolo"] { background: rgba(190, 190, 200, .12); border-color: rgba(200, 200, 210, .32); color: #dce0ea; }
+    .temp-chip[data-t="kolo"].active { background: rgba(200, 200, 210, .26); border-color: rgba(210, 210, 220, .62); color: #f0f2f8; }
+
     /* ============ FORM ============ */
     #addForm {
       display: none;
@@ -1617,7 +1625,7 @@
 
     <div class="header">
       <div class="header-top">
-        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.4</span></span>
+        <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>LOC</em><span class="appver">v0.2.5</span></span>
         <form class="search-wrap" id="searchForm" autocomplete="off">
           <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
