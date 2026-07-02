@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>Stregkode-scanner + Supabase</title>
+  <title>ItemAdd — Tilføj varer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@300;400;500;600&display=swap"
@@ -761,22 +761,84 @@
 
     .small{ font-size:12px; color:var(--muted); font-weight:500; }
     h1{display:none}
-    .card{background:transparent}
+
+    /* inline validation */
+    .field input.invalid{
+      border-color:#ff6b6b !important;
+      box-shadow:0 0 0 3px rgba(255,90,90,.16) !important;
+    }
+
+    /* success toast */
+    #toast{
+      position:fixed;
+      left:50%;
+      bottom:32px;
+      transform:translateX(-50%) translateY(20px);
+      background:linear-gradient(180deg,#2fbf71,#22a35f);
+      color:#06251a;
+      font-family:'Syne',sans-serif;
+      font-size:13px;
+      font-weight:800;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      padding:12px 22px;
+      border-radius:50px;
+      box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 24px rgba(47,191,113,.35);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .2s, transform .2s;
+      z-index:10000;
+      display:flex;align-items:center;gap:8px;
+      max-width:90vw;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* login-overlay — vises kun hvis Supabase RLS kræver en admin-konto */
+    #loginOverlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:9998;
+      background:rgba(8,10,18,.9);
+      backdrop-filter:blur(18px);
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+    #loginOverlay.on{display:flex}
+    .login-card{
+      width:100%;
+      max-width:320px;
+      background:linear-gradient(180deg, rgba(22,22,26,.95) 0%, rgba(12,12,14,.98) 100%);
+      border:1px solid var(--border2);
+      border-radius:var(--r);
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      gap:11px;
+      box-shadow:0 24px 60px rgba(0,0,0,.6);
+    }
+    .login-card h2{margin:0;font-size:16px;font-weight:700}
+    .login-card p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+    #loginError{color:#ff8080;font-size:11.5px;min-height:1.2em;margin:0}
   </style>
 </head>
 <body>
   <div class="app">
     <div class="top-bar">
-      <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em><span class="appver">v0.1.1</span></span>
+      <span class="wordmark"><span class="wordmark-dot"></span>ITEM<em>ADD</em><span class="appver">v0.2.0</span></span>
       <span id="status" class="status-pill">Klar — tryk Start kamera</span>
     </div>
     <div class="body">
       <h1>Stregkode-scanner</h1>
       <div id="page-start" class="page active">
         <div class="step-head" style="padding:0 0 4px">
-          <div class="step-tag">Step 01 · Capture</div>
-          <div class="step-title">Scan a new product</div>
-          <div class="step-sub">Aim the camera at any barcode. We'll fetch product info and let you tag its shelf in seconds.</div>
+          <div class="step-tag">Trin 01 · Scan</div>
+          <div class="step-title">Scan en ny vare</div>
+          <div class="step-sub">Ret kameraet mod stregkoden — vi henter produktinfo, og du tagger hylden på få sekunder.</div>
         </div>
         <div class="start-hero">
           <div class="start-inner">
@@ -788,7 +850,7 @@
                 <line x1="15" y1="9" x2="15" y2="15"/><line x1="12" y1="9" x2="12" y2="15"/>
               </svg>
             </div>
-            <div class="start-title">Camera ready</div>
+            <div class="start-title">Kameraet er klar</div>
             <div class="start-sub">Tryk for at starte kameraet og scanne stregkoder</div>
             <button id="startCameraBtn" class="btn" style="margin-top:8px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -802,18 +864,18 @@
       </div>
       <div id="page-scan" class="page">
         <div class="step-head" style="padding:0 0 4px">
-          <div class="step-tag">Step 01 · Scan</div>
-          <div class="step-title">Hold a barcode in frame</div>
+          <div class="step-tag">Trin 01 · Scan</div>
+          <div class="step-title">Hold stregkoden i rammen</div>
         </div>
         <div class="stage">
           <video id="video" playsinline muted></video>
           <div class="overlay">
             <div class="reticle-wrap">
               <div class="sf"><span></span><div class="sf-inner"></div><div class="sl"></div></div>
-              <div class="reticle-hint">Center barcode in frame</div>
+              <div class="reticle-hint">Hold stregkoden inden for rammen</div>
             </div>
             <div class="topbar">
-              <span class="chip live" id="chip-barcode">Scanning</span>
+              <span class="chip live" id="chip-barcode">Scanner</span>
               <div style="display:flex;gap:8px">
                 <span id="barcodeTop" class="chip" style="display:none;pointer-events:none"></span>
                 <button id="stopCameraBtn" class="chip chip-btn" style="background:rgba(12,12,14,.78);">Stop</button>
@@ -829,15 +891,15 @@
       </div>
       <div id="page-photo" class="page">
         <div class="step-head" style="padding:0 0 4px">
-          <div class="step-tag">Step 02 · Preview</div>
-          <div class="step-title">Looks good?</div>
+          <div class="step-tag">Trin 02 · Foto</div>
+          <div class="step-title">Ser det godt ud?</div>
           <div class="step-sub">Godkend billedet eller tag det om.</div>
         </div>
         <div class="stage">
           <img id="previewImg" class="preview" alt="Forhåndsvisning" />
           <div class="photo-vignette"></div>
           <div class="overlay">
-            <div class="topbar"><span class="chip">Preview</span></div>
+            <div class="topbar"><span class="chip">Forhåndsvisning</span></div>
             <div class="bottom">
               <button id="retakeBtn" class="btn ghost">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -853,25 +915,25 @@
       </div>
       <div id="page-edit" class="page">
         <div class="step-head" style="padding:0 0 4px">
-          <div class="step-tag">Step 03 · Details</div>
-          <div class="step-title">Add product details</div>
+          <div class="step-tag">Trin 03 · Detaljer</div>
+          <div class="step-title">Udfyld produktdetaljer</div>
         </div>
         <div class="edit-card">
           <div class="edit-head">
             <img id="editPreview" alt="Produkt" />
             <div class="edit-meta">
-              <span class="edit-meta-tag">Barcode</span>
+              <span class="edit-meta-tag">Stregkode</span>
               <div id="editBarcodeLabel">—</div>
               <div id="editTimestamp">—</div>
             </div>
           </div>
           <div class="field-grid">
-            <div class="field"><label>Produktnavn</label><input id="field_name" type="text" placeholder="Produktnavn" /></div>
-            <div class="field"><label>Producent / brand</label><input id="field_brand" type="text" placeholder="Brand" /></div>
-            <div class="field"><label>Søgeord</label><input id="field_category" type="text" placeholder="fx ketchup" /></div>
+            <div class="field"><label>Produktnavn *</label><input id="field_name" type="text" placeholder="Produktnavn" autocomplete="off" /></div>
+            <div class="field"><label>Producent / brand</label><input id="field_brand" type="text" placeholder="Brand" autocomplete="off" /></div>
+            <div class="field"><label>Kategori / søgeord</label><input id="field_category" type="text" list="catList" placeholder="fx ketchup" autocomplete="off" /><datalist id="catList"></datalist></div>
             <div class="field-row-2">
-              <div class="field"><label>Hylde</label><input id="field_shelf" type="text" placeholder="fx 42" /></div>
-              <div class="field"><label>Række</label><input id="field_row" type="text" placeholder="fx A" /></div>
+              <div class="field"><label>Hylde *</label><input id="field_shelf" type="text" placeholder="fx 42" autocomplete="off" /></div>
+              <div class="field"><label>Række</label><input id="field_row" type="text" placeholder="fx A" autocomplete="off" /></div>
             </div>
           </div>
           <div class="actions">
@@ -893,8 +955,21 @@
     </div>
   </div>
 
+  <div id="loginOverlay">
+    <div class="login-card">
+      <h2>Log ind som admin</h2>
+      <p>Databasen er skrivebeskyttet. Log ind med din admin-konto for at gemme varer.</p>
+      <div class="field"><label>E-mail</label><input id="loginEmail" type="email" autocomplete="username" placeholder="admin@butik.dk"></div>
+      <div class="field"><label>Adgangskode</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+      <p id="loginError"></p>
+      <button id="loginBtn" class="save">Log ind</button>
+      <button id="loginCancel" class="secondary">Annuller</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
   <script>
     /*******************************
      * --- KONFIGURER SUPABASE ----
@@ -931,21 +1006,30 @@
     const field_shelf = document.getElementById('field_shelf');
     const field_row = document.getElementById('field_row');
     const localList = document.getElementById('localList');
+    const catListEl = document.getElementById('catList');
+    const toastEl = document.getElementById('toast');
+    const loginOverlay = document.getElementById('loginOverlay');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPass = document.getElementById('loginPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginCancel = document.getElementById('loginCancel');
+    const loginError = document.getElementById('loginError');
+
+    // huskes på tværs af varer/sessions, så man hurtigt kan tagge en hel hylde
+    const LS_SHELF = 'itemadd.lastShelf', LS_ROW = 'itemadd.lastRow', LS_HISTORY = 'itemadd.history';
 
     let stream = null, reader = null, controls = null;
     let canvas = document.createElement('canvas');
-    let lastScanned = null, currentBarcode = '', openfoodData = null;
+    let lastScanned = null, currentBarcode = '';
     let localProducts = [], detectionPaused = false;
+    try{ localProducts = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); }catch(e){ localProducts = []; }
 
     function showPage(el){ [pageStart,pageScan,pagePhoto,pageEdit].forEach(p=>p.classList.remove('active')); el.classList.add('active'); }
     function setStatus(txt){ statusEl.textContent = txt; }
-
-    async function findBackDeviceId(){
-      try{ const tmp = await navigator.mediaDevices.getUserMedia({video:true}); tmp.getTracks().forEach(t=>t.stop()); }catch(e){}
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(d=>d.kind==='videoinput');
-      const back = videoDevices.find(d=>/back|rear|environment/i.test(d.label));
-      return back ? back.deviceId : (videoDevices.length ? videoDevices[videoDevices.length-1].deviceId : null);
+    function toast(txt){
+      toastEl.textContent = txt; toastEl.classList.add('on');
+      clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove('on'), 1800);
+      if(navigator.vibrate) navigator.vibrate(60);
     }
 
     async function startCamera(){
@@ -1004,21 +1088,26 @@
       if(currentBarcode===code && Date.now()-(lastScanned?.time||0)<1200) return;
       lastScanned={code,time:Date.now()}; currentBarcode=code;
       const appCard=document.querySelector('.app'); appCard.classList.add('flash-card'); setTimeout(()=>appCard.classList.remove('flash-card'),600);
+      if(navigator.vibrate) navigator.vibrate(40);
       detectionPaused=true; barcodeTop.textContent=code; barcodeTop.style.display='inline-flex';
-      showBottomPhotoButton(); editBarcodeLabel.textContent=code; editTimestamp.textContent=new Date().toLocaleString();
-      openfoodData=null; editPreview.src=''; previewImg.src='';
+      showBottomButtons(); editBarcodeLabel.textContent=code; editTimestamp.textContent=new Date().toLocaleString('da-DK');
+      editPreview.src=''; previewImg.src='';
       try{
         const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-        if(r.ok){ const j=await r.json(); if(j.status===1){ openfoodData=j.product; field_name.value=j.product.product_name_da||j.product.product_name||field_name.value||''; field_brand.value=(j.product.brands||field_brand.value||''); field_category.value=(j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' '); setStatus('Produktforslag hentet fra OpenFoodFacts'); } else { setStatus('Ingen info i OpenFoodFacts'); } }
+        if(r.ok){ const j=await r.json(); if(j.status===1){ field_name.value=j.product.product_name_da||j.product.product_name||field_name.value||''; field_brand.value=(j.product.brands||field_brand.value||''); field_category.value=(j.product.categories_tags?.[0]||field_category.value||'').replace('en:','').replace(/-/g,' '); setStatus('Produktforslag hentet fra OpenFoodFacts'); } else { setStatus('Ingen info i OpenFoodFacts'); } }
       }catch(e){ console.warn('OFF fejl',e); setStatus('OFF: kunne ikke hente info'); }
     }
 
     function clearBottomButton(){ bottomArea.innerHTML=''; }
-    function showBottomPhotoButton(){
+    function showBottomButtons(){
       clearBottomButton();
-      const btn=document.createElement('button'); btn.className='btn'; btn.style.pointerEvents='auto';
-      btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Tag billede';
-      btn.addEventListener('click', takeSnapshotForPreview); bottomArea.appendChild(btn);
+      const skipBtn=document.createElement('button'); skipBtn.className='btn ghost'; skipBtn.style.pointerEvents='auto';
+      skipBtn.textContent='Uden foto';
+      skipBtn.addEventListener('click', goToEdit);
+      const photoBtn=document.createElement('button'); photoBtn.className='btn'; photoBtn.style.pointerEvents='auto';
+      photoBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Tag billede';
+      photoBtn.addEventListener('click', takeSnapshotForPreview);
+      bottomArea.appendChild(skipBtn); bottomArea.appendChild(photoBtn);
     }
 
     function takeSnapshotForPreview(){
@@ -1028,10 +1117,23 @@
       previewImg.src=canvas.toDataURL('image/jpeg',0.85); showPage(pagePhoto); setStatus('Forhåndsvisning — godkend eller tag om');
     }
 
-    acceptPhotoBtn.addEventListener('click', () => {
-      editPreview.src=previewImg.src||''; editBarcodeLabel.textContent=currentBarcode||editBarcodeLabel.textContent||'—'; editTimestamp.textContent=new Date().toLocaleString();
+    // Gå til detalje-siden: stop kameraet, husk sidste hylde/række og fokusér første tomme felt
+    function goToEdit(){
+      editBarcodeLabel.textContent=currentBarcode||editBarcodeLabel.textContent||'—';
+      editTimestamp.textContent=new Date().toLocaleString('da-DK');
+      editPreview.style.display = editPreview.getAttribute('src') ? '' : 'none'; // undgå "broken image" uden foto
       try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
-      detectionPaused=true; clearBottomButton(); showPage(pageEdit); setStatus('Rediger produktinfo');
+      detectionPaused=true; clearBottomButton(); showPage(pageEdit); setStatus('Udfyld produktinfo');
+      if(!field_shelf.value) field_shelf.value = localStorage.getItem(LS_SHELF) || '';
+      if(!field_row.value) field_row.value = localStorage.getItem(LS_ROW) || '';
+      const order=[field_name, field_brand, field_category, field_shelf, field_row];
+      const tgt = order.find(f => !f.value.trim()) || field_name;
+      setTimeout(()=>tgt.focus(), 120);
+    }
+
+    acceptPhotoBtn.addEventListener('click', () => {
+      editPreview.src=previewImg.src||'';
+      goToEdit();
     });
 
     retakeBtn.addEventListener('click', async () => {
@@ -1039,48 +1141,181 @@
       showPage(pageScan);
     });
 
-    saveProductBtn.addEventListener('click', async () => {
-      const barcode = editBarcodeLabel.textContent;
+    /*******************************
+     * Billede: skaler ned og upload til storage-bucket.
+     * (Tidligere blev hele base64-billedet gemt i image_url-kolonnen.)
+     *******************************/
+    function dataURLtoBlob(d){ const p=d.split(','), mime=p[0].match(/:(.*?);/)[1], bin=atob(p[1]), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:mime}); }
+    function resizeDataURL(d, mw=1024, q=.8){
+      return new Promise((res,rej)=>{
+        const img=new Image();
+        img.onload=()=>{ const s=Math.min(1, mw/img.width), c=document.createElement('canvas'); c.width=img.width*s; c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); try{ res(c.toDataURL('image/jpeg',q)); }catch(e){ rej(e); } };
+        img.onerror=()=>rej(new Error('Billedet kunne ikke læses'));
+        img.src=d;
+      });
+    }
+    async function uploadImage(barcode, dataURL){
+      let d = dataURL;
+      try{ d = await resizeDataURL(dataURL); }catch(e){}
+      const fn = `${barcode}/${Date.now()}.jpg`;
+      const { error } = await db.storage.from(BUCKET).upload(fn, dataURLtoBlob(d), { cacheControl:'3600', upsert:true, contentType:'image/jpeg' });
+      if(error) throw error;
+      return db.storage.from(BUCKET).getPublicUrl(fn).data.publicUrl;
+    }
+
+    /*******************************
+     * Gem: upsert der automatisk dropper kolonner som endnu ikke
+     * findes i skemaet (fx `brand` før migrationen er kørt).
+     *******************************/
+    async function upsertItem(payload){
+      let data = { ...payload };
+      for(let i=0;i<4;i++){
+        const { error } = await db.from('items').upsert(data, { onConflict:'barcode' });
+        if(!error) return;
+        const missingCol = (error.code==='PGRST204' || error.code==='42703') && (error.message||'').match(/'([^']+)'|"([^"]+)"/);
+        const col = missingCol && (missingCol[1]||missingCol[2]);
+        if(col && col in data){ console.warn(`Kolonnen '${col}' findes ikke — gemmer uden`, error.message); delete data[col]; continue; }
+        throw error;
+      }
+      throw new Error('Kunne ikke gemme varen.');
+    }
+
+    /*******************************
+     * Login — vises kun hvis Supabase RLS afviser skrivning (fejl 42501).
+     * Indtil RLS slås til i dashboardet, kører alt som før uden login.
+     *******************************/
+    function isRlsError(err){
+      const m=(err?.message||'').toLowerCase();
+      return err?.code==='42501' || m.includes('row-level security') || m.includes('unauthorized');
+    }
+    function requestLogin(){
+      return new Promise(resolve => {
+        requestLogin._resolve = resolve;
+        loginError.textContent=''; loginOverlay.classList.add('on');
+        setTimeout(()=>loginEmail.focus(), 80);
+      });
+    }
+    loginBtn.addEventListener('click', async () => {
+      loginBtn.disabled=true; loginError.textContent='';
+      try{
+        const { error } = await db.auth.signInWithPassword({ email: loginEmail.value.trim(), password: loginPass.value });
+        if(error) throw error;
+        loginOverlay.classList.remove('on');
+        requestLogin._resolve?.(true);
+      }catch(e){ loginError.textContent='Login mislykkedes: '+(e.message||e); }
+      finally{ loginBtn.disabled=false; }
+    });
+    loginCancel.addEventListener('click', () => { loginOverlay.classList.remove('on'); requestLogin._resolve?.(false); });
+    loginPass.addEventListener('keydown', e => { if(e.key==='Enter') loginBtn.click(); });
+
+    /*******************************
+     * Inline-validering (navn + hylde er påkrævet)
+     *******************************/
+    function validateFields(){
+      const missing=[];
+      [field_name, field_shelf].forEach(f => {
+        const bad=!f.value.trim();
+        f.classList.toggle('invalid', bad);
+        if(bad) missing.push(f);
+      });
+      return missing;
+    }
+    [field_name, field_shelf].forEach(f => f.addEventListener('input', () => f.classList.remove('invalid')));
+
+    async function saveProduct(){
+      const barcode = (editBarcodeLabel.textContent||'').trim();
       const name = field_name.value.trim();
       const brand = field_brand.value.trim();
       const category = field_category.value.trim();
       const shelf = field_shelf.value.trim();
       const row = field_row.value.trim();
-      const image_preview = editPreview.src || null;
 
+      if(!barcode || barcode==='—'){ setStatus('Ingen stregkode — scan varen først'); return; }
+      const missing = validateFields();
+      if(missing.length){ setStatus('Udfyld de markerede felter'); missing[0].focus(); return; }
 
-      if(!barcode || !name || !brand){
-        alert('Udfyld venligst stregkode, navn og brand.');
-        return;
-      }
-
-      const productData = {
-        barcode,
-        name,
-        category,
-        shelf,
-        section: row,
-        image_url: image_preview || null
-      };
-
+      saveProductBtn.disabled=true;
+      const oldLabel=saveProductBtn.innerHTML; saveProductBtn.innerHTML='Gemmer…';
       setStatus('Gemmer til Supabase...');
       try{
-        const { error } = await db
-          .from('items')
-          .upsert(productData, { onConflict: 'barcode' });
+        // 1) upload evt. foto til bucket'en — aldrig base64 direkte i tabellen
+        let image_url=null;
+        // getAttribute: en tom src-property ville ellers blive til sidens egen URL
+        const snap=editPreview.getAttribute('src')||'';
+        if(snap.startsWith('data:')){
+          try{ image_url=await uploadImage(barcode, snap); }
+          catch(e){
+            if(isRlsError(e)){
+              if(!(await requestLogin())) throw new Error('Login påkrævet for at gemme.');
+              image_url=await uploadImage(barcode, snap);
+            } else { console.warn('Billedupload fejlede', e); setStatus('Foto kunne ikke uploades — varen gemmes uden'); }
+          }
+        } else if(snap){ image_url=snap; }
 
-        if(error){
-          console.error('Supabase insert error:', error);
-          setStatus('Fejl ved gemning: ' + (error.message || 'ukendt fejl'));
-          return;
+        // 2) gem varen
+        const payload={ barcode, name, category, shelf, section: row, image_url };
+        if(brand) payload.brand=brand; // droppes automatisk hvis kolonnen ikke findes endnu
+        try{ await upsertItem(payload); }
+        catch(e){
+          if(isRlsError(e)){
+            if(!(await requestLogin())) throw new Error('Login påkrævet for at gemme.');
+            await upsertItem(payload);
+          } else throw e;
         }
 
-        setStatus('Produkt gemt i Supabase ✅');
-        localProducts.push({ barcode, name, category, shelf, section: row, created_at: new Date().toISOString() }); renderLocalList();
-        field_name.value=''; field_brand.value=''; field_category.value=''; field_shelf.value='';
-        editPreview.src=''; editBarcodeLabel.textContent='—'; editTimestamp.textContent='—'; currentBarcode=''; showPage(pageStart);
-      }catch(e){ console.error(e); setStatus('Fejl ved gemning: '+(e.message||e)); }
+        // 3) succes: husk hylde/række, log lokalt og hop direkte tilbage til scanning
+        localStorage.setItem(LS_SHELF, shelf); localStorage.setItem(LS_ROW, row);
+        localProducts.push({ barcode, name, category, shelf, section: row, created_at: new Date().toISOString() });
+        localProducts = localProducts.slice(-30);
+        try{ localStorage.setItem(LS_HISTORY, JSON.stringify(localProducts)); }catch(e){}
+        renderLocalList();
+        if(category) addCatOption(category);
+        toast('✓ '+name+' gemt');
+        field_name.value=''; field_brand.value=''; field_category.value='';
+        // hylde/række beholdes — man tagger typisk flere varer på samme hylde
+        editPreview.src=''; editBarcodeLabel.textContent='—'; editTimestamp.textContent='—'; currentBarcode=''; lastScanned=null;
+        await startCamera(); // klar til næste vare uden ekstra tryk
+        setStatus('Gemt ✅ — scan næste vare');
+      }catch(e){
+        console.error(e);
+        setStatus('Fejl ved gemning: '+(e.message||e));
+      }finally{
+        saveProductBtn.disabled=false; saveProductBtn.innerHTML=oldLabel;
+      }
+    }
+    saveProductBtn.addEventListener('click', saveProduct);
+
+    // Enter hopper til næste felt — Enter i sidste felt gemmer
+    const fieldOrder=[field_name, field_brand, field_category, field_shelf, field_row];
+    fieldOrder.forEach((f,i)=>{
+      f.setAttribute('enterkeyhint', i===fieldOrder.length-1 ? 'done' : 'next');
+      f.addEventListener('keydown', e => {
+        if(e.key!=='Enter') return;
+        e.preventDefault();
+        if(i<fieldOrder.length-1) fieldOrder[i+1].focus(); else saveProduct();
+      });
     });
+
+    /*******************************
+     * Kategori-autocomplete fra eksisterende varer
+     *******************************/
+    const catSet=new Set();
+    function addCatOption(c){
+      if(!c || catSet.has(c)) return; catSet.add(c);
+      const o=document.createElement('option'); o.value=c; catListEl.appendChild(o);
+    }
+    (async function loadCats(){
+      try{
+        let from=0;
+        for(let i=0;i<10;i++){
+          const { data, error } = await db.from('items').select('category').range(from, from+999);
+          if(error || !data) break;
+          data.forEach(r=>addCatOption(r.category));
+          if(data.length<1000) break;
+          from+=1000;
+        }
+      }catch(e){ console.warn(e); }
+    })();
 
     function renderLocalList(){
       localList.innerHTML='';
@@ -1100,6 +1335,7 @@
       detectionPaused=true;
     });
 
+    renderLocalList();
     showPage(pageStart);
     setStatus('Klar — tryk Start kamera');
   </script>
