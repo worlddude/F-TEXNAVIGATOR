@@ -326,9 +326,15 @@
       user-select: none;
       -webkit-user-drag: none;
       pointer-events: none;
-      height: 100%;
-      width: auto;
-      object-fit: contain;
+      width: 100%;
+      height: auto;
+    }
+
+    /* SVG-kortet fylder #map i bredden og får sin højde fra viewBox-forholdet */
+    #map svg {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     /* ============ CAMERA ============ */
@@ -1254,6 +1260,7 @@
       position: absolute;
       top: 0;
       left: 0;
+      width: 100%;
       transform-origin: 0 0;
       will-change: transform;
       transition: transform .4s cubic-bezier(.4, 0, .2, 1);
@@ -1450,6 +1457,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+  <script src="store-map.js"></script>
 </head>
 
 <body>
@@ -1509,10 +1517,8 @@
           <!-- Front: Map -->
           <div class="flip-face">
             <div id="mapWrapper">
-              <img id="map"
-                src="https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/ChatGPT%20Image%2026.%20apr.%202026,%2019.37.35.png"
-                alt="Store map">
-              <div id="aisleHighlight" class="aisle-rect"></div>
+              <!-- Det nye SVG-butikskort tegnes ind i #map af store-map.js -->
+              <div id="map"></div>
             </div>
           </div>
           <!-- Back: Shelf -->
@@ -1722,20 +1728,20 @@
         renderItems(results, true);
         updateLoadMore();
       }
+      // Tegn det nye SVG-butikskort (delt med add-appen) ind i #map.
+      // #map er en <div> (så offsetWidth/offsetHeight virker til pan/zoom),
+      // og SVG'et ligger indeni. Det erstatter det gamle statiske kort-billede.
+      const mapObj = window.StoreMap ? StoreMap.mount($('map'), { clickable: false }) : null;
+
       const video = $('video'), mapImg = $('map'), mapCon = $('mapContainer'), scanOv = $('scanOverlay'),
         itemCard = $('itemCard'), nameD = $('itemNameDisplay'),
         shelfD = $('shelfDisplay'), catD = $('categoryDisplay'), listPage = $('listPage'),
         searchForm = $('searchForm'), searchInput = $('searchInput'),
         torchBtn = $('torchBtn'), photoDisp = $('itemPhotoDisplay'),
-        mapCard = $('mapCard'), mapWrap = $('mapWrapper'), aisleH = $('aisleHighlight'),
+        mapCard = $('mapCard'), mapWrap = $('mapWrapper'),
         shelfImg = $('shelfPhoto'), shelfH = $('shelfHighlight');
 
-      const AISLE_DATA = {
-        'A3': { name: 'Snacks & Chips', x: 585, y: 350, w: 30, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } },
-        'Brød': { name: 'Brød & Kager', x: 230, y: 150, w: 100, h: 60, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 20, l: 10, w: 40, h: 60 } },
-        'Vin': { name: 'Vin & Spiritus', x: 350, y: 120, w: 80, h: 100, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 15, l: 5, w: 30, h: 70 } },
-        'Chips': { name: 'Chips & Snacks', x: 450, y: 250, w: 40, h: 120, photo: 'https://lpcygniycyffeswzrnms.supabase.co/storage/v1/object/public/Ailes/7ffd5ea6-e742-41e6-9ddf-edce279185c5.png', shelfH: { t: 12, l: 1.5, w: 27, h: 77 } }
-      };
+      // Reol-data kommer nu fra store-map.js (StoreMap.lookup / StoreMap.AISLES).
 
       let bDB = {}, cats = new Set(), stream = null, torchOn = false, CT = 3, lastC = null, cnt = 0, cool = false;
       const PAGE = 60; // items fetched per server page in the list
@@ -1838,11 +1844,13 @@
 
       let currentAd = null;
       function panToAisle(ad) {
-        if (!ad || !mapImg.offsetWidth) return;
+        if (!ad || !mapImg || !mapImg.offsetWidth) return;
         const cw = mapCon.clientWidth, ch = mapCon.clientHeight;
+        // reol-koordinater er i kortets viewBox (0–1000 × 0–660) — omregn til pixels
+        const kx = mapImg.offsetWidth / StoreMap.VIEW_W, ky = mapImg.offsetHeight / StoreMap.VIEW_H;
         sc = 2.5;
-        px = cw / 2 - (ad.x + ad.w / 2) * sc;
-        py = ch / 2 - (ad.y + ad.h / 2) * sc;
+        px = cw / 2 - (ad.x + ad.w / 2) * kx * sc;
+        py = ch / 2 - (ad.y + ad.h / 2) * ky * sc;
         at();
         mapCard.classList.remove('flipped');
       }
@@ -1861,7 +1869,7 @@
         if (item?.photo) { photoDisp.src = item.photo; photoDisp.style.display = 'block' } else photoDisp.style.display = 'none';
         nameD.textContent = name;
 
-        currentAd = AISLE_DATA[shelf] || AISLE_DATA[cat];
+        currentAd = window.StoreMap ? StoreMap.lookup(shelf, cat) : null;
         shelfD.style.display = 'none';
         catD.innerHTML = `<b>${esc(cat)}</b>`;
         catD.className = 'chip hi';
@@ -1872,23 +1880,25 @@
         const dateD = $('dateDisplay'), created = fmtDate(item?.created_at);
         if (created) { dateD.textContent = 'Sidst set ' + created; dateD.style.display = ''; } else { dateD.style.display = 'none'; }
 
-        // Aisle highlight
+        // Fremhæv reolen på kortet (SVG-highlight i store-map.js)
         if (currentAd) {
-          aisleH.style.left = currentAd.x + 'px';
-          aisleH.style.top = currentAd.y + 'px';
-          aisleH.style.width = currentAd.w + 'px';
-          aisleH.style.height = currentAd.h + 'px';
-          aisleH.classList.add('active');
-          shelfImg.src = currentAd.photo;
-          shelfH.style.top = currentAd.shelfH.t + '%';
-          shelfH.style.left = currentAd.shelfH.l + '%';
-          shelfH.style.width = currentAd.shelfH.w + '%';
-          shelfH.style.height = currentAd.shelfH.h + '%';
+          if (mapObj) mapObj.highlight(currentAd.id);
+          // Side-foto af reolen (kun de reoler vi har fotograferet endnu)
+          if (currentAd.photo) {
+            shelfImg.src = currentAd.photo; shelfImg.style.display = '';
+            if (currentAd.shelfH) {
+              shelfH.style.display = '';
+              shelfH.style.top = currentAd.shelfH.t + '%';
+              shelfH.style.left = currentAd.shelfH.l + '%';
+              shelfH.style.width = currentAd.shelfH.w + '%';
+              shelfH.style.height = currentAd.shelfH.h + '%';
+            } else { shelfH.style.display = 'none'; }
+          } else { shelfImg.removeAttribute('src'); shelfImg.style.display = 'none'; shelfH.style.display = 'none'; }
 
           // Auto pan to aisle
           setTimeout(() => panToAisle(currentAd), 50);
-        } else {
-          aisleH.classList.remove('active');
+        } else if (mapObj) {
+          mapObj.clearHighlight();
         }
         mapCard.classList.remove('flipped');
       }
@@ -2161,21 +2171,26 @@
 
       mapCon.addEventListener('click', e => {
         if (lastDrag > 8) return; // ignore the click fired at the end of a pan
-        if (aisleH.classList.contains('active')) {
+        // vend kun kortet hvis den fremhævede reol har et side-foto
+        if (currentAd && currentAd.photo) {
           mapCard.classList.toggle('flipped');
         }
       });
 
       // Init
       mapCon.style.display = 'flex';
-      const MS = 'height:100%;width:auto;display:block;';
-      mapImg.setAttribute('style', MS);
-      mapImg.addEventListener('load', () => {
-        mapImg.setAttribute('style', MS);
+      const MS = 'width:100%;height:auto;display:block;';
+      if (mapImg) mapImg.setAttribute('style', MS);
+      // Centrér kortet i visningen (SVG udløser ikke 'load', så vi gør det direkte)
+      function recenterMap() {
+        if (!mapImg || !mapImg.offsetWidth) return;
+        sc = 1;
         px = (mapCon.clientWidth - mapImg.offsetWidth) / 2;
         py = (mapCon.clientHeight - mapImg.offsetHeight) / 2;
         atNoTrans();
-      });
+      }
+      requestAnimationFrame(() => requestAnimationFrame(recenterMap));
+      setTimeout(recenterMap, 350); // fallback hvis layoutet ikke var klart endnu
       window.addEventListener('load', () => {
         loadCats(); // categories for the grid — items themselves load per page on demand
         initGPT();
