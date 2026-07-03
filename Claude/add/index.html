@@ -482,6 +482,17 @@
       pointer-events:auto;
       z-index:5;
       padding:0 16px;
+      box-sizing:border-box;
+    }
+    /* Sørg for at knapperne (fx "Uden foto" + "Tag billede") deler pladsen
+       og aldrig løber ud af rammen på en smal telefon */
+    .bottom .btn{
+      flex:1 1 0;
+      min-width:0;
+      max-width:220px;
+      padding:0 14px;
+      letter-spacing:.05em;
+      overflow:hidden;
     }
 
     /* ============ BUTTONS ============ */
@@ -864,13 +875,13 @@
       </div>
       <div id="page-scan" class="page">
         <div class="step-head" style="padding:0 0 4px">
-          <div class="step-tag">Trin 01 · Scan</div>
-          <div class="step-title">Hold stregkoden i rammen</div>
+          <div class="step-tag" id="scanTag">Trin 01 · Scan</div>
+          <div class="step-title" id="scanTitle">Hold stregkoden i rammen</div>
         </div>
         <div class="stage">
           <video id="video" playsinline muted></video>
           <div class="overlay">
-            <div class="reticle-wrap">
+            <div class="reticle-wrap" id="reticleWrap">
               <div class="sf"><span></span><div class="sf-inner"></div><div class="sl"></div></div>
               <div class="reticle-hint">Hold stregkoden inden for rammen</div>
             </div>
@@ -994,6 +1005,21 @@
     const scanMessage = document.getElementById('scanMessage');
     const bottomArea = document.getElementById('bottomArea');
     const barcodeTop = document.getElementById('barcodeTop');
+    const scanTag = document.getElementById('scanTag');
+    const scanTitle = document.getElementById('scanTitle');
+    const reticleWrap = document.getElementById('reticleWrap');
+    // Skifter overskriften mellem "scan stregkode" og "tag billede af varen"
+    function setScanHeader(mode){
+      if(mode === 'photo'){
+        scanTag.textContent = 'Trin 02 · Foto';
+        scanTitle.textContent = 'Tag et billede af varen';
+        if(reticleWrap) reticleWrap.style.display = 'none';
+      } else {
+        scanTag.textContent = 'Trin 01 · Scan';
+        scanTitle.textContent = 'Hold stregkoden i rammen';
+        if(reticleWrap) reticleWrap.style.display = '';
+      }
+    }
     const startCameraBtn = document.getElementById('startCameraBtn');
     const stopCameraBtn = document.getElementById('stopCameraBtn');
     const acceptPhotoBtn = document.getElementById('acceptPhotoBtn');
@@ -1061,6 +1087,7 @@
 
     async function runDetectionLoop(){
       scanMessage.style.display='none'; barcodeTop.style.display='none'; detectionPaused=false;
+      setScanHeader('scan');
       if('BarcodeDetector' in window){
         try{
           const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
@@ -1101,6 +1128,7 @@
     function clearBottomButton(){ bottomArea.innerHTML=''; }
     function showBottomButtons(){
       clearBottomButton();
+      setScanHeader('photo');
       const skipBtn=document.createElement('button'); skipBtn.className='btn ghost'; skipBtn.style.pointerEvents='auto';
       skipBtn.textContent='Uden foto';
       skipBtn.addEventListener('click', goToEdit);
@@ -1137,7 +1165,7 @@
     });
 
     retakeBtn.addEventListener('click', async () => {
-      if(!stream){ await startCamera(); } else { detectionPaused=false; scanMessage.style.display='none'; barcodeTop.style.display='none'; clearBottomButton(); setStatus('Scanner efter stregkoder...'); }
+      if(!stream){ await startCamera(); } else { detectionPaused=false; scanMessage.style.display='none'; barcodeTop.style.display='none'; clearBottomButton(); setScanHeader('scan'); setStatus('Scanner efter stregkoder...'); }
       showPage(pageScan);
     });
 
