@@ -871,7 +871,7 @@
     #mapPickerOverlay.on{display:flex}
     .map-picker-card{
       width:100%;
-      max-width:520px;
+      max-width:680px;
       background:linear-gradient(180deg, rgba(22,22,26,.96) 0%, rgba(12,12,14,.98) 100%);
       border:1px solid var(--border2);
       border-radius:18px;
@@ -888,12 +888,21 @@
       font-size:15px;
       font-weight:700;
     }
+    /* Kortet er stort og detaljeret — vis det i en scroll-boks så reolerne
+       er store nok at ramme. Man trækker for at se hele butikken. */
     #mapPickerBody{
       width:100%;
-      aspect-ratio:1000 / 660;
+      height:62vh;
       background:#0d1016;
       border-radius:12px;
-      overflow:hidden;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    #mapPickerBody svg{
+      width:1600px;
+      max-width:none;
+      height:auto;
+      display:block;
     }
     .map-picker-foot{
       font-size:11.5px;
@@ -1056,7 +1065,7 @@
         <button type="button" id="mapPickerClose" class="chip chip-btn" style="background:rgba(12,12,14,.78)">Luk</button>
       </div>
       <div id="mapPickerBody"></div>
-      <div class="map-picker-foot">Tryk på en reol på kortet for at vælge den</div>
+      <div class="map-picker-foot">Træk for at se hele butikken · tryk på en reol for at vælge den</div>
     </div>
   </div>
 
@@ -1163,6 +1172,18 @@
         onPick: (id) => { setShelf(id); closeMapPicker(); }
       });
       mapPickerOverlay.classList.add('on');
+      // Scroll hen til reolerne (eller den allerede valgte reol), så man ikke
+      // starter i et tomt hjørne af det store kort.
+      requestAnimationFrame(() => {
+        const svg = mapPickerBody.querySelector('svg');
+        if(!svg) return;
+        const scale = svg.getBoundingClientRect().width / StoreMap.VIEW_W;
+        const chosen = field_shelf.value && StoreMap.byId(field_shelf.value);
+        const fx = chosen ? (chosen.x + chosen.w / 2) : 1080; // fokus: valgt reol ellers midt i vareområdet
+        const fy = chosen ? (chosen.y + chosen.h / 2) : 470;
+        mapPickerBody.scrollLeft = fx * scale - mapPickerBody.clientWidth / 2;
+        mapPickerBody.scrollTop  = fy * scale - mapPickerBody.clientHeight / 2;
+      });
     }
     function closeMapPicker(){ mapPickerOverlay.classList.remove('on'); }
     shelfPickBtn.addEventListener('click', openMapPicker);

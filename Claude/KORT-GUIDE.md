@@ -1,92 +1,91 @@
 # Butikskort — sådan gør du (trin for trin)
 
-Kortet er nu **tegnet i kode** (ingen billedfil), så hver reol er en rigtig
-klikbar firkant med en dansk etikette. Det bor ét sted: **`Claude/store-map.js`**.
-Både app'en (`index.html`) og add-app'en (`add/index.html`) bruger den samme fil,
-så de er altid enige om reolerne.
+Kortet er nu **tegnet i kode** efter din rigtige butiksplan (ingen billedfil),
+så hver reol er en rigtig klikbar firkant med en etikette. Det bor ét sted:
+**`Claude/store-map.js`**. Både app'en (`index.html`) og add-app'en
+(`add/index.html`) bruger den samme fil, så de er altid enige om reolerne.
 
-Du behøver **ikke** lave alle reoler på én gang. Kortet viser præcis de reoler,
-der står i listen — tilføj dem efterhånden.
+Farverne følger legenden på din tegning:
+
+| Farve | Sektion | `fill` |
+|-------|---------|--------|
+| Lyseblå | Køl (mælk, æg, pålæg, fisk …) | `COL.koel` |
+| Fersken | Vin & alkohol | `COL.vin` |
+| Pink | "Kolo" — ikke-kølet (slik, bleer, chips …) | `COL.kolo` |
+| Mørkeblå | Frost (is, frostvarer …) | `COL.frost` |
+| Grøn | Kasser & bager i fronten (ikke reoler) | zone |
+| Mørk | Kun personale | zone |
+
+Alt uden for de farvede sektioner er ikke med (din del af butikken) — det kan
+tilføjes senere.
 
 ---
 
-## Del 1 · Få kortet til at ligne DIN butik
+## Kort-koordinater
+Kortet er **2016 bredt × 1080 højt** (samme mål som din tegning, så tal passer
+nogenlunde 1:1 med billedet). `x:0` = helt til venstre, `x:2016` = helt til
+højre. `y:0` = toppen.
 
-Alt ligger i toppen af `Claude/store-map.js` i listen `STORE_AISLES`.
+---
+
+## Del 1 · Ret en reol
+Alle reoler ligger i listen `STORE_AISLES` i toppen af `store-map.js`.
 Hver reol er én linje:
 
 ```js
-{ id: 'Chips', name: 'Chips & Snacks', x: 420, y: 190, w: 70, h: 280, fill: '#3d8eff' },
+{ id: 'chips1', name: 'Chips', short: 'Chips', x: 907, y: 668, w: 24, h: 132, fill: COL.kolo },
 ```
 
-| Felt | Betyder | Tip |
-|------|---------|-----|
-| `id` | Kort nøgle der gemmes på varen | Vælg noget kort og unikt (fx `Chips`, `Vin`, `A3`) — den vises ikke, men skal være ens overalt |
-| `name` | Dansk navn på kortet | Det brugeren ser |
-| `x`, `y` | Øverste venstre hjørne | Kortet er **1000 bredt × 660 højt**. `x:0` = helt til venstre, `x:1000` = helt til højre |
-| `w`, `h` | Bredde og højde | Lodrette reoler (`h` meget større end `w`) får automatisk roteret tekst |
-| `fill` | Farve | Valgfri. Fx `#3d8eff` (blå), `#1f7a4d` (grøn) |
+| Felt | Betyder |
+|------|---------|
+| `id` | Kort unik nøgle der gemmes på varen (fx `chips1`, `broed`, `vin`) |
+| `name` | Fuldt navn — vises i varekortet og i vælgeren |
+| `short` | (valgfri) kortere tekst der vises OVENPÅ reolen på kortet |
+| `x`, `y` | Øverste venstre hjørne |
+| `w`, `h` | Bredde og højde. Er `h` meget større end `w`, roteres teksten automatisk |
+| `fill` | Farve: `COL.koel`, `COL.vin`, `COL.kolo` eller `COL.frost` |
 
-**Sådan retter du kortet, så det passer:**
-1. Åbn `Claude/store-map.js` i en editor.
-2. Ret navnene i `STORE_AISLES` til dine rigtige afdelinger.
-3. Flyt/størrelse reolerne ved at ændre `x/y/w/h`. Åbn `Claude/index.html` i en
-   browser ved siden af og juster tallene, til det ligner butikken oppefra.
-4. Ikke-klikbare ting (indgang, kasser) ligger i listen `ZONES` lige under.
+**Sådan flytter/retter du:** åbn `Claude/index.html` i en browser ved siden af,
+ret tallene i `store-map.js`, genindlæs siden, gentag til det passer.
 
-> 💡 Vil du hellere have et **rigtigt/fotorealistisk** kort? Så skal du lave selve
-> billedet i fx ChatGPT/Midjourney (det kan jeg ikke tegne) og sende det til mig —
-> så lægger jeg de klikbare reoler oven på billedet i stedet. Men det kodede
-> SVG-kort er nemmere at rette og klikker helt præcist.
+**Sektions-baggrunde** (de bløde farvede felter bag reolerne) ligger i listen
+`SECTIONS`. **Grøn front + personale-zoner** ligger i `ZONES`.
 
 ---
 
-## Del 2 · Tilføj reoler efterhånden (den rigtige rækkefølge)
+## Del 2 · Tilføj side-foto til en reol (efterhånden)
+Du har kun taget foto af chips-reolen indtil videre. Det er fint — reoler virker
+på kortet uden foto (de kan vælges og fremhæves, de kan bare ikke "vende om" til
+et side-foto endnu). Sådan tilføjer du et foto, når du har taget det:
 
-Du sagde selv: du har kun taget billeder af chips-reolen fra siden. Det er helt
-fint. Sådan bygger du resten op — **én reol ad gangen**, i den her rækkefølge:
-
-**For hver ny reol:**
-
-1. **Sæt reolen på kortet.** Tilføj en linje i `STORE_AISLES` med et nyt `id` og
-   placering (`x/y/w/h`). Nu kan man allerede *vælge* den i add-app'en, og
-   varer på den bliver fremhævet på kortet.
-2. **Tag billedet af reolen fra siden** (som du gjorde med chips). Læg det i
-   Supabase `Ailes`-bucket'en (samme sted som de andre).
-3. **Kobl fotoet på reolen.** Tilføj `photo` + `shelfH` til reol-linjen:
+1. Tag billedet af reolen fra siden.
+2. Læg det i Supabase `Ailes`-bucket'en.
+3. Tilføj `photo` + `shelfH` til reolens linje:
    ```js
-   { id: 'Vin', name: 'Vin & Spiritus', x: 560, y: 70, w: 240, h: 95,
+   { id: 'broed', name: 'Brød', x: 1014, y: 250, w: 44, h: 278, fill: COL.kolo,
      photo: 'https://…/Ailes/dit-billede.png',
      shelfH: { t: 15, l: 5, w: 30, h: 70 } },
    ```
-   - `photo` = linket til side-billedet.
+   - `photo` = link til side-billedet.
    - `shelfH` = den blå markering *inde på* fotoet, i **procent**: `t`=top,
      `l`=venstre, `w`=bredde, `h`=højde. Juster til den peger på den rigtige hylde.
-4. **Test.** Åbn app'en, vælg en vare på reolen → kortet zoomer til den → tryk på
-   kortet → det vender om og viser dit side-foto med markeringen.
-
-> Reoler **uden** `photo` virker fint — de kan vælges og fremhæves på kortet,
-> de kan bare ikke "vende om" til et side-foto endnu. Så du kan roligt oprette
-> alle reoler først (Del 1) og tage fotos senere.
+4. Test: vælg en vare på reolen → kortet zoomer ind → tryk på kortet → det vender
+   om og viser dit foto med markeringen.
 
 ---
 
-## Del 3 · Hvad brugeren oplever nu
+## Del 3 · Hvad brugeren oplever
+**Add-app** — når personalet tilføjer en vare: tryk på **"Vælg reol på kort"** →
+kortet åbner (træk for at se hele butikken) → tryk på reolen → `id`'et gemmes.
+"Sektion / række" er stadig der til fx "A" (valgfrit).
 
-**Add-app (`add/index.html`)** — når personalet tilføjer en vare:
-- I stedet for at skrive et hylde-nummer trykker de på **"Vælg reol på kort"**.
-- Kortet åbner, de trykker på reolen, og `id`'et gemmes på varen.
-- Feltet "Sektion / række" er stadig der til fx "A" / "øverste hylde" (valgfrit).
-
-**App (`index.html`)** — når personalet finder en vare:
-- Vælg/scan en vare → kortet zoomer ind på den rigtige reol med en lysende ramme.
-- Tryk på kortet → det vender om og viser side-fotoet af reolen (hvis der er et).
+**App** — når personalet finder en vare: vælg/scan en vare → kortet zoomer ind på
+den rigtige reol med en lysende ramme → tryk på kortet for side-foto (hvis der er et).
 
 ---
 
 ## Huskeliste
-- [ ] Ret afdelingsnavne i `STORE_AISLES` så de passer til butikken
-- [ ] Juster `x/y/w/h` så layoutet ligner butikken oppefra
+- [ ] Ret reol-navne/placeringer i `STORE_AISLES` så de matcher butikken præcist
 - [ ] Tag side-foto af hver reol og læg i `Ailes`-bucket
 - [ ] Tilføj `photo` + `shelfH` til hver reol efterhånden
-- [ ] (Senere) fjern de reoler du ikke bruger, fra listen
+- [ ] Tilføj de sidste afdelinger (uden for de farvede felter) når I er klar
