@@ -899,7 +899,7 @@
       -webkit-overflow-scrolling:touch;
     }
     #mapPickerBody svg{
-      width:1600px;
+      width:2600px; /* stort nok til at de smalle reol-sider er lette at ramme */
       max-width:none;
       height:auto;
       display:block;
@@ -1179,8 +1179,8 @@
         if(!svg) return;
         const scale = svg.getBoundingClientRect().width / StoreMap.VIEW_W;
         const chosen = field_shelf.value && StoreMap.byId(field_shelf.value);
-        const fx = chosen ? (chosen.x + chosen.w / 2) : 1080; // fokus: valgt reol ellers midt i vareområdet
-        const fy = chosen ? (chosen.y + chosen.h / 2) : 470;
+        const fx = chosen ? (chosen.x + chosen.w / 2) : 890; // fokus: valgt reol ellers midt i vareområdet
+        const fy = chosen ? (chosen.y + chosen.h / 2) : 360;
         mapPickerBody.scrollLeft = fx * scale - mapPickerBody.clientWidth / 2;
         mapPickerBody.scrollTop  = fy * scale - mapPickerBody.clientHeight / 2;
       });

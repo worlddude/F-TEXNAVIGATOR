@@ -1,9 +1,13 @@
 # Butikskort — sådan gør du (trin for trin)
 
-Kortet er nu **tegnet i kode** efter din rigtige butiksplan (ingen billedfil),
-så hver reol er en rigtig klikbar firkant med en etikette. Det bor ét sted:
+Kortet er nu **luftfotoet af butikken** (`Claude/b1f8af4f-….png`) med
+klikbare, gennemsigtige reol-felter lagt ovenpå hylderne, fryserne og
+køleskabene. Personale-områder er mørklagte. Felterne bor ét sted:
 **`Claude/store-map.js`**. Både app'en (`index.html`) og add-app'en
 (`add/index.html`) bruger den samme fil, så de er altid enige om reolerne.
+
+**Hver fysisk reol har to sider** — de er tegnet som to halvdele side om side
+(fx `bleer`|`asiatisk` = venstre og højre side af samme reol).
 
 Farverne følger legenden på din tegning:
 
@@ -22,9 +26,12 @@ tilføjes senere.
 ---
 
 ## Kort-koordinater
-Kortet er **2016 bredt × 1080 højt** (samme mål som din tegning, så tal passer
-nogenlunde 1:1 med billedet). `x:0` = helt til venstre, `x:2016` = helt til
-højre. `y:0` = toppen.
+Koordinat-nettet er **1672 × 941 = luftfotoets pixels**, så du kan aflæse
+`x/y` direkte på billedet (åbn det i et billedprogram og se pixel-positionen).
+`x:0` = venstre kant af fotoet, `y:0` = toppen.
+
+Vil du udskifte fotoet: læg den nye fil i `Claude/`-mappen og ret filnavnet i
+`BG_IMAGE` i toppen af `store-map.js` (og VIEW_W/VIEW_H hvis målene er andre).
 
 ---
 
@@ -33,7 +40,7 @@ Alle reoler ligger i listen `STORE_AISLES` i toppen af `store-map.js`.
 Hver reol er én linje:
 
 ```js
-{ id: 'chips1', name: 'Chips', short: 'Chips', x: 907, y: 668, w: 24, h: 132, fill: COL.kolo },
+{ id: 'chips1', name: 'Chips (venstre side)', short: 'Chips', x: 742, y: 578, w: 18, h: 118, fill: COL.kolo },
 ```
 
 | Felt | Betyder |
@@ -48,8 +55,7 @@ Hver reol er én linje:
 **Sådan flytter/retter du:** åbn `Claude/index.html` i en browser ved siden af,
 ret tallene i `store-map.js`, genindlæs siden, gentag til det passer.
 
-**Sektions-baggrunde** (de bløde farvede felter bag reolerne) ligger i listen
-`SECTIONS`. **Grøn front + personale-zoner** ligger i `ZONES`.
+**Personale-områderne** (de mørke overlays) ligger i listen `STAFF`.
 
 ---
 
