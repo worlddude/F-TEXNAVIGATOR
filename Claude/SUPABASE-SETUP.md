@@ -280,6 +280,15 @@ create table if not exists public.map_config (
   updated_at timestamptz not null default now()
 );
 
+-- hjælpe-funktion (samme som i trin 1 — 'create or replace' er ufarligt,
+-- hvis den allerede findes)
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+
 drop trigger if exists map_config_set_updated_at on public.map_config;
 create trigger map_config_set_updated_at
   before update on public.map_config
@@ -305,5 +314,5 @@ create policy "authenticated update map_config"
   using (true) with check (true);
 ```
 
-Bemærk: triggeren genbruger funktionen `set_updated_at()` fra trin 1 — kør
-trin 1 først, hvis den ikke findes endnu.
+Trinnet er selvstændigt — funktionen `set_updated_at()` oprettes med, så det
+kan køres uden at trin 1 er kørt først.
