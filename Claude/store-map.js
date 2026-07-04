@@ -112,6 +112,15 @@
 
   let bgImage = BG_IMAGE;
 
+  // Udskift reol-listen under kørsel (bruges når kortet er redigeret i
+  // add-appens kort-editor og gemt i Supabase-tabellen map_config).
+  // Muterer arrayet i stedet for at erstatte det, så alle referencer følger med.
+  function setAisles(list) {
+    if (!Array.isArray(list)) return;
+    STORE_AISLES.length = 0;
+    list.forEach(a => { if (a && a.id) STORE_AISLES.push(a); });
+  }
+
   const byId = id => STORE_AISLES.find(a => a.id === id) || null;
 
   function lookup(shelf, category) {
@@ -219,7 +228,7 @@
   }
 
   global.StoreMap = {
-    VIEW_W, VIEW_H, COL, AISLES: STORE_AISLES, byId, lookup, svgMarkup, mount, PLACEHOLDER_SHELF,
+    VIEW_W, VIEW_H, COL, AISLES: STORE_AISLES, byId, lookup, svgMarkup, mount, setAisles, PLACEHOLDER_SHELF,
     get bgImage() { return bgImage; },
     set bgImage(v) { bgImage = v; },
   };

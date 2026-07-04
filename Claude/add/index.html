@@ -909,6 +909,105 @@
       color:var(--muted);
       text-align:center;
     }
+
+    /* ---- Kort-editor ---- */
+    .map-edit-link{
+      margin-top:14px;
+      background:none;
+      border:none;
+      color:var(--muted);
+      font-family:inherit;
+      font-size:11.5px;
+      font-weight:600;
+      letter-spacing:.04em;
+      cursor:pointer;
+      padding:6px 10px;
+    }
+    .map-edit-link:hover{color:var(--text-dim)}
+    #mapEditorOverlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      background:rgba(8,10,18,.94);
+      backdrop-filter:blur(18px);
+      align-items:center;
+      justify-content:center;
+      padding:10px;
+    }
+    #mapEditorOverlay.on{display:flex}
+    .map-editor-card{
+      width:100%;
+      max-width:760px;
+      max-height:100%;
+      background:linear-gradient(180deg, rgba(22,22,26,.96) 0%, rgba(12,12,14,.98) 100%);
+      border:1px solid var(--border2);
+      border-radius:18px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      box-shadow:0 24px 60px rgba(0,0,0,.6);
+    }
+    .ed-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      font-size:14px;
+      font-weight:700;
+      flex-wrap:wrap;
+    }
+    .ed-head .chip-btn{cursor:pointer}
+    #edSaveBtn{background:rgba(61,142,255,.25)!important;border-color:rgba(61,142,255,.5)!important}
+    .ed-toolbar{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:wrap;
+      padding:7px 10px;
+      border:1px solid var(--border2);
+      border-radius:12px;
+      background:rgba(61,142,255,.07);
+      font-size:11.5px;
+    }
+    .ed-toolbar b{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ed-toolbar button{
+      background:var(--surface2);
+      border:1px solid var(--border2);
+      border-radius:50px;
+      color:var(--text);
+      font-family:inherit;
+      font-size:10.5px;
+      font-weight:700;
+      padding:5px 10px;
+      cursor:pointer;
+    }
+    .ed-toolbar button.danger{color:#ff8080;border-color:rgba(255,107,107,.4)}
+    #mapEditorBody{
+      width:100%;
+      height:56vh;
+      background:#0d1016;
+      border-radius:12px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      touch-action:pan-x pan-y;
+    }
+    #mapEditorBody svg{
+      width:2600px;
+      max-width:none;
+      height:auto;
+      display:block;
+    }
+    /* reoler kan trækkes — bloker browser-scroll når fingeren starter på en reol */
+    #mapEditorBody svg .aisle{touch-action:none;cursor:move}
+    .ed-handle{
+      fill:#3d8eff;
+      stroke:#fff;
+      stroke-width:2;
+      cursor:nwse-resize;
+      touch-action:none;
+    }
   </style>
 </head>
 <body>
@@ -944,6 +1043,7 @@
               </svg>
               Start kamera
             </button>
+            <button id="mapEditBtn" class="map-edit-link" type="button">🗺 Map edit</button>
           </div>
         </div>
       </div>
@@ -1069,6 +1169,27 @@
     </div>
   </div>
 
+  <div id="mapEditorOverlay">
+    <div class="map-editor-card">
+      <div class="ed-head">
+        <span>Kort-editor</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button id="edAddBtn" class="chip chip-btn" type="button">+ Ny reol</button>
+          <button id="edSaveBtn" class="chip chip-btn" type="button">Gem</button>
+          <button id="edCloseBtn" class="chip chip-btn" type="button">Luk</button>
+        </div>
+      </div>
+      <div id="edToolbar" class="ed-toolbar" style="display:none">
+        <b id="edSelName">—</b>
+        <button id="edRenameBtn" type="button">Omdøb</button>
+        <button id="edColorBtn" type="button">Farve</button>
+        <button id="edDeleteBtn" type="button" class="danger">Slet</button>
+      </div>
+      <div id="mapEditorBody"></div>
+      <div class="map-picker-foot">Tryk på en reol → træk for at flytte · træk i den blå prik for at ændre størrelse</div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
   <script src="../store-map.js"></script>
@@ -1189,6 +1310,220 @@
     shelfPickBtn.addEventListener('click', openMapPicker);
     mapPickerClose.addEventListener('click', closeMapPicker);
     mapPickerOverlay.addEventListener('click', e => { if(e.target === mapPickerOverlay) closeMapPicker(); });
+
+    /*******************************
+     * Kort-editor — flyt/skalér/omdøb/slet/tilføj reol-felter direkte på
+     * kortet og gem layoutet i Supabase (tabellen map_config, række id=1).
+     * Begge apps henter det gemte layout ved opstart.
+     *******************************/
+    const mapEditBtn = document.getElementById('mapEditBtn');
+    const mapEditorOverlay = document.getElementById('mapEditorOverlay');
+    const mapEditorBody = document.getElementById('mapEditorBody');
+    const edToolbar = document.getElementById('edToolbar');
+    const edSelName = document.getElementById('edSelName');
+    const edAddBtn = document.getElementById('edAddBtn');
+    const edSaveBtn = document.getElementById('edSaveBtn');
+    const edCloseBtn = document.getElementById('edCloseBtn');
+    const edRenameBtn = document.getElementById('edRenameBtn');
+    const edColorBtn = document.getElementById('edColorBtn');
+    const edDeleteBtn = document.getElementById('edDeleteBtn');
+    let edMap = null, edSel = null, edDrag = null, edOrig = null, edDirty = false;
+
+    // Hent evt. tidligere gemt layout ved opstart (findes intet, bruges
+    // standardlisten fra store-map.js)
+    (async () => {
+      try{
+        const { data, error } = await db.from('map_config').select('aisles').eq('id', 1).maybeSingle();
+        if(!error && data && Array.isArray(data.aisles) && data.aisles.length) StoreMap.setAisles(data.aisles);
+      }catch(e){ console.warn('map_config kunne ikke hentes', e); }
+    })();
+
+    function edSlug(name){
+      return String(name).toLowerCase()
+        .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+        .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24) || 'reol';
+    }
+    function edUniqueId(base){
+      let id = base, n = 2;
+      while(StoreMap.AISLES.some(a => a.id === id)) id = base + '_' + (n++);
+      return id;
+    }
+    // Skærm-koordinat -> kort-koordinat (viewBox)
+    function edPoint(e){
+      const r = edMap.svg.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / r.width * StoreMap.VIEW_W,
+               y: (e.clientY - r.top) / r.height * StoreMap.VIEW_H };
+    }
+
+    function openMapEditor(){
+      if(!window.StoreMap){ setStatus('Kortet kunne ikke indlæses'); return; }
+      edOrig = JSON.stringify(StoreMap.AISLES); // til "Luk uden at gemme"
+      edDirty = false; edSel = null;
+      edMount();
+      mapEditorOverlay.classList.add('on');
+      requestAnimationFrame(() => {
+        const svg = mapEditorBody.querySelector('svg');
+        if(!svg) return;
+        const scale = svg.getBoundingClientRect().width / StoreMap.VIEW_W;
+        mapEditorBody.scrollLeft = 890 * scale - mapEditorBody.clientWidth / 2;
+        mapEditorBody.scrollTop  = 360 * scale - mapEditorBody.clientHeight / 2;
+      });
+    }
+    function closeMapEditor(discard){
+      if(discard && edOrig) StoreMap.setAisles(JSON.parse(edOrig));
+      edSel = null; edDrag = null;
+      mapEditorOverlay.classList.remove('on');
+    }
+
+    function edMount(){
+      edMap = StoreMap.mount(mapEditorBody, { clickable: false });
+      edMap.svg.addEventListener('pointerdown', edPointerDown);
+      edMap.svg.addEventListener('pointermove', edPointerMove);
+      edMap.svg.addEventListener('pointerup', edPointerUp);
+      edMap.svg.addEventListener('pointercancel', edPointerUp);
+      edSyncSelection();
+    }
+
+    // Marker valgt reol + placér resize-håndtaget og toolbar'en
+    function edSyncSelection(){
+      const svg = edMap.svg;
+      svg.querySelectorAll('.aisle').forEach(g =>
+        g.classList.toggle('sm-selected', !!edSel && g.getAttribute('data-aisle') === edSel.id));
+      let h = svg.querySelector('.ed-handle');
+      if(!edSel){ if(h) h.remove(); edToolbar.style.display = 'none'; return; }
+      if(!h){
+        h = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        h.setAttribute('class', 'ed-handle'); h.setAttribute('r', '14');
+        svg.appendChild(h);
+      }
+      h.setAttribute('cx', edSel.x + edSel.w); h.setAttribute('cy', edSel.y + edSel.h);
+      edToolbar.style.display = 'flex';
+      edSelName.textContent = edSel.name;
+    }
+
+    // Opdater den valgte reols DOM-elementer under træk (uden fuld gentegning)
+    function edSyncDom(){
+      const g = edMap.svg.querySelector('[data-aisle="' + edSel.id + '"]');
+      if(!g) return;
+      const rect = g.querySelector('.aisle-rectshape'), text = g.querySelector('text');
+      rect.setAttribute('x', edSel.x); rect.setAttribute('y', edSel.y);
+      rect.setAttribute('width', edSel.w); rect.setAttribute('height', edSel.h);
+      const cx = edSel.x + edSel.w / 2, cy = edSel.y + edSel.h / 2;
+      const vertical = edSel.h > edSel.w * 1.35;
+      text.setAttribute('x', cx); text.setAttribute('y', cy);
+      text.setAttribute('transform', vertical ? 'rotate(-90 ' + cx + ' ' + cy + ')' : '');
+      text.setAttribute('font-size', Math.max(7, Math.min(13, Math.round((vertical ? edSel.w : edSel.h) * 0.6))));
+      const h = edMap.svg.querySelector('.ed-handle');
+      if(h){ h.setAttribute('cx', edSel.x + edSel.w); h.setAttribute('cy', edSel.y + edSel.h); }
+    }
+
+    function edPointerDown(e){
+      const pt = edPoint(e);
+      if(e.target.classList && e.target.classList.contains('ed-handle') && edSel){
+        edDrag = { mode: 'resize', sx: pt.x, sy: pt.y, ow: edSel.w, oh: edSel.h };
+        edMap.svg.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
+      const g = e.target.closest && e.target.closest('[data-aisle]');
+      if(g){
+        const a = StoreMap.byId(g.getAttribute('data-aisle'));
+        if(a){
+          edSel = a; edSyncSelection();
+          edDrag = { mode: 'move', sx: pt.x, sy: pt.y, ox: a.x, oy: a.y };
+          edMap.svg.setPointerCapture(e.pointerId); e.preventDefault();
+        }
+        return;
+      }
+      edSel = null; edDrag = null; edSyncSelection(); // tom plads = fravælg
+    }
+    function edPointerMove(e){
+      if(!edDrag || !edSel) return;
+      const pt = edPoint(e);
+      const dx = pt.x - edDrag.sx, dy = pt.y - edDrag.sy;
+      if(edDrag.mode === 'move'){
+        edSel.x = Math.round(Math.max(0, Math.min(StoreMap.VIEW_W - edSel.w, edDrag.ox + dx)));
+        edSel.y = Math.round(Math.max(0, Math.min(StoreMap.VIEW_H - edSel.h, edDrag.oy + dy)));
+      } else {
+        edSel.w = Math.round(Math.max(8, Math.min(StoreMap.VIEW_W - edSel.x, edDrag.ow + dx)));
+        edSel.h = Math.round(Math.max(8, Math.min(StoreMap.VIEW_H - edSel.y, edDrag.oh + dy)));
+      }
+      edDirty = true;
+      edSyncDom();
+      e.preventDefault();
+    }
+    function edPointerUp(){ edDrag = null; }
+
+    edAddBtn.addEventListener('click', () => {
+      const name = (prompt('Navn på den nye reol:') || '').trim();
+      if(!name) return;
+      const svg = mapEditorBody.querySelector('svg');
+      const scale = svg ? svg.getBoundingClientRect().width / StoreMap.VIEW_W : 1;
+      const cx = (mapEditorBody.scrollLeft + mapEditorBody.clientWidth / 2) / scale;
+      const cy = (mapEditorBody.scrollTop + mapEditorBody.clientHeight / 2) / scale;
+      const a = {
+        id: edUniqueId(edSlug(name)), name: name, short: name,
+        x: Math.round(Math.max(0, cx - 40)), y: Math.round(Math.max(0, cy - 15)),
+        w: 80, h: 30, fill: StoreMap.COL.kolo
+      };
+      StoreMap.AISLES.push(a);
+      edSel = a; edDirty = true;
+      edMount();
+    });
+    edRenameBtn.addEventListener('click', () => {
+      if(!edSel) return;
+      const name = (prompt('Nyt navn:', edSel.name) || '').trim();
+      if(!name) return;
+      edSel.name = name; edSel.short = name; edDirty = true;
+      edMount();
+    });
+    edColorBtn.addEventListener('click', () => {
+      if(!edSel) return;
+      const colors = [StoreMap.COL.kolo, StoreMap.COL.koel, StoreMap.COL.frost, StoreMap.COL.vin, StoreMap.COL.green];
+      edSel.fill = colors[(colors.indexOf(edSel.fill) + 1) % colors.length];
+      edDirty = true;
+      edMount();
+    });
+    edDeleteBtn.addEventListener('click', () => {
+      if(!edSel) return;
+      if(!confirm('Slet "' + edSel.name + '" fra kortet?')) return;
+      const i = StoreMap.AISLES.indexOf(edSel);
+      if(i >= 0) StoreMap.AISLES.splice(i, 1);
+      edSel = null; edDirty = true;
+      edMount();
+    });
+
+    async function edSave(){
+      edSaveBtn.disabled = true;
+      const old = edSaveBtn.textContent; edSaveBtn.textContent = 'Gemmer…';
+      try{
+        const payload = { id: 1, aisles: StoreMap.AISLES };
+        let { error } = await db.from('map_config').upsert(payload);
+        if(error && isRlsError(error)){
+          if(await requestLogin()) ({ error } = await db.from('map_config').upsert(payload));
+          else throw new Error('Login påkrævet for at gemme.');
+        }
+        if(error){
+          const msg = error.message || String(error);
+          throw new Error(/map_config/i.test(msg)
+            ? 'Tabellen map_config mangler i Supabase — kør trin 7 i SUPABASE-SETUP.md'
+            : msg);
+        }
+        edOrig = JSON.stringify(StoreMap.AISLES); edDirty = false;
+        toast('✓ Kortet er gemt');
+        closeMapEditor(false);
+      }catch(e){
+        console.error(e);
+        toast('Kunne ikke gemme kortet: ' + (e.message || e));
+      }finally{
+        edSaveBtn.disabled = false; edSaveBtn.textContent = old;
+      }
+    }
+
+    mapEditBtn.addEventListener('click', openMapEditor);
+    edSaveBtn.addEventListener('click', edSave);
+    edCloseBtn.addEventListener('click', () => {
+      if(edDirty && !confirm('Du har ændringer der ikke er gemt. Luk uden at gemme?')) return;
+      closeMapEditor(true);
+    });
     function setStatus(txt){ statusEl.textContent = txt; }
     function toast(txt){
       toastEl.textContent = txt; toastEl.classList.add('on');
