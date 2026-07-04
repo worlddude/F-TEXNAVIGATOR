@@ -1731,7 +1731,23 @@
       // Tegn det nye SVG-butikskort (delt med add-appen) ind i #map.
       // #map er en <div> (så offsetWidth/offsetHeight virker til pan/zoom),
       // og SVG'et ligger indeni. Det erstatter det gamle statiske kort-billede.
-      const mapObj = window.StoreMap ? StoreMap.mount($('map'), { clickable: false }) : null;
+      let mapObj = null;
+      function mountMainMap() {
+        mapObj = window.StoreMap ? StoreMap.mount($('map'), { clickable: false }) : null;
+      }
+      mountMainMap();
+
+      // Hent evt. redigeret kort-layout (gemt fra add-appens kort-editor).
+      // Findes tabellen/rækken ikke, bruges listen fra store-map.js som den er.
+      (async () => {
+        try {
+          const { data, error } = await db.from('map_config').select('aisles').eq('id', 1).maybeSingle();
+          if (!error && data && Array.isArray(data.aisles) && data.aisles.length) {
+            StoreMap.setAisles(data.aisles);
+            mountMainMap();
+          }
+        } catch (e) { console.warn('map_config kunne ikke hentes', e); }
+      })();
 
       const video = $('video'), mapImg = $('map'), mapCon = $('mapContainer'), scanOv = $('scanOverlay'),
         itemCard = $('itemCard'), nameD = $('itemNameDisplay'),

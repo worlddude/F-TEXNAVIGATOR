@@ -260,3 +260,50 @@ morgenmad" skal finde havregryn): Supabase har `pgvector` indbygget — generér
 embeddings pr. vare (fx ved insert via en Edge Function) og lad ItemGPT-funktionen
 lave et vektor-opslag i stedet for at sende et katalog med. Det skalerer til
 titusinder af varer med konstant payload.
+
+---
+
+## 7. Kort-editoren: tabellen `map_config`
+
+Add-appen har en indbygget kort-editor ("🗺 Map edit" på startsiden), hvor
+reol-felterne kan flyttes, skaleres, omdøbes, slettes og tilføjes direkte
+ovenpå luftfotoet. Layoutet gemmes i én række i tabellen `map_config`, og
+begge apps henter det ved opstart (findes rækken ikke, bruges
+standard-layoutet fra `store-map.js`).
+
+Kør i SQL Editor:
+
+```sql
+create table if not exists public.map_config (
+  id int primary key,
+  aisles jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists map_config_set_updated_at on public.map_config;
+create trigger map_config_set_updated_at
+  before update on public.map_config
+  for each row execute function public.set_updated_at();
+
+alter table public.map_config enable row level security;
+
+-- Alle (appen) må læse layoutet
+create policy "public read map_config"
+  on public.map_config for select
+  to anon, authenticated
+  using (true);
+
+-- Kun indloggede (admin i add-appen) må gemme
+create policy "authenticated write map_config"
+  on public.map_config for insert
+  to authenticated
+  with check (true);
+
+create policy "authenticated update map_config"
+  on public.map_config for update
+  to authenticated
+  using (true) with check (true);
+```
+
+Bemærk: triggeren genbruger funktionen `set_updated_at()` fra trin 1 — kør
+trin 1 først, hvis den ikke findes endnu.
