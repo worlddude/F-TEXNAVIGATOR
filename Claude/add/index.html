@@ -812,7 +812,7 @@
       display:none;
       position:fixed;
       inset:0;
-      z-index:9998;
+      z-index:10002; /* skal ligge OVER kort-editoren (9999), ellers gemmer login-boksen sig bag den */
       background:rgba(8,10,18,.9);
       backdrop-filter:blur(18px);
       align-items:center;
@@ -1688,7 +1688,11 @@
      *******************************/
     function isRlsError(err){
       const m=(err?.message||'').toLowerCase();
-      return err?.code==='42501' || m.includes('row-level security') || m.includes('unauthorized');
+      // 42501/403 = RLS afviser skrivning; 401/PGRST301/jwt = udløbet eller
+      // ugyldig session — begge dele løses ved at logge ind (igen)
+      return err?.code==='42501' || err?.code==='PGRST301' || err?.status===401
+        || m.includes('row-level security') || m.includes('unauthorized')
+        || m.includes('jwt') || m.includes('invalid authentication');
     }
     function requestLogin(){
       return new Promise(resolve => {
