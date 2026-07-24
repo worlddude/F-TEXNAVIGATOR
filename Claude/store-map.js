@@ -203,17 +203,23 @@
   function mount(container, opts) {
     opts = opts || {};
     const bg = opts.bgImage || bgImage;
-    // Luftfotoet lægges som et rigtigt <img> BAG SVG-overlayet, så det forbliver
-    // skarpt når kortet zoomes/skaleres (i modsætning til et raster-<image> inde
-    // i SVG'en). SVG'en tegnes ovenpå med gennemsigtig baggrund (noPhoto).
-    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
-    container.innerHTML =
-      '<img class="store-map-photo" alt="" draggable="false" src="' + esc(bg) + '" ' +
-      'style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;' +
-      'pointer-events:none;user-select:none;-webkit-user-drag:none;background:#0d1016">' +
-      svgMarkup({ clickable: !!opts.clickable, bgImage: opts.bgImage, noPhoto: true });
+    // photoLayer: læg luftfotoet som et rigtigt <img> BAG et gennemsigtigt
+    // SVG-overlay, så det forbliver skarpt ved zoom. Bruges KUN i hoved-appen,
+    // hvor #map passer nøjagtigt til SVG'ens boks. Add-appen tegner kortet i
+    // store, scrollbare beholdere (fx svg width:2600px), hvor et absolut <img>
+    // ikke ville passe — der beholder vi det indlejrede SVG-<image>.
+    if (opts.photoLayer) {
+      if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+      container.innerHTML =
+        '<img class="store-map-photo" alt="" draggable="false" src="' + esc(bg) + '" ' +
+        'style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;' +
+        'pointer-events:none;user-select:none;-webkit-user-drag:none;background:#0d1016">' +
+        svgMarkup({ clickable: !!opts.clickable, bgImage: opts.bgImage, noPhoto: true });
+    } else {
+      container.innerHTML = svgMarkup({ clickable: !!opts.clickable, bgImage: opts.bgImage });
+    }
     const svg = container.querySelector('svg');
-    svg.style.position = 'relative'; // tegn overlayet ovenpå fotoet
+    if (opts.photoLayer) svg.style.position = 'relative'; // tegn overlayet ovenpå fotoet
     const hl = svg.querySelector('[data-role="highlight"]');
 
     function highlight(id) {
