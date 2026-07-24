@@ -321,7 +321,6 @@
 
     #map {
       display: block;
-      will-change: transform;
       transform-origin: 0 0;
       user-select: none;
       -webkit-user-drag: none;
@@ -1262,8 +1261,14 @@
       left: 0;
       width: 100%;
       transform-origin: 0 0;
-      will-change: transform;
       transition: transform .4s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* 'will-change' slås KUN til under aktiv panorering/zoom. Permanent 'will-change'
+       pinner kortet på et lavopløseligt GPU-lag, så det høj-opløselige luftfoto
+       bliver sløret. Uden det gen-tegner browseren kortet skarpt i hvile. */
+    #mapWrapper.interacting {
+      will-change: transform;
     }
 
     #mapWrapper.no-transition {
@@ -2162,6 +2167,15 @@
 
       // Map pan/zoom
       let sc = 1, mn = 0.5, mx = 6, px = 0, py = 0, pan = false, psx = 0, psy = 0, lpx = 0, lpy = 0, ltd = null, lastDrag = 0;
+      // Skarphed: 'will-change: transform' slås kun til mens man panorerer/zoomer.
+      // Bagefter fjernes det igen, så browseren gen-tegner luftfotoet i fuld
+      // opløsning i stedet for at strække et sløret GPU-lag.
+      let sharpenTimer = null;
+      function markInteracting() {
+        mapWrap.classList.add('interacting');
+        clearTimeout(sharpenTimer);
+        sharpenTimer = setTimeout(() => mapWrap.classList.remove('interacting'), 500);
+      }
       function at() {
         if (!mapImg.offsetWidth) return;
         const cw = mapCon.clientWidth, ch = mapCon.clientHeight, iw = mapImg.offsetWidth * sc, ih = mapImg.offsetHeight * sc;
@@ -2169,6 +2183,7 @@
         px = iw >= cw ? cl(px, cw - iw, 0) : (cw - iw) / 2;
         py = ih >= ch ? cl(py, ch - ih, 0) : (ch - ih) / 2;
         mapWrap.style.transform = `translate(${px}px,${py}px) scale(${sc})`;
+        markInteracting();
       }
       function atNoTrans() {
         mapWrap.classList.add('no-transition');
