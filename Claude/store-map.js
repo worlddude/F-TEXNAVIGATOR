@@ -166,6 +166,11 @@
     o = o || {};
     const clickable = !!o.clickable;
     const bg = o.bgImage || bgImage;
+    // noPhoto: tegn IKKE luftfotoet inde i SVG'en. Et raster-<image> i en SVG
+    // bliver rasteriseret i SVG'ens interne opløsning og skaleret => sløret.
+    // I stedet lægger mount() et rigtigt <img> bagved, som browseren gen-sampler
+    // skarpt fra kilden. Fald tilbage til SVG-billedet hvis noPhoto ikke er sat.
+    const noPhoto = !!o.noPhoto;
     const staff = STAFF.map(staffMarkup).join('');
     const aisles = STORE_AISLES.map(a => aisleMarkup(a, clickable)).join('');
     return `<svg class="store-map-svg" viewBox="0 0 ${VIEW_W} ${VIEW_H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -187,8 +192,8 @@
         .aisle-hl{fill:rgba(61,142,255,.28);stroke:#3d8eff;stroke-width:2.4;filter:url(#sm-glow)}
         .sm-selected .aisle-rectshape{fill-opacity:.82;stroke:#fff;stroke-width:1.6}
       </style>
-      <rect class="sm-fallback" x="0" y="0" width="${VIEW_W}" height="${VIEW_H}"/>
-      <image href="${esc(bg)}" xlink:href="${esc(bg)}" x="0" y="0" width="${VIEW_W}" height="${VIEW_H}" preserveAspectRatio="none"/>
+      ${noPhoto ? '' : `<rect class="sm-fallback" x="0" y="0" width="${VIEW_W}" height="${VIEW_H}"/>
+      <image href="${esc(bg)}" xlink:href="${esc(bg)}" x="0" y="0" width="${VIEW_W}" height="${VIEW_H}" preserveAspectRatio="none"/>`}
       ${staff}
       ${aisles}
       <rect class="aisle-hl" x="0" y="0" width="0" height="0" rx="4" style="display:none" data-role="highlight"/>
@@ -197,8 +202,18 @@
 
   function mount(container, opts) {
     opts = opts || {};
-    container.innerHTML = svgMarkup({ clickable: !!opts.clickable, bgImage: opts.bgImage });
+    const bg = opts.bgImage || bgImage;
+    // Luftfotoet lægges som et rigtigt <img> BAG SVG-overlayet, så det forbliver
+    // skarpt når kortet zoomes/skaleres (i modsætning til et raster-<image> inde
+    // i SVG'en). SVG'en tegnes ovenpå med gennemsigtig baggrund (noPhoto).
+    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+    container.innerHTML =
+      '<img class="store-map-photo" alt="" draggable="false" src="' + esc(bg) + '" ' +
+      'style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;' +
+      'pointer-events:none;user-select:none;-webkit-user-drag:none;background:#0d1016">' +
+      svgMarkup({ clickable: !!opts.clickable, bgImage: opts.bgImage, noPhoto: true });
     const svg = container.querySelector('svg');
+    svg.style.position = 'relative'; // tegn overlayet ovenpå fotoet
     const hl = svg.querySelector('[data-role="highlight"]');
 
     function highlight(id) {
